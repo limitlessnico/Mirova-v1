@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 import os
 import pandas as pd
 from datetime import datetime
+import time
 
 VOLCANES = {
     "355100": "Lascar", 
@@ -21,9 +22,7 @@ def procesar():
     registros_ciclo = []
 
     for vid, nombre_v in VOLCANES.items():
-        # CAPTURA TRIPLE: MODIS, VIIRS (VIRS) y VIIRS-375m (VIRS375)
         for modo in ["MOD", "VIRS", "VIRS375"]:
-            # Etiqueta amigable para el CSV
             if modo == "MOD": s_label = "MODIS"
             elif modo == "VIRS": s_label = "VIIRS"
             else: s_label = "VIIRS-375m"
@@ -42,23 +41,31 @@ def procesar():
                         vrp = b.text.split('=')[-1].replace('MW', '').strip()
                         break
 
-                # FORZAR CARPETAS: imagenes / Volcan / Fecha / Hora
+                # Carpeta específica
                 ruta_final = os.path.join("imagenes", nombre_v, fecha_hoy, hora_actual)
                 os.makedirs(ruta_final, exist_ok=True)
                 
-                # CREAR ARCHIVO MARCADOR: Esto obliga a GitHub a subir la carpeta aunque no haya fotos nuevas
+                # Archivo marcador para forzar commit
                 with open(os.path.join(ruta_final, "leeme.txt"), "w") as f:
-                    f.write(f"Captura realizada a las {hora_actual} con sensor {s_label}")
+                    f.write(f"Captura {s_label} - {ahora.strftime('%H:%M:%S')}")
 
-                # Descargar imágenes
+                # --- DESCARGA MEJORADA ---
                 imgs = soup.find_all('img')
                 for i, img in enumerate(imgs):
                     src = img.get('src')
                     if src and any(x in src.lower() for x in ['temp', 'map', 'last']):
-                        img_url = src if src.startswith('http') else BASE_URL + src
-                        img_data = requests.get(img_url, headers=headers).content
-                        with open(os.path.join(ruta_final, f"{s_label}_img_{i}.png"), 'wb') as f:
-                            f.write(img_data)
+                        # Construcción robusta de la URL
+                        img_url = src if src.startswith('http') else f"https://www.mirovaweb.it/{src.lstrip('/')}"
+                        
+                        try:
+                            img_res = requests.get(img_url, headers=headers, timeout=15)
+                            if img_res.status_code == 200:
+                                nombre_archivo = f"{s_label}_img_{i}.png"
+                                with open(os.path.join(ruta_final, nombre_archivo), 'wb') as f:
+                                    f.write(img_res.content)
+                                time.sleep(0.5) # Pausa técnica para no ser bloqueado
+                        except:
+                            continue
 
                 registros_ciclo.append({
                     "Volcan": nombre_v,
@@ -70,14 +77,14 @@ def procesar():
                 })
 
             except Exception as e:
-                print(f"Error en {nombre_v} ({s_label}): {e}")
+                print(f"Error: {e}")
 
+    # Guardado de CSV
     if registros_ciclo:
         df_nuevo = pd.DataFrame(registros_ciclo)
         if os.path.exists(DB_FILE):
             df_antiguo = pd.read_csv(DB_FILE)
-            df_final = pd.concat([df_antiguo, df_nuevo], ignore_index=True)
-            df_final.to_csv(DB_FILE, index=False)
+            pd.concat([df_antiguo, df_nuevo], ignore_index=True).to_csv(DB_FILE, index=False)
         else:
             df_nuevo.to_csv(DB_FILE, index=False)
 

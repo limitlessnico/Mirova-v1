@@ -1,0 +1,32 @@
+name: Mirova Monitor Horario
+
+on:
+  schedule:
+    - cron: '0 * * * *'  # Se ejecuta al minuto 0 de cada hora
+  workflow_dispatch:      # Permite botón manual para probar
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v3
+
+      - name: Configurar Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+
+      - name: Ejecutar Scraper
+        run: python scraper.py
+
+      - name: Guardar cambios
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add .
+          git commit -m "Auto-update: Nueva detección Mirova" || exit 0
+          git push

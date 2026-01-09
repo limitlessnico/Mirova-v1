@@ -4,6 +4,7 @@ import os
 import pandas as pd
 from datetime import datetime
 
+# --- CONFIGURACIÓN ---
 VOLCANES = {
     "355100": "Lascar", 
     "357120": "Villarrica", 
@@ -21,7 +22,7 @@ def procesar():
     registros_ciclo = []
 
     for vid, nombre_v in VOLCANES.items():
-        # Probamos ambos sensores para cada volcán
+        # Consultamos AMBOS sensores para cada volcán
         for modo in ["MOD", "VIRS"]:
             sensor_name = "MODIS" if modo == "MOD" else "VIIRS"
             url = f"{BASE_URL}volcanoDetails_{modo}.php?volcano_id={vid}"
@@ -32,28 +33,31 @@ def procesar():
                 
                 soup = BeautifulSoup(res.text, 'html.parser')
                 
-                # Extraer VRP
+                # 1. Extracción de VRP (Calor)
                 vrp = "0"
                 for b in soup.find_all('b'):
                     if "VRP =" in b.text:
                         vrp = b.text.split('=')[-1].replace('MW', '').strip()
                         break
 
-                # FORZAR ESTRUCTURA: imagenes / Volcan / Fecha / Hora
+                # 2. Creación de Ruta Forzada: imagenes / Volcan / Fecha / Hora
                 ruta_final = os.path.join("imagenes", nombre_v, fecha_hoy, hora_actual)
                 os.makedirs(ruta_final, exist_ok=True)
 
-                # Descargar imágenes y renombrarlas con el sensor
+                # 3. Descarga de Imágenes
                 imgs = soup.find_all('img')
                 for i, img in enumerate(imgs):
                     src = img.get('src')
                     if src and any(x in src.lower() for x in ['temp', 'map', 'last']):
                         img_url = src if src.startswith('http') else BASE_URL + src
                         img_data = requests.get(img_url, headers=headers).content
-                        with open(os.path.join(ruta_final, f"{sensor_name}_img_{i}.png"), 'wb') as f:
+                        
+                        # Nombre de archivo indicando el sensor
+                        nombre_archivo = f"{sensor_name}_img_{i}.png"
+                        with open(os.path.join(ruta_final, nombre_archivo), 'wb') as f:
                             f.write(img_data)
 
-                # Guardamos TODOS los datos para evitar celdas vacías
+                # 4. Registro de Datos (Aseguramos que todas las columnas tengan información)
                 registros_ciclo.append({
                     "Volcan": nombre_v,
                     "VRP_MW": vrp,
@@ -62,21 +66,22 @@ def procesar():
                     "Hora": ahora.strftime("%H:%M:%S"),
                     "Ultima_Actualizacion": ahora.strftime("%Y-%m-%d %H:%M")
                 })
-                print(f"Capturado {nombre_v} - {sensor_name}")
+                print(f"Capturado: {nombre_v} - {sensor_name} - {vrp} MW")
 
             except Exception as e:
-                print(f"Error en {nombre_v}: {e}")
+                print(f"Error en {nombre_v} ({sensor_name}): {e}")
 
-    # Guardar en CSV asegurando que las columnas coincidan
+    # 5. Guardado del CSV sin pérdida de datos
     if registros_ciclo:
         df_nuevo = pd.DataFrame(registros_ciclo)
         if os.path.exists(DB_FILE):
             df_antiguo = pd.read_csv(DB_FILE)
-            # Alineamos columnas para evitar que aparezcan en blanco
+            # Combinamos datos antiguos y nuevos
             df_final = pd.concat([df_antiguo, df_nuevo], ignore_index=True)
             df_final.to_csv(DB_FILE, index=False)
         else:
             df_nuevo.to_csv(DB_FILE, index=False)
+        print("CSV y Carpetas de imágenes actualizados exitosamente.")
 
 if __name__ == "__main__":
     procesar()

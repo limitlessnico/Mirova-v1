@@ -1,21 +1,13 @@
-name: Mirova Monitor Chile
+name: Monitor Volcanico Pro
 
 on:
   schedule:
-    # Se ejecuta cada 3 horas (00:00, 03:00, 06:00, 09:00, 12:00, 15:00, 18:00, 21:00 UTC)
-    - cron: '0 */3 * * *'
-  workflow_dispatch:
-    # Permite ejecutarlo manualmente desde la pestaña Actions
+    - cron: '0 */3 * * *' # Se ejecuta cada 3 horas
+  workflow_dispatch: # Permite ejecución manual
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    
-    # Evita que múltiples ejecuciones se pisen entre sí
-    concurrency:
-      group: scraper-group
-      cancel-in-progress: false
-
     steps:
       - name: Checkout del repositorio
         uses: actions/checkout@v3
@@ -23,21 +15,21 @@ jobs:
       - name: Configurar Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
+          python-version: '3.9'
 
       - name: Instalar dependencias
         run: |
           python -m pip install --upgrade pip
           pip install requests beautifulsoup4 pandas lxml
 
-      - name: Ejecutar Scraper de Volcanes
+      - name: Ejecutar Scraper
         run: python scraper.py
 
-      - name: Guardar cambios en el repositorio
+      - name: Guardar cambios en GitHub
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add .
-          # El comando commit solo se ejecuta si hay cambios reales para evitar errores
-          git commit -m "Auto-update: Nuevas capturas y datos Mirova $(date +'%Y-%m-%d %H:%M')" || exit 0
-          git push
+          git config --global user.name "VolcanoBot"
+          git config --global user.email "bot@volcano.com"
+          # El comando 'add -A' fuerza a que se detecten carpetas nuevas y borrados
+          git add -A
+          # Solo hace commit si hay cambios reales para evitar errores
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Actualización: $(date +'%Y-%m-%d %H:%M') - Datos y Carpetas" && git push)

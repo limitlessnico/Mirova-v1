@@ -18,68 +18,68 @@ def procesar():
     fecha_hoy = ahora.strftime("%Y-%m-%d")
     hora_actual = ahora.strftime("%H-%M")
     
-    nuevos_registros = []
+    registros_ciclo = []
 
     for vid, nombre_v in VOLCANES.items():
-        print(f"--- Monitoreando: {nombre_v} ---")
-        url = f"{BASE_URL}volcanoDetails_MOD.php?volcano_id={vid}"
+        print(f"--- Procesando: {nombre_v} ---")
         
-        try:
-            res = requests.get(url, headers=headers, timeout=20)
-            soup = BeautifulSoup(res.text, 'html.parser')
+        # Intentamos obtener datos de ambos posibles sensores
+        for modo in ["MOD", "VIRS"]:
+            sensor_name = "MODIS" if modo == "MOD" else "VIIRS"
+            url = f"{BASE_URL}volcanoDetails_{modo}.php?volcano_id={vid}"
             
-            # 1. Identificar Sensor (MODIS o VIIRS) desde el texto
-            sensor = "MODIS"
-            if "VIIRS" in soup.get_text().upper():
-                sensor = "VIIRS"
-            
-            # 2. Extraer VRP con limpieza total
-            vrp = "0"
-            for b in soup.find_all('b'):
-                if "VRP =" in b.text:
-                    vrp = b.text.split('=')[-1].replace('MW', '').strip()
-                    break
+            try:
+                res = requests.get(url, headers=headers, timeout=20)
+                if res.status_code != 200: continue
+                
+                soup = BeautifulSoup(res.text, 'html.parser')
+                
+                # Extraer VRP
+                vrp = "0"
+                for b in soup.find_all('b'):
+                    if "VRP =" in b.text:
+                        vrp = b.text.split('=')[-1].replace('MW', '').strip()
+                        break
 
-            # 3. Crear carpetas: imagenes / Volcan / Fecha / Hora
-            ruta_carpeta = os.path.join("imagenes", nombre_v, fecha_hoy, hora_actual)
-            os.makedirs(ruta_carpeta, exist_ok=True)
+                # FORZAR CREACIÓN DE CARPETAS (Repara lo borrado accidentalmente)
+                # imagenes / Volcan / Fecha / Hora
+                ruta_final = os.path.join("imagenes", nombre_v, fecha_hoy, hora_actual)
+                if not os.path.exists(ruta_final):
+                    os.makedirs(ruta_final, exist_ok=True)
 
-            # 4. Descargar imágenes a esa carpeta específica
-            imgs = soup.find_all('img')
-            for i, img in enumerate(imgs):
-                src = img.get('src')
-                if src and any(x in src.lower() for x in ['temp', 'map', 'last']):
-                    img_url = src if src.startswith('http') else BASE_URL + src
-                    img_data = requests.get(img_url, headers=headers).content
-                    with open(os.path.join(ruta_carpeta, f"{sensor}_img_{i}.png"), 'wb') as f:
-                        f.write(img_data)
+                # Descargar imágenes
+                imgs = soup.find_all('img')
+                for i, img in enumerate(imgs):
+                    src = img.get('src')
+                    if src and any(x in src.lower() for x in ['temp', 'map', 'last']):
+                        img_url = src if src.startswith('http') else BASE_URL + src
+                        img_data = requests.get(img_url, headers=headers).content
+                        with open(os.path.join(ruta_final, f"{sensor_name}_img_{i}.png"), 'wb') as f:
+                            f.write(img_data)
 
-            # 5. Guardar datos para el CSV sin dejar huecos
-            nuevos_registros.append({
-                "Volcan": nombre_v,
-                "VRP_MW": vrp,
-                "Sensor": sensor,
-                "Fecha": fecha_hoy,
-                "Hora": ahora.strftime("%H:%M:%S"),
-                "Estado": "Actualizado"
-            })
-            print(f"   [OK] {sensor} detectado. VRP: {vrp}")
+                registros_ciclo.append({
+                    "Volcan": nombre_v,
+                    "VRP_MW": vrp,
+                    "Sensor": sensor_name,
+                    "Fecha": fecha_hoy,
+                    "Hora": ahora.strftime("%H:%M:%S")
+                })
+                print(f"   [OK] Capturado {sensor_name} para {nombre_v}")
 
-        except Exception as e:
-            print(f"   [!] Error en {nombre_v}: {e}")
+            except Exception as e:
+                print(f"   [!] Error en {nombre_v} ({sensor_name}): {e}")
 
-    # 6. Guardar CSV (Asegurando que todas las columnas se llenen)
-    if nuevos_registros:
-        df_nuevo = pd.DataFrame(nuevos_registros)
+    # ACTUALIZACIÓN DEL CSV (Sin perder historial)
+    if registros_ciclo:
+        df_nuevo = pd.DataFrame(registros_ciclo)
         if os.path.exists(DB_FILE):
             df_antiguo = pd.read_csv(DB_FILE)
-            # Combinamos y rellenamos posibles NaN con el valor actual
-            df_final = pd.concat([df_antiguo, df_nuevo], ignore_index=True).fillna("N/A")
+            # Combinamos y quitamos las filas que estén totalmente vacías o repetidas
+            df_final = pd.concat([df_antiguo, df_nuevo], ignore_index=True).drop_duplicates()
             df_final.to_csv(DB_FILE, index=False)
         else:
             df_nuevo.to_csv(DB_FILE, index=False)
-        print("Base de datos actualizada correctamente.")
+        print("CSV y Carpetas sincronizados.")
 
 if __name__ == "__main__":
     procesar()
-

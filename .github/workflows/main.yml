@@ -2,8 +2,8 @@ name: Mirova Monitor Horario
 
 on:
   schedule:
-    - cron: '0 * * * *'  # Se ejecuta al minuto 0 de cada hora
-  workflow_dispatch:      # Permite botón manual para probar
+    - cron: '*/10 * * * *'  # Cambiado de '0' a '*/10' para que corra cada 10 minutos
+  workflow_dispatch:    # Permite botón manual para probar
 
 jobs:
   build:

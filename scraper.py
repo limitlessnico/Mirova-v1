@@ -21,9 +21,7 @@ def procesar():
     registros_ciclo = []
 
     for vid, nombre_v in VOLCANES.items():
-        print(f"--- Procesando: {nombre_v} ---")
-        
-        # Intentamos obtener datos de ambos posibles sensores
+        # Probamos ambos sensores para cada volcán
         for modo in ["MOD", "VIRS"]:
             sensor_name = "MODIS" if modo == "MOD" else "VIIRS"
             url = f"{BASE_URL}volcanoDetails_{modo}.php?volcano_id={vid}"
@@ -41,13 +39,11 @@ def procesar():
                         vrp = b.text.split('=')[-1].replace('MW', '').strip()
                         break
 
-                # FORZAR CREACIÓN DE CARPETAS (Repara lo borrado accidentalmente)
-                # imagenes / Volcan / Fecha / Hora
+                # FORZAR ESTRUCTURA: imagenes / Volcan / Fecha / Hora
                 ruta_final = os.path.join("imagenes", nombre_v, fecha_hoy, hora_actual)
-                if not os.path.exists(ruta_final):
-                    os.makedirs(ruta_final, exist_ok=True)
+                os.makedirs(ruta_final, exist_ok=True)
 
-                # Descargar imágenes
+                # Descargar imágenes y renombrarlas con el sensor
                 imgs = soup.find_all('img')
                 for i, img in enumerate(imgs):
                     src = img.get('src')
@@ -57,29 +53,31 @@ def procesar():
                         with open(os.path.join(ruta_final, f"{sensor_name}_img_{i}.png"), 'wb') as f:
                             f.write(img_data)
 
+                # Guardamos TODOS los datos para evitar celdas vacías
                 registros_ciclo.append({
                     "Volcan": nombre_v,
                     "VRP_MW": vrp,
                     "Sensor": sensor_name,
                     "Fecha": fecha_hoy,
-                    "Hora": ahora.strftime("%H:%M:%S")
+                    "Hora": ahora.strftime("%H:%M:%S"),
+                    "Ultima_Actualizacion": ahora.strftime("%Y-%m-%d %H:%M")
                 })
-                print(f"   [OK] Capturado {sensor_name} para {nombre_v}")
+                print(f"Capturado {nombre_v} - {sensor_name}")
 
             except Exception as e:
-                print(f"   [!] Error en {nombre_v} ({sensor_name}): {e}")
+                print(f"Error en {nombre_v}: {e}")
 
-    # ACTUALIZACIÓN DEL CSV (Sin perder historial)
+    # Guardar en CSV asegurando que las columnas coincidan
     if registros_ciclo:
         df_nuevo = pd.DataFrame(registros_ciclo)
         if os.path.exists(DB_FILE):
             df_antiguo = pd.read_csv(DB_FILE)
-            # Combinamos y quitamos las filas que estén totalmente vacías o repetidas
-            df_final = pd.concat([df_antiguo, df_nuevo], ignore_index=True).drop_duplicates()
+            # Alineamos columnas para evitar que aparezcan en blanco
+            df_final = pd.concat([df_antiguo, df_nuevo], ignore_index=True)
             df_final.to_csv(DB_FILE, index=False)
         else:
             df_nuevo.to_csv(DB_FILE, index=False)
-        print("CSV y Carpetas sincronizados.")
 
 if __name__ == "__main__":
     procesar()
+

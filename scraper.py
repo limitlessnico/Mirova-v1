@@ -2,85 +2,100 @@ import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 import os
-from datetime import datetime
 
-# Configuración del Volcán (Etna - 355100)
-VOLCANO_ID = "355100"
+# --- CONFIGURACIÓN DE VOLCANES CHILENOS ---
+LISTA_VOLCANES = [
+    "355100", # Lascar
+    "357120", # Villarrica
+    "357110", # Llaima
+    "357060", # Nevados de Chillán
+    "357080", # Copahue
+    "357150", # Puyehue-Cordón Caulle
+    "358020", # Calbuco
+    "357040", # Planchón-Peteroa
+    "358010", # Osorno
+    "358050"  # Hudson
+]
+
 BASE_URL = "https://www.mirovaweb.it/NRT/"
-URL_PAGINA = f"{BASE_URL}volcanoDetails_MOD.php?volcano_id={VOLCANO_ID}"
 DB_FILE = "registro_vrp.csv"
 IMG_FOLDER = "imagenes"
 
-def ejecutar_scraping():
-    print(f"Iniciando revisión: {datetime.now()}")
+def procesar_volcan(volcan_id):
+    url_pagina = f"{BASE_URL}volcanoDetails_MOD.php?volcano_id={volcan_id}"
+    print(f"Revisando Volcán ID: {volcan_id}...")
     
-    # 1. Obtener la página principal para buscar el archivo de datos
-    res = requests.get(URL_PAGINA)
-    soup = BeautifulSoup(res.text, 'html.parser')
-    
-    # Buscamos el link que contiene 'get_data.php'
-    link_data = soup.find('a', href=lambda h: h and "get_data.php" in h)
-    
-    if not link_data:
-        print("No se encontró el enlace de datos.")
-        return
-
-    data_url = BASE_URL + link_data['href']
-    
-    # 2. Descargar y leer el CSV de Mirova
-    # Usamos sep=None para que pandas detecte si es coma o tabulación
     try:
+        res = requests.get(url_pagina, timeout=15)
+        soup = BeautifulSoup(res.text, 'html.parser')
+        
+        # Buscar el enlace a los datos CSV
+        link_data = soup.find('a', href=lambda h: h and "get_data.php" in h)
+        if not link_data:
+            return None
+
+        data_url = BASE_URL + link_data['href']
         df_mirova = pd.read_csv(data_url, sep=None, engine='python')
-        ultima_deteccion = df_mirova.iloc[-1]
         
-        fecha_txt = str(ultima_deteccion['DATE'])
-        hora_txt = str(ultima_deteccion['TIME'])
-        vrp_val = float(ultima_deteccion['VRP(MW)'])
-        id_deteccion = f"{fecha_txt}_{hora_txt}".replace("/", "-")
-    except Exception as e:
-        print(f"Error procesando datos: {e}")
-        return
-
-    # 3. Verificar si ya lo tenemos registrado
-    if os.path.exists(DB_FILE):
-        db_local = pd.read_csv(DB_FILE)
-        if id_deteccion in db_local['ID'].values:
-            print(f"Detección {id_deteccion} ya registrada. Nada que hacer.")
-            return
-
-    # 4. Si el VRP es mayor a 0, guardamos imagen y dato
-    if vrp_val > 0:
-        print(f"¡VRP detectado! Valor: {vrp_val} MW")
-        
-        # Intentar buscar la imagen del gráfico principal
-        img_tag = soup.find('img', {'id': 'big_graph'})
-        if img_tag:
-            img_url = BASE_URL + img_tag['src']
-            img_name = f"VRP_{id_deteccion}.png"
-            img_path = os.path.join(IMG_FOLDER, img_name)
+        if df_mirova.empty:
+            return None
             
-            # Bajar imagen
-            img_data = requests.get(img_url).content
-            with open(img_path, 'wb') as f:
-                f.write(img_data)
+        ultima = df_mirova.iloc[-1]
+        fecha_txt = str(ultima['DATE'])
+        hora_txt = str(ultima['TIME'])
+        vrp_val = float(ultima['VRP(MW)'])
         
-        # Guardar en base de datos CSV
-        nuevo_registro = pd.DataFrame([{
-            'ID': id_deteccion,
-            'Fecha': fecha_txt,
-            'Hora': hora_txt,
-            'VRP_MW': vrp_val,
-            'Imagen': img_name if img_tag else "No disponible"
-        }])
+        # ID único combinando Volcán + Fecha + Hora
+        id_deteccion = f"{volcan_id}_{fecha_txt}_{hora_txt}".replace("/", "-").replace(" ", "")
         
+        # Verificar si ya lo tenemos registrado
         if os.path.exists(DB_FILE):
-            db_final = pd.concat([pd.read_csv(DB_FILE), nuevo_registro], ignore_index=True)
-        else:
-            db_final = nuevo_registro
+            db_local = pd.read_csv(DB_FILE)
+            if id_deteccion in db_local['ID'].astype(str).values:
+                return None
+
+        # Solo guardamos si hay actividad térmica (VRP > 0)
+        if vrp_val > 0:
+            img_tag = soup.find('img', {'id': 'big_graph'})
+            img_name = "No disponible"
+            if img_tag:
+                img_url = BASE_URL + img_tag['src']
+                img_name = f"VRP_{id_deteccion}.png"
+                img_data = requests.get(img_url).content
+                with open(os.path.join(IMG_FOLDER, img_name), 'wb') as f:
+                    f.write(img_data)
             
-        db_final.to_csv(DB_FILE, index=False)
-        print("Datos guardados exitosamente.")
+            return {
+                'ID': id_deteccion,
+                'Volcan_ID': volcan_id,
+                'Fecha': fecha_txt,
+                'Hora': hora_txt,
+                'VRP_MW': vrp_val,
+                'Imagen': img_name
+            }
+    except Exception as e:
+        print(f"Error procesando {volcan_id}: {e}")
+    return None
+
+def ejecutar_total():
+    if not os.path.exists(IMG_FOLDER): os.makedirs(IMG_FOLDER)
+    
+    nuevos_datos = []
+    for vid in LISTA_VOLCANES:
+        resultado = procesar_volcan(vid)
+        if resultado:
+            nuevos_datos.append(resultado)
+    
+    if nuevos_datos:
+        df_nuevos = pd.DataFrame(nuevos_datos)
+        if os.path.exists(DB_FILE):
+            df_final = pd.concat([pd.read_csv(DB_FILE), df_nuevos], ignore_index=True)
+        else:
+            df_final = df_nuevos
+        df_final.to_csv(DB_FILE, index=False)
+        print(f"Éxito: Se registraron {len(nuevos_datos)} nuevas alertas térmicas.")
+    else:
+        print("Sin novedades en los volcanes seleccionados.")
 
 if __name__ == "__main__":
-    if not os.path.exists(IMG_FOLDER): os.makedirs(IMG_FOLDER)
-    ejecutar_scraping()
+    ejecutar_total()

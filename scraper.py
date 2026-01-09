@@ -30,7 +30,6 @@ def descargar_imagen(url, ruta_carpeta, nombre_archivo):
         img_data = requests.get(url, timeout=10).content
         with open(path_completo, 'wb') as f:
             f.write(img_data)
-        print(f"Guardada: {nombre_archivo} en {ruta_carpeta}")
     except: pass
 
 def procesar_sensor(volcan_id, nombre_volcan, nombre_sensor, pagina):
@@ -49,20 +48,18 @@ def procesar_sensor(volcan_id, nombre_volcan, nombre_sensor, pagina):
         fecha_id = str(ultima['DATE']).replace("/", "-")
         hora_id = str(ultima['TIME']).replace(":", "-")
         
-        # ESTRUCTURA: imagenes / Volcan / Fecha / Sensor
+        # FORZAMOS EL GUARDADO (Incluso si VRP es 0)
         ruta_destino = os.path.join(IMG_BASE_FOLDER, nombre_volcan, fecha_id, nombre_sensor)
-        
-        # Seleccionamos todas las imágenes de mapas y gráficos
         img_tags = soup.find_all('img', src=lambda s: s and any(x in s for x in ["temp", "map", "graph", "comp"]))
         
         for i, img in enumerate(img_tags):
             img_url = BASE_URL + img['src']
             ext = img['src'].split('.')[-1]
-            nombre_foto = f"toma_{hora_id}_{i}.{ext}"
+            nombre_foto = f"PRUEBA_{hora_id}_{i}.{ext}"
             descargar_imagen(img_url, ruta_destino, nombre_foto)
             
         return {
-            'ID': f"{volcan_id}_{nombre_sensor}_{fecha_id}_{hora_id}",
+            'ID': f"PRUEBA_{volcan_id}_{nombre_sensor}_{fecha_id}_{hora_id}",
             'Volcan': nombre_volcan, 'Sensor': nombre_sensor,
             'Fecha': ultima['DATE'], 'Hora': ultima['TIME'], 'VRP_MW': ultima['VRP(MW)']
         }

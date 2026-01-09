@@ -1,3 +1,4 @@
+
 import requests
 from bs4 import BeautifulSoup
 import os
@@ -10,7 +11,7 @@ VOLCANES = {
     "357120": "Villarrica", 
     "357110": "Llaima"
 }
-BASE_URL = "https://www.mirovaweb.it/NRT/"
+BASE_URL = "https://www.mirovaweb.it/"
 DB_FILE = "registro_vrp.csv"
 
 def procesar():
@@ -23,63 +24,58 @@ def procesar():
 
     for vid, nombre_v in VOLCANES.items():
         for modo in ["MOD", "VIRS", "VIRS375"]:
-            if modo == "MOD": s_label = "MODIS"
-            elif modo == "VIRS": s_label = "VIIRS"
-            else: s_label = "VIIRS-375m"
-            
-            url = f"{BASE_URL}volcanoDetails_{modo}.php?volcano_id={vid}"
+            s_label = "MODIS" if modo == "MOD" else ("VIIRS" if modo == "VIRS" else "VIIRS-375m")
+            url_detalles = f"{BASE_URL}NRT/volcanoDetails_{modo}.php?volcano_id={vid}"
             
             try:
-                res = requests.get(url, headers=headers, timeout=20)
+                res = requests.get(url_detalles, headers=headers, timeout=20)
                 if res.status_code != 200: continue
                 soup = BeautifulSoup(res.text, 'html.parser')
                 
-                # Extraer VRP
+                # 1. Extraer VRP
                 vrp = "0"
                 for b in soup.find_all('b'):
                     if "VRP =" in b.text:
                         vrp = b.text.split('=')[-1].replace('MW', '').strip()
                         break
 
-                # Carpeta específica
+                # 2. Carpeta con jerarquía (ya funcionando según tus capturas)
                 ruta_final = os.path.join("imagenes", nombre_v, fecha_hoy, hora_actual)
                 os.makedirs(ruta_final, exist_ok=True)
                 
-                # Archivo marcador para forzar commit
                 with open(os.path.join(ruta_final, "leeme.txt"), "w") as f:
-                    f.write(f"Captura {s_label} - {ahora.strftime('%H:%M:%S')}")
+                    f.write(f"Captura {s_label} realizada a las {ahora.strftime('%H:%M:%S')}")
 
-                # --- DESCARGA MEJORADA ---
-                imgs = soup.find_all('img')
-                for i, img in enumerate(imgs):
+                # 3. Descarga con reconstrucción de URL absoluta
+                for i, img in enumerate(soup.find_all('img')):
                     src = img.get('src')
-                    if src and any(x in src.lower() for x in ['temp', 'map', 'last']):
-                        # Construcción robusta de la URL
-                        img_url = src if src.startswith('http') else f"https://www.mirovaweb.it/{src.lstrip('/')}"
+                    if src and any(x in src.lower() for x in ['temp', 'map', 'last', 'output']):
+                        # Limpiamos el src y construimos la URL completa correctamente
+                        clean_src = src.lstrip('./').lstrip('/')
+                        img_url = f"{BASE_URL}{clean_src}"
                         
                         try:
                             img_res = requests.get(img_url, headers=headers, timeout=15)
                             if img_res.status_code == 200:
-                                nombre_archivo = f"{s_label}_img_{i}.png"
+                                ext = clean_src.split('.')[-1][:3] # png o jpg
+                                nombre_archivo = f"{s_label}_img_{i}.{ext}"
                                 with open(os.path.join(ruta_final, nombre_archivo), 'wb') as f:
                                     f.write(img_res.content)
-                                time.sleep(0.5) # Pausa técnica para no ser bloqueado
+                                print(f"Guardado: {nombre_archivo}")
+                            time.sleep(0.3)
                         except:
                             continue
 
                 registros_ciclo.append({
-                    "Volcan": nombre_v,
-                    "Sensor": s_label,
-                    "VRP_MW": vrp,
-                    "Fecha": fecha_hoy,
-                    "Hora": ahora.strftime("%H:%M:%S"),
+                    "Volcan": nombre_v, "Sensor": s_label, "VRP_MW": vrp,
+                    "Fecha": fecha_hoy, "Hora": ahora.strftime("%H:%M:%S"),
                     "Ultima_Actualizacion": ahora.strftime("%Y-%m-%d %H:%M")
                 })
 
             except Exception as e:
-                print(f"Error: {e}")
+                print(f"Error en {nombre_v}: {e}")
 
-    # Guardado de CSV
+    # Guardado de CSV (asegurando persistencia de datos previos)
     if registros_ciclo:
         df_nuevo = pd.DataFrame(registros_ciclo)
         if os.path.exists(DB_FILE):

@@ -1,23 +1,26 @@
 Volcan,Estado,VRP_MW,Ultima_Actualizacion,Sensor,Fecha,Hora
-Villarrica,Conectado,N/A,N/A,N/A,N/A,N/A
-Lascar,N/A,0.0,2026-01-09 19:23,N/A,N/A,N/A
-Villarrica,N/A,0.0,2026-01-09 19:23,N/A,N/A,N/A
-Llaima,N/A,0.0,2026-01-09 19:23,N/A,N/A,N/A
-Lascar,N/A,0.0,2026-01-09 19:26,N/A,N/A,N/A
-Villarrica,N/A,0.0,2026-01-09 19:26,N/A,N/A,N/A
-Llaima,N/A,0.0,2026-01-09 19:26,N/A,N/A,N/A
-Lascar,N/A,0.0,N/A,VIIRS,2026-01-09,20:12:32
-Villarrica,N/A,0.0,N/A,VIIRS,2026-01-09,20:12:32
-Llaima,N/A,0.0,N/A,VIIRS,2026-01-09,20:12:32
-Lascar,Actualizado,0.0,N/A,VIIRS,2026-01-09,20:20:57
-Villarrica,Actualizado,0.0,N/A,VIIRS,2026-01-09,20:20:57
-Llaima,Actualizado,0.0,N/A,VIIRS,2026-01-09,20:20:57
-Lascar,Actualizado,0.0,N/A,VIIRS,2026-01-09,20:21:57
-Villarrica,Actualizado,0.0,N/A,VIIRS,2026-01-09,20:21:57
-Llaima,Actualizado,0.0,N/A,VIIRS,2026-01-09,20:21:57
-Lascar,Actualizado,0.0,N/A,VIIRS,2026-01-09,21:16:57
-Villarrica,Actualizado,0.0,N/A,VIIRS,2026-01-09,21:16:57
-Llaima,Actualizado,0.0,N/A,VIIRS,2026-01-09,21:16:57
-Lascar,Actualizado,0,N/A,VIIRS,2026-01-09,21:49:35
-Villarrica,Actualizado,0,N/A,VIIRS,2026-01-09,21:49:35
-Llaima,Actualizado,0,N/A,VIIRS,2026-01-09,21:49:35
+Villarrica,Conectado,,,,,
+Lascar,,0.0,2026-01-09 19:23,,,
+Villarrica,,0.0,2026-01-09 19:23,,,
+Llaima,,0.0,2026-01-09 19:23,,,
+Lascar,,0.0,2026-01-09 19:26,,,
+Villarrica,,0.0,2026-01-09 19:26,,,
+Llaima,,0.0,2026-01-09 19:26,,,
+Lascar,,0.0,,VIIRS,2026-01-09,20:12:32
+Villarrica,,0.0,,VIIRS,2026-01-09,20:12:32
+Llaima,,0.0,,VIIRS,2026-01-09,20:12:32
+Lascar,Actualizado,0.0,,VIIRS,2026-01-09,20:20:57
+Villarrica,Actualizado,0.0,,VIIRS,2026-01-09,20:20:57
+Llaima,Actualizado,0.0,,VIIRS,2026-01-09,20:20:57
+Lascar,Actualizado,0.0,,VIIRS,2026-01-09,20:21:57
+Villarrica,Actualizado,0.0,,VIIRS,2026-01-09,20:21:57
+Llaima,Actualizado,0.0,,VIIRS,2026-01-09,20:21:57
+Lascar,Actualizado,0.0,,VIIRS,2026-01-09,21:16:57
+Villarrica,Actualizado,0.0,,VIIRS,2026-01-09,21:16:57
+Llaima,Actualizado,0.0,,VIIRS,2026-01-09,21:16:57
+Lascar,Actualizado,0.0,,VIIRS,2026-01-09,21:49:35
+Villarrica,Actualizado,0.0,,VIIRS,2026-01-09,21:49:35
+Llaima,Actualizado,0.0,,VIIRS,2026-01-09,21:49:35
+Lascar,,0,,MODIS,2026-01-09,21:55:55
+Villarrica,,0,,MODIS,2026-01-09,21:55:55
+Llaima,,0,,MODIS,2026-01-09,21:55:55

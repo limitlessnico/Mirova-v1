@@ -2,20 +2,12 @@ import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 import os
-from datetime import datetime
 
 # --- CONFIGURACIÓN DE VOLCANES ---
 VOLCANES = {
-    "355100": "Lascar",
-    "357120": "Villarrica",
-    "357110": "Llaima",
-    "357060": "Nevados_de_Chillan",
-    "357080": "Copahue",
-    "357150": "Puyehue_Cordon_Caulle",
-    "358020": "Calbuco",
-    "357040": "Planchon_Peteroa",
-    "358010": "Osorno",
-    "358050": "Hudson"
+    "355100": "Lascar", "357120": "Villarrica", "357110": "Llaima",
+    "357060": "Nevados_de_Chillan", "357080": "Copahue", "357150": "Puyehue_Cordon_Caulle",
+    "358020": "Calbuco", "357040": "Planchon_Peteroa", "358010": "Osorno", "358050": "Hudson"
 }
 
 BASE_URL = "https://www.mirovaweb.it/NRT/"
@@ -31,9 +23,7 @@ SENSORES = {
 
 def descargar_imagen(url, ruta_carpeta, nombre_archivo):
     try:
-        if not os.path.exists(ruta_carpeta):
-            os.makedirs(ruta_carpeta)
-        
+        if not os.path.exists(ruta_carpeta): os.makedirs(ruta_carpeta)
         path_completo = os.path.join(ruta_carpeta, nombre_archivo)
         if os.path.exists(path_completo): return 
         
@@ -41,8 +31,7 @@ def descargar_imagen(url, ruta_carpeta, nombre_archivo):
         with open(path_completo, 'wb') as f:
             f.write(img_data)
         print(f"Guardada: {nombre_archivo} en {ruta_carpeta}")
-    except Exception as e:
-        print(f"Error descargando imagen: {e}")
+    except: pass
 
 def procesar_sensor(volcan_id, nombre_volcan, nombre_sensor, pagina):
     url_completa = f"{BASE_URL}{pagina}?volcano_id={volcan_id}"
@@ -57,15 +46,14 @@ def procesar_sensor(volcan_id, nombre_volcan, nombre_sensor, pagina):
         if df_data.empty: return None
         
         ultima = df_data.iloc[-1]
-        fecha_original = str(ultima['DATE']) 
-        fecha_carpeta = fecha_original.replace("/", "-") 
+        fecha_id = str(ultima['DATE']).replace("/", "-")
         hora_id = str(ultima['TIME']).replace(":", "-")
         
-        # --- ESTRUCTURA ACTUALIZADA ---
-        # imagenes / Villarrica / 2024-05-24 / MODIS
-        ruta_destino = os.path.join(IMG_BASE_FOLDER, nombre_volcan, fecha_carpeta, nombre_sensor)
+        # ESTRUCTURA: imagenes / Volcan / Fecha / Sensor
+        ruta_destino = os.path.join(IMG_BASE_FOLDER, nombre_volcan, fecha_id, nombre_sensor)
         
-        img_tags = soup.find_all('img', src=lambda s: s and ("temp" in s or "map" in s or "graph" in s or "comp" in s))
+        # Seleccionamos todas las imágenes de mapas y gráficos
+        img_tags = soup.find_all('img', src=lambda s: s and any(x in s for x in ["temp", "map", "graph", "comp"]))
         
         for i, img in enumerate(img_tags):
             img_url = BASE_URL + img['src']
@@ -74,17 +62,11 @@ def procesar_sensor(volcan_id, nombre_volcan, nombre_sensor, pagina):
             descargar_imagen(img_url, ruta_destino, nombre_foto)
             
         return {
-            'ID': f"{volcan_id}_{nombre_sensor}_{fecha_carpeta}_{hora_id}",
-            'Volcan': nombre_volcan,
-            'Volcan_ID': volcan_id,
-            'Sensor': nombre_sensor,
-            'Fecha': fecha_original,
-            'Hora': ultima['TIME'],
-            'VRP_MW': ultima['VRP(MW)']
+            'ID': f"{volcan_id}_{nombre_sensor}_{fecha_id}_{hora_id}",
+            'Volcan': nombre_volcan, 'Sensor': nombre_sensor,
+            'Fecha': ultima['DATE'], 'Hora': ultima['TIME'], 'VRP_MW': ultima['VRP(MW)']
         }
-    except Exception as e:
-        print(f"Error en {nombre_sensor} ({nombre_volcan}): {e}")
-        return None
+    except: return None
 
 def ejecutar_total():
     resultados = []
@@ -98,8 +80,7 @@ def ejecutar_total():
         if os.path.exists(DB_FILE):
             df_actual = pd.read_csv(DB_FILE)
             df_final = pd.concat([df_actual, df_nuevos]).drop_duplicates(subset=['ID'])
-        else:
-            df_final = df_nuevos
+        else: df_final = df_nuevos
         df_final.to_csv(DB_FILE, index=False)
 
 if __name__ == "__main__":

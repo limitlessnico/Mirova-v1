@@ -3,82 +3,45 @@ from bs4 import BeautifulSoup
 import pandas as pd
 import os
 
-# --- CONFIGURACIÓN DE VOLCANES ---
-VOLCANES = {
-    "355100": "Lascar", "357120": "Villarrica", "357110": "Llaima",
-    "357060": "Nevados_de_Chillan", "357080": "Copahue", "357150": "Puyehue_Cordon_Caulle",
-    "358020": "Calbuco", "357040": "Planchon_Peteroa", "358010": "Osorno", "358050": "Hudson"
-}
-
+# --- CONFIGURACIÓN ---
+VOLCANES = {"355100": "Lascar", "357120": "Villarrica"} # Solo dos para probar rápido
 BASE_URL = "https://www.mirovaweb.it/NRT/"
 DB_FILE = "registro_vrp.csv"
 IMG_BASE_FOLDER = "imagenes"
 
-SENSORES = {
-    "MODIS": "volcanoDetails_MOD.php",
-    "VIIRS750": "volcanoDetails_VIR.php",
-    "VIIRS375": "volcanoDetails_VIR375.php",
-    "CombinedMIR": "volcanoDetails_MIR.php"
-}
-
-def descargar_imagen(url, ruta_carpeta, nombre_archivo):
-    try:
-        if not os.path.exists(ruta_carpeta): os.makedirs(ruta_carpeta)
-        path_completo = os.path.join(ruta_carpeta, nombre_archivo)
-        if os.path.exists(path_completo): return 
-        
-        img_data = requests.get(url, timeout=10).content
-        with open(path_completo, 'wb') as f:
-            f.write(img_data)
-    except: pass
-
-def procesar_sensor(volcan_id, nombre_volcan, nombre_sensor, pagina):
-    url_completa = f"{BASE_URL}{pagina}?volcano_id={volcan_id}"
-    try:
-        res = requests.get(url_completa, timeout=15)
-        soup = BeautifulSoup(res.text, 'html.parser')
-        
-        link_data = soup.find('a', href=lambda h: h and "get_data.php" in h)
-        if not link_data: return None
-        
-        df_data = pd.read_csv(BASE_URL + link_data['href'], sep=None, engine='python')
-        if df_data.empty: return None
-        
-        ultima = df_data.iloc[-1]
-        fecha_id = str(ultima['DATE']).replace("/", "-")
-        hora_id = str(ultima['TIME']).replace(":", "-")
-        
-        # FORZAMOS EL GUARDADO (Incluso si VRP es 0)
-        ruta_destino = os.path.join(IMG_BASE_FOLDER, nombre_volcan, fecha_id, nombre_sensor)
-        img_tags = soup.find_all('img', src=lambda s: s and any(x in s for x in ["temp", "map", "graph", "comp"]))
-        
-        for i, img in enumerate(img_tags):
-            img_url = BASE_URL + img['src']
-            ext = img['src'].split('.')[-1]
-            nombre_foto = f"PRUEBA_{hora_id}_{i}.{ext}"
-            descargar_imagen(img_url, ruta_destino, nombre_foto)
-            
-        return {
-            'ID': f"PRUEBA_{volcan_id}_{nombre_sensor}_{fecha_id}_{hora_id}",
-            'Volcan': nombre_volcan, 'Sensor': nombre_sensor,
-            'Fecha': ultima['DATE'], 'Hora': ultima['TIME'], 'VRP_MW': ultima['VRP(MW)']
-        }
-    except: return None
-
-def ejecutar_total():
+def ejecutar_prueba_forzada():
+    if not os.path.exists(IMG_BASE_FOLDER):
+        os.makedirs(IMG_BASE_FOLDER)
+    
     resultados = []
+    
     for vid, nombre in VOLCANES.items():
-        for sensor, pagina in SENSORES.items():
-            res = procesar_sensor(vid, nombre, sensor, pagina)
-            if res: resultados.append(res)
+        url = f"{BASE_URL}volcanoDetails_MOD.php?volcano_id={vid}"
+        try:
+            res = requests.get(url, timeout=15)
+            soup = BeautifulSoup(res.text, 'html.parser')
             
+            # Buscamos cualquier imagen para probar el guardado
+            img = soup.find('img', src=lambda s: s and "temp" in s)
+            if img:
+                ruta_volcan = os.path.join(IMG_BASE_FOLDER, nombre)
+                if not os.path.exists(ruta_volcan): os.makedirs(ruta_volcan)
+                
+                img_data = requests.get(BASE_URL + img['src']).content
+                with open(os.path.join(ruta_volcan, "test.png"), 'wb') as f:
+                    f.write(img_data)
+                
+                resultados.append({
+                    'ID': f"TEST_{vid}",
+                    'Volcan': nombre,
+                    'Estado': 'Captura exitosa'
+                })
+        except:
+            continue
+
     if resultados:
-        df_nuevos = pd.DataFrame(resultados)
-        if os.path.exists(DB_FILE):
-            df_actual = pd.read_csv(DB_FILE)
-            df_final = pd.concat([df_actual, df_nuevos]).drop_duplicates(subset=['ID'])
-        else: df_final = df_nuevos
-        df_final.to_csv(DB_FILE, index=False)
+        pd.DataFrame(resultados).to_csv(DB_FILE, index=False)
+        print("Archivos creados localmente. Listos para el push.")
 
 if __name__ == "__main__":
-    ejecutar_total()
+    ejecutar_prueba_forzada()

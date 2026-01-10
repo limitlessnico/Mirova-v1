@@ -7,19 +7,41 @@ import time
 import random
 from urllib.parse import urlparse
 import re
+import pytz # Librería nueva para manejo de zonas horarias
 
 VOLCANES = {"355100": "Lascar", "357120": "Villarrica", "357110": "Llaima"}
 BASE_URL = "https://www.mirovaweb.it"
 
-# --- CONFIGURACIÓN: CARPETA MAESTRA ---
+# --- CONFIGURACIÓN ---
 CARPETA_PRINCIPAL = "monitoreo_datos"
 DB_FILE = os.path.join(CARPETA_PRINCIPAL, "registro_vrp.csv")
+
+def obtener_datos_chile():
+    """
+    Obtiene la hora exacta en Chile Continental usando la base de datos oficial.
+    Ajusta automáticamente invierno (UTC-4) y verano (UTC-3).
+    Retorna: objeto_fecha, string_zona (ej: 'UTC-03')
+    """
+    try:
+        # Definimos la zona horaria de Chile Continental
+        tz_chile = pytz.timezone('Chile/Continental')
+        ahora_chile = datetime.now(tz_chile)
+        
+        # Obtenemos el offset actual (ej: -0300 o -0400) para guardarlo en el CSV
+        offset = ahora_chile.strftime('%z') # Devuelve "-0300"
+        zona_str = f"UTC{offset[:3]}"       # Lo formateamos a "UTC-03"
+        
+        return ahora_chile, zona_str
+    except Exception as e:
+        print(f"⚠️ Error zona horaria: {e}. Usando UTC-3 por defecto.")
+        # Fallback por seguridad
+        return datetime.now(), "UTC-03"
 
 def obtener_fecha_update(soup):
     try:
         texto_pagina = soup.get_text()
-        # Busca: "Last Update:10-Jan-2026 17:48:01"
-        patron = r"Last Update\s*:\s*(\d{2}-[A-Za-z]{3}-\d{4}\s+\d{2}:\d{2}:\d{2})"
+        # Patrón flexible: acepta "Last Update:10-Jan" o "Last Update : 10-Jan"
+        patron = r"Last Update\s*:?\s*(\d{2}-[A-Za-z]{3}-\d{4}\s+\d{2}:\d{2}:\d{2})"
         match = re.search(patron, texto_pagina, re.IGNORECASE)
         if match:
             fecha_str = match.group(1)
@@ -29,7 +51,6 @@ def obtener_fecha_update(soup):
     return None, None
 
 def obtener_etiqueta_sensor(codigo):
-    # Nombres amigables para el CSV
     mapa = {
         "MOD": "MODIS",
         "VIR": "VIIRS-750m",
@@ -49,11 +70,17 @@ def procesar():
         'Referer': BASE_URL
     })
 
-    ahora_sys = datetime.now()
+    # --- OBTENCIÓN DE HORA INTELIGENTE ---
+    ahora_chile, zona_actual = obtener_datos_chile()
+    
+    fecha_hoy_cl = ahora_chile.strftime("%Y-%m-%d")
+    hora_hoy_cl = ahora_chile.strftime("%H:%M:%S")
+    
+    print(f"🕒 Hora Chile detectada: {hora_hoy_cl} ({zona_actual})")
+    
     registros_ciclo = []
 
     for vid, nombre_v in VOLCANES.items():
-        # Bucle de 4 sensores (Incluye MIR)
         for modo in ["MOD", "VIR", "VIR375", "MIR"]:
             s_label = obtener_etiqueta_sensor(modo)
             url_sitio = f"{BASE_URL}/NRT/volcanoDetails_{modo}.php?volcano_id={vid}"
@@ -67,19 +94,19 @@ def procesar():
                 
                 soup = BeautifulSoup(res.text, 'html.parser')
 
-                # Detectar fecha real del dato
+                # Fecha del dato (Web)
                 fecha_dato, hora_dato = obtener_fecha_update(soup)
                 
                 if fecha_dato and hora_dato:
                     carpeta_fecha = fecha_dato
                     carpeta_hora = hora_dato
                 else:
-                    carpeta_fecha = ahora_sys.strftime("%Y-%m-%d")
-                    carpeta_hora = ahora_sys.strftime("%H-%M-%S_Sys")
+                    carpeta_fecha = fecha_hoy_cl
+                    carpeta_hora = ahora_chile.strftime("%H-%M-%S_Sys")
 
                 ruta_final = os.path.join(CARPETA_PRINCIPAL, "imagenes", nombre_v, carpeta_fecha, carpeta_hora)
 
-                # --- EXTRACCIÓN VRP ---
+                # VRP
                 vrp = "0"
                 for b in soup.find_all('b'):
                     if "VRP =" in b.text:
@@ -87,7 +114,7 @@ def procesar():
                         vrp = raw_vrp if raw_vrp else "0"
                         break
 
-                # --- DESCARGA DE IMÁGENES ---
+                # Fotos
                 descargas = 0
                 tags = soup.find_all(['img', 'a'])
                 for tag in tags:
@@ -100,10 +127,6 @@ def procesar():
                     path = urlparse(img_url).path
                     nombre_original = os.path.basename(path)
                     
-                    # --- FILTROS DE PALABRAS CLAVE ---
-                    # 'VRP' captura: Lascar_COMB_VRP.png y Lascar_COMB_logVRP.png
-                    # 'Dist' captura: Lascar_COMB_Dist.png
-                    # 'Latest', 'Trend', 'Map' capturan el resto
                     palabras_clave = ['Latest', 'VRP', 'Dist', 'log', 'Time', 'Map', 'Trend', 'Energy']
                     ext_validas = ['.jpg', '.jpeg', '.png']
 
@@ -124,27 +147,28 @@ def procesar():
                                 descargas += 1
                         except: pass
 
-                # --- DATOS AL CSV ---
+                # --- REGISTRO CON ZONA HORARIA DINÁMICA ---
                 registros_ciclo.append({
                     "Volcan": nombre_v,
                     "Sensor": s_label,
                     "VRP_MW": vrp,
                     "Fecha_Sat": carpeta_fecha,
                     "Hora_Sat": carpeta_hora,
-                    "Fecha_Scraping": ahora_sys.strftime("%Y-%m-%d"),
-                    "Hora_Scraping": ahora_sys.strftime("%H:%M:%S"),
+                    "Fecha_Revision": fecha_hoy_cl,
+                    "Hora_Revision": hora_hoy_cl,
+                    "Zona_Horaria": zona_actual, # Esto dirá UTC-03 o UTC-04 automáticamente
                     "Ruta_Fotos": ruta_final if descargas > 0 else "Sin nuevas fotos"
                 })
 
             except Exception as e:
                 print(f"⚠️ Error en {nombre_v}: {e}")
 
-    # --- GUARDAR CSV ---
+    # Guardado CSV
     if registros_ciclo:
         columnas_ordenadas = [
             "Volcan", "Sensor", "VRP_MW", 
             "Fecha_Sat", "Hora_Sat", 
-            "Fecha_Scraping", "Hora_Scraping", "Ruta_Fotos"
+            "Fecha_Revision", "Hora_Revision", "Zona_Horaria", "Ruta_Fotos"
         ]
         
         df_nuevo = pd.DataFrame(registros_ciclo)
@@ -155,7 +179,7 @@ def procesar():
             pd.concat([df_base, df_nuevo], ignore_index=True).to_csv(DB_FILE, index=False)
         else:
             df_nuevo.to_csv(DB_FILE, index=False)
-            print(f"🆕 CSV creado: {DB_FILE}")
+            print(f"🆕 CSV actualizado: {DB_FILE}")
 
 if __name__ == "__main__":
     procesar()

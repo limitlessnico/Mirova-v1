@@ -18,17 +18,11 @@ CARPETA_PRINCIPAL = "monitoreo_datos"
 DB_FILE = os.path.join(CARPETA_PRINCIPAL, "registro_vrp.csv")
 
 def limpiar_todo():
-    """ MODO PRUEBAS: Borra todo lo antiguo. """
+    """ MODO PRUEBAS: Borra todo para verificar que la captura de hora funciona bien. """
     print("🧹 LIMPIEZA INICIAL ACTIVADA...")
-    if os.path.exists("registro_vrp.csv"): 
-        try: os.remove("registro_vrp.csv")
-        except: pass
-    if os.path.exists("imagenes"): 
-        try: shutil.rmtree("imagenes")
-        except: pass
-    if os.path.exists(CARPETA_PRINCIPAL):
-        try: shutil.rmtree(CARPETA_PRINCIPAL)
-        except: pass
+    if os.path.exists("registro_vrp.csv"): try: os.remove("registro_vrp.csv"); except: pass
+    if os.path.exists("imagenes"): try: shutil.rmtree("imagenes"); except: pass
+    if os.path.exists(CARPETA_PRINCIPAL): try: shutil.rmtree(CARPETA_PRINCIPAL); except: pass
 
 def obtener_datos_chile():
     try:
@@ -37,15 +31,24 @@ def obtener_datos_chile():
     except: return datetime.now(pytz.utc)
 
 def obtener_info_web(soup):
+    """ 
+    Busca específicamente el texto rojo 'Last Update' en la página.
+    Retorna: fecha (YYYY-MM-DD), hora (HH:MM:SS)
+    """
     try:
         texto_pagina = soup.get_text()
-        patron = r"Last Update\s*:?\s*(\d{2}-[A-Za-z]{3}-\d{4}\s+\d{2}:\d{2}:\d{2})"
+        # MEJORA: Regex más flexible para capturar "Last update: 10-jan-2026 19:55:00"
+        # \s* manejas espacios, [:\.]? maneja dos puntos opcionales
+        patron = r"Last Update\s*[:\.]?\s*(\d{1,2}-[A-Za-z]{3}-\d{4}\s+\d{1,2}:\d{2}:\d{2})"
+        
         match = re.search(patron, texto_pagina, re.IGNORECASE)
         if match:
             fecha_str = match.group(1)
+            # Convertimos el texto (10-jan-2026) a objeto de fecha
             fecha_obj = datetime.strptime(fecha_str, "%d-%b-%Y %H:%M:%S")
             return fecha_obj.strftime("%Y-%m-%d"), fecha_obj.strftime("%H:%M:%S")
-    except: pass
+    except Exception as e:
+        pass
     return None, None
 
 def obtener_etiqueta_sensor(codigo):
@@ -53,7 +56,7 @@ def obtener_etiqueta_sensor(codigo):
     return mapa.get(codigo, codigo)
 
 def procesar():
-    # 1. Limpieza Total
+    # 1. Limpieza
     limpiar_todo()
 
     if not os.path.exists(CARPETA_PRINCIPAL):
@@ -80,35 +83,44 @@ def procesar():
                 if res.status_code != 200: continue
                 soup = BeautifulSoup(res.text, 'html.parser')
 
+                # --- AQUÍ CAPTURAMOS EL DATO ROJO "LAST UPDATE" ---
                 fecha_web, hora_web = obtener_info_web(soup)
 
-                if fecha_web:
+                # Definimos el Timestamp para el CSV
+                if fecha_web and hora_web:
+                    timestamp_str = f"{fecha_web} {hora_web}" # Ej: 2026-01-10 19:55:00
                     carpeta_fecha = fecha_web
                     hora_web_final = hora_web
+                    origen_dato = "WEB (Satelite)"
                 else:
+                    # Fallback si falla la lectura web
+                    timestamp_str = f"{fecha_ejecucion} {hora_ejecucion}"
                     carpeta_fecha = fecha_ejecucion
-                    hora_web_final = "No_Detectado"
+                    hora_web_final = f"{hora_ejecucion}_Sys"
+                    origen_dato = "SISTEMA (Fallback)"
 
-                print(f"      ✨ Datos: {nombre_v} {s_label} -> {hora_web_final}")
+                print(f"      ✨ {nombre_v} {s_label} -> {timestamp_str} [{origen_dato}]")
 
                 ruta_carpeta = os.path.join(CARPETA_PRINCIPAL, "imagenes", nombre_v, carpeta_fecha)
                 os.makedirs(ruta_carpeta, exist_ok=True)
 
+                # VRP
                 vrp = "0"
                 for b in soup.find_all('b'):
                     if "VRP =" in b.text:
                         vrp = b.text.split('=')[-1].replace('MW', '').strip()
                         break
 
+                # Descarga Imágenes
                 descargas = 0
                 tags = soup.find_all(['img', 'a'])
                 
+                # Usamos la hora REAL de la web para el nombre del archivo
                 if hora_web:
                     prefijo_hora = hora_web.replace(":", "-") + "_"
                 else:
                     prefijo_hora = hora_ejecucion.replace(":", "-") + "_Sys_"
 
-                # LISTA SEGURA VERTICAL
                 palabras_clave = [
                     'Latest', 'VRP', 'Dist', 'log', 
                     'Time', 'Map', 'Trend', 'Energy'
@@ -121,7 +133,7 @@ def procesar():
                     
                     if src.startswith('http'): img_url = src
                     else: img_url = f"{BASE_URL}/{src.replace('../', '').lstrip('/')}"
-
+                    
                     nombre_original = os.path.basename(urlparse(img_url).path)
                     
                     if any(k in nombre_original for k in palabras_clave) and \
@@ -134,12 +146,12 @@ def procesar():
                             time.sleep(0.1)
                             img_res = session.get(img_url, timeout=10)
                             if img_res.status_code == 200 and len(img_res.content) > 2500:
-                                with open(ruta_archivo, 'wb') as f: 
-                                    f.write(img_res.content)
+                                with open(ruta_archivo, 'wb') as f: f.write(img_res.content)
                                 descargas += 1
                         except: pass
 
                 registros_nuevos.append({
+                    "Timestamp": timestamp_str,
                     "Volcan": nombre_v,
                     "Sensor": s_label,
                     "VRP_MW": vrp,
@@ -153,9 +165,10 @@ def procesar():
             except Exception as e:
                 print(f"⚠️ Error en {nombre_v}: {e}")
 
+    # Guardado
     if registros_nuevos:
         cols = [
-            "Volcan", "Sensor", "VRP_MW", 
+            "Timestamp", "Volcan", "Sensor", "VRP_MW", 
             "Fecha_Datos_Web", "Hora_Datos_Web", 
             "Fecha_Revision", "Hora_Revision", "Ruta_Fotos"
         ]

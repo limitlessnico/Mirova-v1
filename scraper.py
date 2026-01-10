@@ -18,11 +18,29 @@ CARPETA_PRINCIPAL = "monitoreo_datos"
 DB_FILE = os.path.join(CARPETA_PRINCIPAL, "registro_vrp.csv")
 
 def limpiar_todo():
-    """ MODO PRUEBAS: Borra todo para verificar que la captura de hora funciona bien. """
+    """ MODO PRUEBAS: Borra todo para verificar limpia. """
     print("🧹 LIMPIEZA INICIAL ACTIVADA...")
-    if os.path.exists("registro_vrp.csv"): try: os.remove("registro_vrp.csv"); except: pass
-    if os.path.exists("imagenes"): try: shutil.rmtree("imagenes"); except: pass
-    if os.path.exists(CARPETA_PRINCIPAL): try: shutil.rmtree(CARPETA_PRINCIPAL); except: pass
+    
+    # 1. Borrar archivo CSV antiguo si existe
+    if os.path.exists("registro_vrp.csv"):
+        try:
+            os.remove("registro_vrp.csv")
+        except:
+            pass
+            
+    # 2. Borrar carpeta imagenes antigua si existe
+    if os.path.exists("imagenes"):
+        try:
+            shutil.rmtree("imagenes")
+        except:
+            pass
+            
+    # 3. Borrar carpeta principal actual
+    if os.path.exists(CARPETA_PRINCIPAL):
+        try:
+            shutil.rmtree(CARPETA_PRINCIPAL)
+        except:
+            pass
 
 def obtener_datos_chile():
     try:
@@ -32,19 +50,16 @@ def obtener_datos_chile():
 
 def obtener_info_web(soup):
     """ 
-    Busca específicamente el texto rojo 'Last Update' en la página.
-    Retorna: fecha (YYYY-MM-DD), hora (HH:MM:SS)
+    Busca el texto rojo 'Last Update' en la página.
     """
     try:
         texto_pagina = soup.get_text()
-        # MEJORA: Regex más flexible para capturar "Last update: 10-jan-2026 19:55:00"
-        # \s* manejas espacios, [:\.]? maneja dos puntos opcionales
+        # Regex para capturar "Last update: 10-jan-2026 19:55:00"
         patron = r"Last Update\s*[:\.]?\s*(\d{1,2}-[A-Za-z]{3}-\d{4}\s+\d{1,2}:\d{2}:\d{2})"
         
         match = re.search(patron, texto_pagina, re.IGNORECASE)
         if match:
             fecha_str = match.group(1)
-            # Convertimos el texto (10-jan-2026) a objeto de fecha
             fecha_obj = datetime.strptime(fecha_str, "%d-%b-%Y %H:%M:%S")
             return fecha_obj.strftime("%Y-%m-%d"), fecha_obj.strftime("%H:%M:%S")
     except Exception as e:
@@ -83,21 +98,20 @@ def procesar():
                 if res.status_code != 200: continue
                 soup = BeautifulSoup(res.text, 'html.parser')
 
-                # --- AQUÍ CAPTURAMOS EL DATO ROJO "LAST UPDATE" ---
+                # Captura del dato rojo
                 fecha_web, hora_web = obtener_info_web(soup)
 
-                # Definimos el Timestamp para el CSV
+                # Definimos el Timestamp
                 if fecha_web and hora_web:
-                    timestamp_str = f"{fecha_web} {hora_web}" # Ej: 2026-01-10 19:55:00
+                    timestamp_str = f"{fecha_web} {hora_web}"
                     carpeta_fecha = fecha_web
                     hora_web_final = hora_web
-                    origen_dato = "WEB (Satelite)"
+                    origen_dato = "WEB"
                 else:
-                    # Fallback si falla la lectura web
                     timestamp_str = f"{fecha_ejecucion} {hora_ejecucion}"
                     carpeta_fecha = fecha_ejecucion
                     hora_web_final = f"{hora_ejecucion}_Sys"
-                    origen_dato = "SISTEMA (Fallback)"
+                    origen_dato = "SYS"
 
                 print(f"      ✨ {nombre_v} {s_label} -> {timestamp_str} [{origen_dato}]")
 
@@ -115,7 +129,6 @@ def procesar():
                 descargas = 0
                 tags = soup.find_all(['img', 'a'])
                 
-                # Usamos la hora REAL de la web para el nombre del archivo
                 if hora_web:
                     prefijo_hora = hora_web.replace(":", "-") + "_"
                 else:

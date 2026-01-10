@@ -8,13 +8,13 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    # Añadimos permisos de escritura para que el bot no falle al subir archivos
+    # PERMISO CRÍTICO: Necesario para que el bot pueda guardar archivos
     permissions:
       contents: write
 
     steps:
       - name: Checkout del repositorio
-        uses: actions/checkout@v4 # Versión más reciente y estable
+        uses: actions/checkout@v4
 
       - name: Configurar Python
         uses: actions/setup-python@v4
@@ -24,7 +24,7 @@ jobs:
       - name: Instalar dependencias
         run: |
           python -m pip install --upgrade pip
-          pip install requests beautifulsoup4 pandas
+          pip install -r requirements.txt
 
       - name: Ejecutar Scraper
         run: python scraper.py
@@ -34,8 +34,8 @@ jobs:
           git config --global user.name "VolcanoBot"
           git config --global user.email "bot@volcano.com"
           
-          # 'add -A' es fundamental para capturar las carpetas de fecha/hora
+          # 'add -A' es fundamental para capturar la NUEVA carpeta 'monitoreo_datos'
           git add -A
           
-          # Este comando evita que el proceso falle si no hay fotos nuevas ese día
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Captura Triple Sensor: $(date +'%Y-%m-%d %H:%M')" && git push)
+          # Este comando evita que falle si no hay fotos nuevas, y hace el Push
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto: Actualización Monitoreo Volcánico" && git push)

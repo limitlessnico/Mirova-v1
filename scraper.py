@@ -18,37 +18,25 @@ CARPETA_PRINCIPAL = "monitoreo_datos"
 DB_FILE = os.path.join(CARPETA_PRINCIPAL, "registro_vrp.csv")
 
 def limpiar_todo():
-    """ 
-    MODO PRUEBAS: Borra todo lo antiguo para verificar la nueva estructura.
-    """
+    """ MODO PRUEBAS: Borra todo lo antiguo. """
     print("🧹 LIMPIEZA INICIAL ACTIVADA...")
-    
-    # 1. Borrar basura del raíz (Legacy)
     if os.path.exists("registro_vrp.csv"): 
         try: os.remove("registro_vrp.csv")
         except: pass
-        
     if os.path.exists("imagenes"): 
         try: shutil.rmtree("imagenes")
         except: pass
-    
-    # 2. Borrar carpeta de resultados actual
     if os.path.exists(CARPETA_PRINCIPAL):
-        try:
-            shutil.rmtree(CARPETA_PRINCIPAL)
-            print(f"   ✨ Carpeta '{CARPETA_PRINCIPAL}' eliminada y reiniciada.")
-        except Exception as e: 
-            print(f"   ⚠️ No se pudo borrar carpeta principal: {e}")
+        try: shutil.rmtree(CARPETA_PRINCIPAL)
+        except: pass
 
 def obtener_datos_chile():
     try:
         tz_chile = pytz.timezone('Chile/Continental')
         return datetime.now(tz_chile)
-    except: 
-        return datetime.now(pytz.utc)
+    except: return datetime.now(pytz.utc)
 
 def obtener_info_web(soup):
-    """ Retorna la FECHA y HORA que muestra la web """
     try:
         texto_pagina = soup.get_text()
         patron = r"Last Update\s*:?\s*(\d{2}-[A-Za-z]{3}-\d{4}\s+\d{2}:\d{2}:\d{2})"
@@ -61,34 +49,24 @@ def obtener_info_web(soup):
     return None, None
 
 def obtener_etiqueta_sensor(codigo):
-    mapa = {
-        "MOD": "MODIS", 
-        "VIR": "VIIRS-750m", 
-        "VIR375": "VIIRS-375m", 
-        "MIR": "MIR-Combined"
-    }
+    mapa = {"MOD": "MODIS", "VIR": "VIIRS-750m", "VIR375": "VIIRS-375m", "MIR": "MIR-Combined"}
     return mapa.get(codigo, codigo)
 
 def procesar():
-    # --- PASO 1: LIMPIEZA TOTAL ---
+    # 1. Limpieza Total
     limpiar_todo()
 
-    # Creamos la carpeta fresca
     if not os.path.exists(CARPETA_PRINCIPAL):
         os.makedirs(CARPETA_PRINCIPAL, exist_ok=True)
 
     session = requests.Session()
-    session.headers.update({
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', 
-        'Referer': BASE_URL
-    })
+    session.headers.update({'User-Agent': 'Mozilla/5.0', 'Referer': BASE_URL})
 
     ahora_cl = obtener_datos_chile()
     fecha_ejecucion = ahora_cl.strftime("%Y-%m-%d")
     hora_ejecucion = ahora_cl.strftime("%H:%M:%S")
     
     print(f"🕒 Iniciando Test: {fecha_ejecucion} {hora_ejecucion}")
-    
     registros_nuevos = []
 
     for vid, nombre_v in VOLCANES.items():
@@ -102,10 +80,8 @@ def procesar():
                 if res.status_code != 200: continue
                 soup = BeautifulSoup(res.text, 'html.parser')
 
-                # 1. Obtener Datos Web
                 fecha_web, hora_web = obtener_info_web(soup)
 
-                # Definir valores para procesar
                 if fecha_web:
                     carpeta_fecha = fecha_web
                     hora_web_final = hora_web
@@ -115,30 +91,79 @@ def procesar():
 
                 print(f"      ✨ Datos: {nombre_v} {s_label} -> {hora_web_final}")
 
-                # 2. Carpeta del Día (Única por fecha satélite)
                 ruta_carpeta = os.path.join(CARPETA_PRINCIPAL, "imagenes", nombre_v, carpeta_fecha)
                 os.makedirs(ruta_carpeta, exist_ok=True)
 
-                # Extraer VRP
                 vrp = "0"
                 for b in soup.find_all('b'):
                     if "VRP =" in b.text:
                         vrp = b.text.split('=')[-1].replace('MW', '').strip()
                         break
 
-                # 3. Descarga con PREFIJO DE HORA
                 descargas = 0
                 tags = soup.find_all(['img', 'a'])
                 
-                # Prefijo: "14-30-00_" para que no se sobrescriban
                 if hora_web:
                     prefijo_hora = hora_web.replace(":", "-") + "_"
                 else:
                     prefijo_hora = hora_ejecucion.replace(":", "-") + "_Sys_"
 
-                # --- LISTA SEGURA (Vertical para evitar errores de copia) ---
+                # LISTA SEGURA VERTICAL
                 palabras_clave = [
                     'Latest', 'VRP', 'Dist', 'log', 
                     'Time', 'Map', 'Trend', 'Energy'
                 ]
                 ext_validas = ['.jpg', '.jpeg', '.png']
+
+                for tag in tags:
+                    src = tag.get('src') or tag.get('href')
+                    if not src or not isinstance(src, str): continue
+                    
+                    if src.startswith('http'): img_url = src
+                    else: img_url = f"{BASE_URL}/{src.replace('../', '').lstrip('/')}"
+
+                    nombre_original = os.path.basename(urlparse(img_url).path)
+                    
+                    if any(k in nombre_original for k in palabras_clave) and \
+                       any(nombre_original.lower().endswith(ext) for ext in ext_validas):
+                        
+                        nombre_final = f"{prefijo_hora}{nombre_original}"
+                        ruta_archivo = os.path.join(ruta_carpeta, nombre_final)
+                        
+                        try:
+                            time.sleep(0.1)
+                            img_res = session.get(img_url, timeout=10)
+                            if img_res.status_code == 200 and len(img_res.content) > 2500:
+                                with open(ruta_archivo, 'wb') as f: 
+                                    f.write(img_res.content)
+                                descargas += 1
+                        except: pass
+
+                registros_nuevos.append({
+                    "Volcan": nombre_v,
+                    "Sensor": s_label,
+                    "VRP_MW": vrp,
+                    "Fecha_Datos_Web": carpeta_fecha,
+                    "Hora_Datos_Web": hora_web_final,
+                    "Fecha_Revision": fecha_ejecucion,
+                    "Hora_Revision": hora_ejecucion,
+                    "Ruta_Fotos": ruta_carpeta if descargas > 0 else "Sin cambios"
+                })
+
+            except Exception as e:
+                print(f"⚠️ Error en {nombre_v}: {e}")
+
+    if registros_nuevos:
+        cols = [
+            "Volcan", "Sensor", "VRP_MW", 
+            "Fecha_Datos_Web", "Hora_Datos_Web", 
+            "Fecha_Revision", "Hora_Revision", "Ruta_Fotos"
+        ]
+        
+        df_nuevo = pd.DataFrame(registros_nuevos)
+        df_nuevo = df_nuevo.reindex(columns=cols)
+        df_nuevo.to_csv(DB_FILE, index=False)
+        print(f"💾 Nuevo CSV generado: {DB_FILE}")
+
+if __name__ == "__main__":
+    procesar()

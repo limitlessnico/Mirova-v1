@@ -11,14 +11,14 @@ import re
 VOLCANES = {"355100": "Lascar", "357120": "Villarrica", "357110": "Llaima"}
 BASE_URL = "https://www.mirovaweb.it"
 
-# --- CONFIGURACIÓN DE CARPETA MAESTRA ---
-# Aquí guardaremos TODO. Cambia este nombre si prefieres otro.
+# --- CONFIGURACIÓN: CARPETA MAESTRA ---
 CARPETA_PRINCIPAL = "monitoreo_datos"
 DB_FILE = os.path.join(CARPETA_PRINCIPAL, "registro_vrp.csv")
 
 def obtener_fecha_update(soup):
     try:
         texto_pagina = soup.get_text()
+        # Busca: "Last Update:10-Jan-2026 17:48:01"
         patron = r"Last Update\s*:\s*(\d{2}-[A-Za-z]{3}-\d{4}\s+\d{2}:\d{2}:\d{2})"
         match = re.search(patron, texto_pagina, re.IGNORECASE)
         if match:
@@ -28,11 +28,20 @@ def obtener_fecha_update(soup):
     except: pass
     return None, None
 
+def obtener_etiqueta_sensor(codigo):
+    # Nombres amigables para el CSV
+    mapa = {
+        "MOD": "MODIS",
+        "VIR": "VIIRS-750m",
+        "VIR375": "VIIRS-375m",
+        "MIR": "MIR-Combined" 
+    }
+    return mapa.get(codigo, codigo)
+
 def procesar():
-    # 1. Crear la carpeta principal si no existe
     if not os.path.exists(CARPETA_PRINCIPAL):
         os.makedirs(CARPETA_PRINCIPAL, exist_ok=True)
-        print(f"📁 Carpeta creada: {CARPETA_PRINCIPAL}")
+        print(f"📁 Iniciando en: {CARPETA_PRINCIPAL}")
 
     session = requests.Session()
     session.headers.update({
@@ -44,12 +53,13 @@ def procesar():
     registros_ciclo = []
 
     for vid, nombre_v in VOLCANES.items():
-        for modo in ["MOD", "VIR", "VIR375"]:
-            s_label = "MODIS" if modo == "MOD" else ("VIIRS-750m" if modo == "VIR" else "VIIRS-375m")
+        # Bucle de 4 sensores (Incluye MIR)
+        for modo in ["MOD", "VIR", "VIR375", "MIR"]:
+            s_label = obtener_etiqueta_sensor(modo)
             url_sitio = f"{BASE_URL}/NRT/volcanoDetails_{modo}.php?volcano_id={vid}"
             
             try:
-                print(f"⚡ Procesando: {nombre_v} - {s_label}")
+                print(f"⚡ Escaneando: {nombre_v} - {s_label}")
                 time.sleep(random.uniform(2, 4))
                 
                 res = session.get(url_sitio, timeout=30)
@@ -57,7 +67,7 @@ def procesar():
                 
                 soup = BeautifulSoup(res.text, 'html.parser')
 
-                # Detección de Fecha
+                # Detectar fecha real del dato
                 fecha_dato, hora_dato = obtener_fecha_update(soup)
                 
                 if fecha_dato and hora_dato:
@@ -67,8 +77,6 @@ def procesar():
                     carpeta_fecha = ahora_sys.strftime("%Y-%m-%d")
                     carpeta_hora = ahora_sys.strftime("%H-%M-%S_Sys")
 
-                # --- RUTA DE GUARDADO MODIFICADA ---
-                # Ahora todo va dentro de CARPETA_PRINCIPAL
                 ruta_final = os.path.join(CARPETA_PRINCIPAL, "imagenes", nombre_v, carpeta_fecha, carpeta_hora)
 
                 # --- EXTRACCIÓN VRP ---
@@ -79,7 +87,7 @@ def procesar():
                         vrp = raw_vrp if raw_vrp else "0"
                         break
 
-                # --- DESCARGA FOTOS ---
+                # --- DESCARGA DE IMÁGENES ---
                 descargas = 0
                 tags = soup.find_all(['img', 'a'])
                 for tag in tags:
@@ -92,7 +100,11 @@ def procesar():
                     path = urlparse(img_url).path
                     nombre_original = os.path.basename(path)
                     
-                    palabras_clave = ['Latest', 'VRP', 'Dist', 'log', 'Time', 'Map']
+                    # --- FILTROS DE PALABRAS CLAVE ---
+                    # 'VRP' captura: Lascar_COMB_VRP.png y Lascar_COMB_logVRP.png
+                    # 'Dist' captura: Lascar_COMB_Dist.png
+                    # 'Latest', 'Trend', 'Map' capturan el resto
+                    palabras_clave = ['Latest', 'VRP', 'Dist', 'log', 'Time', 'Map', 'Trend', 'Energy']
                     ext_validas = ['.jpg', '.jpeg', '.png']
 
                     if any(k in nombre_original for k in palabras_clave) and \
@@ -112,7 +124,7 @@ def procesar():
                                 descargas += 1
                         except: pass
 
-                # --- REGISTRO DE DATOS ---
+                # --- DATOS AL CSV ---
                 registros_ciclo.append({
                     "Volcan": nombre_v,
                     "Sensor": s_label,
@@ -127,7 +139,7 @@ def procesar():
             except Exception as e:
                 print(f"⚠️ Error en {nombre_v}: {e}")
 
-    # --- GUARDADO DEL CSV DENTRO DE LA CARPETA ---
+    # --- GUARDAR CSV ---
     if registros_ciclo:
         columnas_ordenadas = [
             "Volcan", "Sensor", "VRP_MW", 
@@ -138,13 +150,12 @@ def procesar():
         df_nuevo = pd.DataFrame(registros_ciclo)
         df_nuevo = df_nuevo.reindex(columns=columnas_ordenadas)
 
-        # Verificamos si existe el archivo DENTRO de la carpeta monitoreo_datos
         if os.path.exists(DB_FILE) and os.path.getsize(DB_FILE) > 10:
             df_base = pd.read_csv(DB_FILE)
             pd.concat([df_base, df_nuevo], ignore_index=True).to_csv(DB_FILE, index=False)
         else:
             df_nuevo.to_csv(DB_FILE, index=False)
-            print(f"🆕 Base de datos creada en: {DB_FILE}")
+            print(f"🆕 CSV creado: {DB_FILE}")
 
 if __name__ == "__main__":
     procesar()

@@ -11,7 +11,7 @@ BASE_URL = "https://www.mirovaweb.it"
 DB_FILE = "registro_vrp.csv"
 
 def procesar():
-    # SEGURO DE CARPETA: Solo creamos si no existe. NUNCA borramos.
+    # Aseguramos que la carpeta exista. NUNCA BORRAMOS.
     if not os.path.exists('imagenes'):
         os.makedirs('imagenes', exist_ok=True)
 
@@ -27,53 +27,50 @@ def procesar():
     registros_ciclo = []
 
     for vid, nombre_v in VOLCANES.items():
-        # Usamos exactamente las rutas VIR y VIR375 que validaste
+        # Los 3 sensores que ya validamos en el CSV
         for modo in ["MOD", "VIR", "VIR375"]:
             s_label = "MODIS" if modo == "MOD" else ("VIIRS-750m" if modo == "VIR" else "VIIRS-375m")
             url_sitio = f"{BASE_URL}/NRT/volcanoDetails_{modo}.php?volcano_id={vid}"
             
             try:
-                print(f"--- Iniciando {nombre_v} | {s_label} ---")
-                time.sleep(random.uniform(20, 30)) # Sigilo para no ser bloqueados
+                print(f"Buscando imágenes: {nombre_v} - {s_label}")
+                time.sleep(random.uniform(20, 30)) 
                 
                 res = session.get(url_sitio, timeout=45)
-                if res.status_code != 200: 
-                    print(f"Error {res.status_code} al acceder a {s_label}")
-                    continue
+                if res.status_code != 200: continue
                 
                 soup = BeautifulSoup(res.text, 'html.parser')
-                
-                # Extraer VRP (Dato térmico)
+                ruta_final = os.path.join("imagenes", nombre_v, fecha_hoy, hora_carpeta)
+
+                # 1. Extraer VRP para el CSV
                 vrp = "0"
                 for b in soup.find_all('b'):
                     if "VRP =" in b.text:
                         vrp = b.text.split('=')[-1].replace('MW', '').strip()
                         break
 
-                # Crear ruta de guardado
-                ruta_final = os.path.join("imagenes", nombre_v, fecha_hoy, hora_carpeta)
-                os.makedirs(ruta_final, exist_ok=True)
-
-                # DESCARGA DE IMÁGENES (Búsqueda agresiva en img y enlaces a)
+                # 2. Descargar Imágenes de este sensor específico
                 descargas = 0
                 for tag in soup.find_all(['img', 'a']):
                     src = tag.get('src') or tag.get('href')
                     if not src or not isinstance(src, str): continue
                     
-                    # Filtro para atrapar mapas de calor de MODIS y VIIRS por igual
+                    # Filtro que atrapa mapas de MODIS y de VIIRS (VIR)
                     if any(k in src.lower() for k in ['temp', 'map_last', 'trend', 'vir', 'modis']):
+                        os.makedirs(ruta_final, exist_ok=True)
                         img_url = src if src.startswith('http') else f"{BASE_URL}/{src.replace('../', '').lstrip('/')}"
                         
                         try:
-                            time.sleep(4) # Pausa entre fotos
+                            time.sleep(5)
                             img_res = session.get(img_url, timeout=25)
-                            # Si la imagen pesa más de 3KB, es real (evita archivos de error)
                             if img_res.status_code == 200 and len(img_res.content) > 3000:
                                 ext = "png" if "png" in src.lower() else "jpg"
+                                # GUARDADO DINÁMICO: Usa el nombre del sensor (s_label)
                                 nombre_f = f"{s_label}_foto_{descargas}.{ext}"
                                 with open(os.path.join(ruta_final, nombre_f), 'wb') as f:
                                     f.write(img_res.content)
                                 descargas += 1
+                                print(f"  > Guardado: {nombre_f}")
                         except: continue
 
                 registros_ciclo.append({
@@ -81,12 +78,10 @@ def procesar():
                     "Ultima_Actualizacion": ahora.strftime("%Y-%m-%d %H:%M"),
                     "Sensor": s_label, "Fecha": fecha_hoy, "Hora": ahora.strftime("%H:%M:%S")
                 })
-                print(f"OK: {s_label} finalizado con {descargas} fotos.")
-
             except Exception as e:
-                print(f"Error en {nombre_v} {s_label}: {e}")
+                print(f"Error en {nombre_v}: {e}")
 
-    # GUARDADO DEL CSV (Suma los nuevos datos al historial existente)
+    # Guardado del CSV (Sigue funcionando bien)
     if registros_ciclo:
         df_nuevo = pd.DataFrame(registros_ciclo)
         if os.path.exists(DB_FILE) and os.path.getsize(DB_FILE) > 10:
@@ -94,7 +89,6 @@ def procesar():
             pd.concat([df_base, df_nuevo], ignore_index=True).to_csv(DB_FILE, index=False)
         else:
             df_nuevo.to_csv(DB_FILE, index=False)
-        print("CSV actualizado correctamente.")
 
 if __name__ == "__main__":
     procesar()

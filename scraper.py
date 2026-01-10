@@ -10,13 +10,13 @@ import re
 import pytz
 import shutil
 
-# --- NUEVAS LIBRERIAS PARA VISION ---
+# --- LIBRERIAS DE VISION ---
 try:
     import pytesseract
     from PIL import Image
     from io import BytesIO
 except ImportError:
-    print("⚠️ Faltan librerías de imagen. Asegúrate de instalar pillow y pytesseract.")
+    pass # Se maneja en el log si falla
 
 # --- CONFIGURACIÓN ---
 VOLCANES = {"355100": "Lascar", "357120": "Villarrica", "357110": "Llaima"}
@@ -43,40 +43,62 @@ def limpiar_todo():
         try: shutil.rmtree(CARPETA_PRINCIPAL)
         except: pass
 
+def procesar_imagen_ocr(imagen_pil):
+    """
+    Truco de Magia: Convierte la imagen a Blanco y Negro absoluto
+    para que Tesseract pueda leer el texto rojo.
+    """
+    # 1. Convertir a escala de grises
+    gray = imagen_pil.convert('L')
+    
+    # 2. Aplicar umbral (Thresholding)
+    # Todo lo que no sea casi blanco, lo volvemos negro puro.
+    # El texto rojo suele ser oscuro en escala de grises.
+    umbral = 200 
+    blancoynegro = gray.point(lambda x: 0 if x < umbral else 255, '1')
+    
+    return blancoynegro
+
 def leer_fecha_de_imagen(session, img_url):
-    """
-    Descarga la imagen en memoria y usa OCR para leer el texto rojo.
-    """
+    """ Descarga, procesa y lee la fecha de la imagen. """
     try:
-        # 1. Descargar imagen a memoria (sin guardar en disco aún)
         res = session.get(img_url, timeout=10)
-        if res.status_code != 200: return None
+        if res.status_code != 200: return None, None
         
-        imagen = Image.open(BytesIO(res.content))
+        imagen_original = Image.open(BytesIO(res.content))
         
-        # 2. Usar Tesseract para leer TODO el texto de la imagen
-        texto_imagen = pytesseract.image_to_string(imagen)
+        # --- PRE-PROCESAMIENTO ---
+        imagen_procesada = procesar_imagen_ocr(imagen_original)
         
-        # 3. Buscar el patrón de fecha en el texto leído
-        # Patrón: 10-Jan-2026 19:55:00 (Ignora mayúsculas)
+        # --- LECTURA OCR ---
+        # --psm 6 asume un bloque de texto uniforme
+        texto_leido = pytesseract.image_to_string(imagen_procesada, config='--psm 6')
+        
+        # Limpieza básica del texto para el log
+        texto_debug = texto_leido.replace('\n', ' ').strip()[:50]
+        
+        # Patrón flexible: 10 Jan 2026 ...
         patron = r"(?i)(\d{1,2}[-\s][a-z]{3}[-\s]\d{4}\s+\d{1,2}:\d{2}:\d{2})"
         
-        match = re.search(patron, texto_imagen)
+        match = re.search(patron, texto_leido)
         if match:
-            fecha_str = match.group(1)
-            # Normalizar guiones
-            fecha_str = fecha_str.replace(" ", "-")
+            fecha_str = match.group(1).replace(" ", "-") # Normalizar
             try:
-                fecha_obj = datetime.strptime(fecha_str, "%d-%b-%Y %H:%M:%S")
-                return fecha_obj, res.content # Devolvemos fecha y la imagen binaria
+                fecha_obj = datetime.strptime(fecha_str, "%d-%b-%Y-%H:%M:%S")
+                return fecha_obj, res.content
             except:
-                pass
+                # Intento secundario si el formato varía
+                try:
+                    fecha_obj = datetime.strptime(fecha_str, "%d-%b-%Y %H:%M:%S")
+                    return fecha_obj, res.content
+                except:
+                    pass
+        
+        return None, res.content # Devolvemos la imagen aunque no leamos fecha
                 
     except Exception as e:
-        print(f"   ⚠️ Error OCR: {e}")
-        pass
-        
-    return None, None
+        print(f"   ⚠️ Error interno OCR: {e}")
+        return None, None
 
 def obtener_etiqueta_sensor(codigo):
     mapa = {"MOD": "MODIS", "VIR": "VIIRS-750m", "VIR375": "VIIRS-375m", "MIR": "MIR-Combined"}
@@ -93,7 +115,7 @@ def procesar():
     fecha_exec = ahora_cl.strftime("%Y-%m-%d")
     hora_exec = ahora_cl.strftime("%H:%M:%S")
     
-    print(f"🕒 Iniciando V8.0 (OCR - Visión Artificial): {fecha_exec} {hora_exec}")
+    print(f"🕒 Iniciando V8.1 (OCR Mejorado + Fix Descargas): {fecha_exec} {hora_exec}")
     registros_nuevos = []
 
     for vid, nombre_v in VOLCANES.items():
@@ -102,13 +124,12 @@ def procesar():
             url_sitio = f"{BASE_URL}/NRT/volcanoDetails_{modo}.php?volcano_id={vid}"
             
             try:
-                time.sleep(1) # Respeto al servidor
+                time.sleep(1)
                 res = session.get(url_sitio, timeout=30)
                 if res.status_code != 200: continue
                 soup = BeautifulSoup(res.text, 'html.parser')
 
-                # --- 1. ENCONTRAR LA URL DE LA IMAGEN PRINCIPAL ---
-                # Generalmente es el primer gráfico grande
+                # 1. Encontrar URL Imagen Principal
                 img_url_final = None
                 tags = soup.find_all(['img', 'a'])
                 palabras_clave = ['Latest', 'VRP', 'Dist', 'log', 'Time', 'Map']
@@ -116,36 +137,41 @@ def procesar():
                 for tag in tags:
                     src = tag.get('src') or tag.get('href')
                     if not src: continue
-                    if any(k in src for k in palabras_clave) and src.endswith(('.png', '.jpg')):
+                    # Filtro más estricto para asegurar que es la imagen principal
+                    if any(k in src for k in palabras_clave) and src.lower().endswith(('.png', '.jpg')):
                         if src.startswith('http'): img_url_final = src
                         else: img_url_final = f"{BASE_URL}/{src.replace('../', '').lstrip('/')}"
-                        break # Tomamos la primera coincidencia relevante
+                        break 
 
-                # --- 2. INTENTAR LEER LA FECHA CON OCR ---
+                # 2. Intentar OCR
                 fecha_detectada = None
                 contenido_imagen = None
+                origen = "Espera..."
                 
                 if img_url_final:
-                    fecha_obj, contenido = leer_fecha_de_imagen(session, img_url_final)
+                    # Intentamos leer
+                    fecha_obj, contenido_descargado = leer_fecha_de_imagen(session, img_url_final)
+                    contenido_imagen = contenido_descargado # Guardamos los bytes para no descargar de nuevo
+                    
                     if fecha_obj:
                         fecha_detectada = fecha_obj
-                        contenido_imagen = contenido
+                        origen = "✅ OCR (Leído)"
+                    else:
+                        origen = "❌ FALLBACK (No leído)"
 
-                # --- 3. DEFINIR DATOS FINALES ---
+                # 3. Definir Datos Finales
                 if fecha_detectada:
-                    origen = "✅ OCR (Leído de Imagen)"
                     fecha_web = fecha_detectada.strftime("%Y-%m-%d")
                     hora_web = fecha_detectada.strftime("%H:%M:%S")
                     timestamp_str = f"{fecha_web} {hora_web}"
                 else:
-                    origen = "❌ FALLBACK (Chile)"
                     fecha_web = fecha_exec
                     hora_web = f"{hora_exec}_Sys"
                     timestamp_str = f"{fecha_exec} {hora_exec}"
 
                 print(f"   👁️ {nombre_v} {s_label} -> {timestamp_str} [{origen}]")
 
-                # --- 4. GUARDAR DATOS Y FOTOS ---
+                # 4. Preparar guardado
                 ruta_carpeta = os.path.join(CARPETA_PRINCIPAL, "imagenes", nombre_v, fecha_web)
                 os.makedirs(ruta_carpeta, exist_ok=True)
 
@@ -156,18 +182,22 @@ def procesar():
                         vrp = b.text.split('=')[-1].replace('MW', '').strip()
                         break
                 
+                # 5. GUARDAR IMAGEN (Corrección: Ahora guarda SIEMPRE si hay imagen)
                 descargas = 0
                 if img_url_final and contenido_imagen:
-                    if origen.startswith("✅"): prefijo = hora_web.replace(":", "-") + "_"
+                    if "✅" in origen: prefijo = hora_web.replace(":", "-") + "_"
                     else: prefijo = hora_exec.replace(":", "-") + "_Sys_"
                     
                     nombre_orig = os.path.basename(urlparse(img_url_final).path)
                     nombre_final = f"{prefijo}{nombre_orig}"
                     ruta_archivo = os.path.join(ruta_carpeta, nombre_final)
                     
-                    if not os.path.exists(ruta_archivo):
-                        with open(ruta_archivo, 'wb') as f: f.write(contenido_imagen)
+                    try:
+                        with open(ruta_archivo, 'wb') as f: 
+                            f.write(contenido_imagen)
                         descargas = 1
+                    except Exception as e:
+                        print(f"Error guardando imagen: {e}")
 
                 registros_nuevos.append({
                     "Timestamp": timestamp_str,
@@ -189,7 +219,7 @@ def procesar():
         df = pd.DataFrame(registros_nuevos)
         df = df.reindex(columns=cols)
         df.to_csv(DB_FILE, index=False)
-        print(f"💾 CSV V8.0 Generado: {DB_FILE}")
+        print(f"💾 CSV V8.1 Generado: {DB_FILE}")
 
 if __name__ == "__main__":
     procesar()

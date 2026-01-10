@@ -6,6 +6,7 @@ from datetime import datetime
 import time
 import random
 from urllib.parse import urlparse
+import re  # IMPORTANTE: Nueva librería para leer patrones de texto
 
 VOLCANES = {"355100": "Lascar", "357120": "Villarrica", "357110": "Llaima"}
 BASE_URL = "https://www.mirovaweb.it"
@@ -13,21 +14,31 @@ DB_FILE = "registro_vrp.csv"
 
 def obtener_fecha_update(soup):
     """
-    Busca la cadena 'Last Update' en el HTML.
-    Ejemplo esperado en HTML: <div ...>Last Update:10-Jan-2026 12:35:00</div>
+    Usa Expresiones Regulares (Regex) para encontrar la fecha exacta
+    sin importar si hay espacios ocultos o cambios en el HTML.
+    Busca el patrón: Last Update seguido de una fecha.
     """
     try:
-        # Buscamos el texto exacto
-        tag = soup.find(string=lambda text: "Last Update" in text if text else False)
-        if tag:
-            # Limpiamos el string para dejar solo la fecha
-            texto_limpio = tag.strip().replace("Last Update:", "").strip()
-            # Parseamos: 10-Jan-2026 12:35:00
-            fecha_obj = datetime.strptime(texto_limpio, "%d-%b-%Y %H:%M:%S")
+        texto_pagina = soup.get_text()
+        
+        # Patrón Mágico: Busca "Last Update", dos puntos, y luego la fecha (DD-Mes-YYYY HH:MM:SS)
+        # \s* permite que haya o no haya espacios.
+        patron = r"Last Update\s*:\s*(\d{2}-[A-Za-z]{3}-\d{4}\s+\d{2}:\d{2}:\d{2})"
+        
+        match = re.search(patron, texto_pagina, re.IGNORECASE)
+        
+        if match:
+            fecha_str = match.group(1) # Capturamos solo la parte de la fecha
+            # Ejemplo capturado: "10-Jan-2026 06:42:00"
+            
+            # Convertimos a objeto fecha
+            fecha_obj = datetime.strptime(fecha_str, "%d-%b-%Y %H:%M:%S")
             return fecha_obj.strftime("%Y-%m-%d"), fecha_obj.strftime("%H-%M-%S")
+            
     except Exception as e:
-        # Si falla, no rompemos el programa, solo devolvemos None
+        # Si falla, no pasa nada, el código principal usará la hora del sistema
         pass
+        
     return None, None
 
 def procesar():
@@ -53,8 +64,7 @@ def procesar():
             try:
                 print(f"⚡ {nombre_v} ({s_label})...")
                 
-                # --- CAMBIO DE VELOCIDAD 1: Pausa reducida ---
-                # Antes era 20-35s. Ahora es 2-4s.
+                # Pausa optimizada (Velocidad Alta)
                 time.sleep(random.uniform(2, 4))
                 
                 res = session.get(url_sitio, timeout=30)
@@ -64,19 +74,19 @@ def procesar():
                 
                 soup = BeautifulSoup(res.text, 'html.parser')
 
-                # --- DETECCIÓN DE FECHA REAL DEL DATO ---
+                # --- DETECCIÓN DE FECHA REAL (NUEVO MÉTODO REGEX) ---
                 fecha_dato, hora_dato = obtener_fecha_update(soup)
 
                 if fecha_dato and hora_dato:
                     carpeta_fecha = fecha_dato
                     carpeta_hora = hora_dato
                 else:
-                    # Fallback si no encuentra la fecha en la web
-                    print("   ⚠️ No se detectó 'Last Update', usando hora sistema.")
+                    # Fallback solo si Regex falla
+                    print("   ⚠️ No se detectó fecha en web, usando hora sistema.")
                     carpeta_fecha = ahora_sys.strftime("%Y-%m-%d")
                     carpeta_hora = ahora_sys.strftime("%H-%M-%S_Sys")
 
-                # Ruta: imagenes / Volcan / Fecha / Hora
+                # Ruta Final: imagenes / Volcan / Fecha_Dato / Hora_Dato
                 ruta_final = os.path.join("imagenes", nombre_v, carpeta_fecha, carpeta_hora)
 
                 # --- EXTRACCIÓN VRP ---
@@ -88,45 +98,39 @@ def procesar():
 
                 # --- DESCARGA DE IMÁGENES ---
                 descargas = 0
-                # Solo creamos la carpeta si encontramos imágenes válidas para guardar
                 tags = soup.find_all(['img', 'a'])
                 
                 for tag in tags:
                     src = tag.get('src') or tag.get('href')
                     if not src or not isinstance(src, str): continue
 
-                    # Normalizar URL
                     if src.startswith('http'):
                         img_url = src
                     else:
                         clean_src = src.replace('../', '').lstrip('/')
                         img_url = f"{BASE_URL}/{clean_src}"
 
-                    # Obtener nombre original
                     path = urlparse(img_url).path
                     nombre_original = os.path.basename(path)
 
-                    # Filtros
+                    # Filtros de nombre
                     palabras_clave = ['Latest', 'VRP', 'Dist', 'log', 'Time', 'Map']
                     ext_validas = ['.jpg', '.jpeg', '.png']
 
-                    # ¿Es un archivo válido?
                     if any(k in nombre_original for k in palabras_clave) and \
                        any(nombre_original.lower().endswith(ext) for ext in ext_validas):
 
-                        # Preparamos carpeta
+                        # Crear carpeta solo si vamos a guardar algo
                         os.makedirs(ruta_final, exist_ok=True)
                         ruta_archivo = os.path.join(ruta_final, nombre_original)
 
-                        # Evitar re-descargar si ya existe en esa carpeta exacta
                         if os.path.exists(ruta_archivo):
                             continue
 
                         try:
-                            # --- CAMBIO DE VELOCIDAD 2: Pausa mínima ---
-                            time.sleep(0.5) 
-                            
+                            time.sleep(0.5) # Pausa mínima
                             img_res = session.get(img_url, timeout=10)
+                            
                             if img_res.status_code == 200 and len(img_res.content) > 2500:
                                 with open(ruta_archivo, 'wb') as f:
                                     f.write(img_res.content)

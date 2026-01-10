@@ -61,7 +61,12 @@ def obtener_info_web(soup):
     return None, None
 
 def obtener_etiqueta_sensor(codigo):
-    mapa = {"MOD": "MODIS", "VIR": "VIIRS-750m", "VIR375": "VIIRS-375m", "MIR": "MIR-Combined"}
+    mapa = {
+        "MOD": "MODIS", 
+        "VIR": "VIIRS-750m", 
+        "VIR375": "VIIRS-375m", 
+        "MIR": "MIR-Combined"
+    }
     return mapa.get(codigo, codigo)
 
 def procesar():
@@ -73,7 +78,10 @@ def procesar():
         os.makedirs(CARPETA_PRINCIPAL, exist_ok=True)
 
     session = requests.Session()
-    session.headers.update({'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', 'Referer': BASE_URL})
+    session.headers.update({
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', 
+        'Referer': BASE_URL
+    })
 
     ahora_cl = obtener_datos_chile()
     fecha_ejecucion = ahora_cl.strftime("%Y-%m-%d")
@@ -128,17 +136,9 @@ def procesar():
                 else:
                     prefijo_hora = hora_ejecucion.replace(":", "-") + "_Sys_"
 
-                for tag in tags:
-                    src = tag.get('src') or tag.get('href')
-                    if not src or not isinstance(src, str): continue
-                    
-                    if src.startswith('http'): 
-                        img_url = src
-                    else: 
-                        img_url = f"{BASE_URL}/{src.replace('../', '').lstrip('/')}"
-
-                    path = urlparse(img_url).path
-                    nombre_original = os.path.basename(path)
-                    
-                    # Filtros de palabras clave
-                    palabras_clave = ['Latest', '
+                # --- LISTA SEGURA (Vertical para evitar errores de copia) ---
+                palabras_clave = [
+                    'Latest', 'VRP', 'Dist', 'log', 
+                    'Time', 'Map', 'Trend', 'Energy'
+                ]
+                ext_validas = ['.jpg', '.jpeg', '.png']

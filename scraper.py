@@ -13,22 +13,21 @@ DB_FILE = "registro_vrp.csv"
 
 def obtener_fecha_update(soup):
     """
-    Busca la cadena 'Last Update' en el HTML y devuelve fecha y hora formateadas.
-    Retorna (YYYY-MM-DD, HH-MM-SS) o None si falla.
+    Busca la cadena 'Last Update' en el HTML.
+    Ejemplo esperado en HTML: <div ...>Last Update:10-Jan-2026 12:35:00</div>
     """
     try:
-        # Buscamos cualquier texto que contenga "Last Update"
+        # Buscamos el texto exacto
         tag = soup.find(string=lambda text: "Last Update" in text if text else False)
         if tag:
-            # El formato suele ser: "Last Update:10-Jan-2026 06:42:00"
+            # Limpiamos el string para dejar solo la fecha
             texto_limpio = tag.strip().replace("Last Update:", "").strip()
-            
-            # Convertimos el texto a objeto fecha (ej: 10-Jan-2026 06:42:00)
+            # Parseamos: 10-Jan-2026 12:35:00
             fecha_obj = datetime.strptime(texto_limpio, "%d-%b-%Y %H:%M:%S")
-            
             return fecha_obj.strftime("%Y-%m-%d"), fecha_obj.strftime("%H-%M-%S")
     except Exception as e:
-        print(f"   ⚠️ No se pudo leer fecha Update: {e}")
+        # Si falla, no rompemos el programa, solo devolvemos None
+        pass
     return None, None
 
 def procesar():
@@ -41,8 +40,8 @@ def procesar():
         'Referer': BASE_URL
     })
 
-    # Hora de ejecución (Respaldo por si falla la lectura web)
-    ahora_ejecucion = datetime.now()
+    # Hora de respaldo (por si falla la lectura de la web)
+    ahora_sys = datetime.now()
     
     registros_ciclo = []
 
@@ -52,93 +51,104 @@ def procesar():
             url_sitio = f"{BASE_URL}/NRT/volcanoDetails_{modo}.php?volcano_id={vid}"
             
             try:
-                print(f"📡 Conectando: {nombre_v} - {s_label}...")
-                time.sleep(random.uniform(15, 25))
+                print(f"⚡ {nombre_v} ({s_label})...")
                 
-                res = session.get(url_sitio, timeout=45)
-                if res.status_code != 200: continue
+                # --- CAMBIO DE VELOCIDAD 1: Pausa reducida ---
+                # Antes era 20-35s. Ahora es 2-4s.
+                time.sleep(random.uniform(2, 4))
+                
+                res = session.get(url_sitio, timeout=30)
+                if res.status_code != 200: 
+                    print(f"   ❌ Error HTTP {res.status_code}")
+                    continue
                 
                 soup = BeautifulSoup(res.text, 'html.parser')
 
-                # --- NUEVA LÓGICA DE CARPETAS ---
-                # 1. Intentamos leer el "Last Update" real de la página
-                fecha_web, hora_web = obtener_fecha_update(soup)
+                # --- DETECCIÓN DE FECHA REAL DEL DATO ---
+                fecha_dato, hora_dato = obtener_fecha_update(soup)
 
-                if fecha_web and hora_web:
-                    # Si lo encontramos, usamos la fecha/hora DEL DATO
-                    carpeta_fecha = fecha_web
-                    carpeta_hora = hora_web
-                    print(f"   🕒 Fecha detectada en web: {carpeta_hora}")
+                if fecha_dato and hora_dato:
+                    carpeta_fecha = fecha_dato
+                    carpeta_hora = hora_dato
                 else:
-                    # Si no, usamos la fecha/hora DE EJECUCIÓN (Fallback)
-                    carpeta_fecha = ahora_ejecucion.strftime("%Y-%m-%d")
-                    carpeta_hora = ahora_ejecucion.strftime("%H-%M-%S_script") # Sufijo para diferenciar
-                    print(f"   ⚠️ Usando hora del sistema (no se halló fecha web)")
+                    # Fallback si no encuentra la fecha en la web
+                    print("   ⚠️ No se detectó 'Last Update', usando hora sistema.")
+                    carpeta_fecha = ahora_sys.strftime("%Y-%m-%d")
+                    carpeta_hora = ahora_sys.strftime("%H-%M-%S_Sys")
 
+                # Ruta: imagenes / Volcan / Fecha / Hora
                 ruta_final = os.path.join("imagenes", nombre_v, carpeta_fecha, carpeta_hora)
 
-                # --- EXTRACCIÓN DE DATOS ---
-                # 1. Extraer VRP
+                # --- EXTRACCIÓN VRP ---
                 vrp = "0"
                 for b in soup.find_all('b'):
                     if "VRP =" in b.text:
                         vrp = b.text.split('=')[-1].replace('MW', '').strip()
                         break
 
-                # 2. Descarga de Imágenes (Nombres Originales)
+                # --- DESCARGA DE IMÁGENES ---
                 descargas = 0
-                os.makedirs(ruta_final, exist_ok=True)
-                
+                # Solo creamos la carpeta si encontramos imágenes válidas para guardar
                 tags = soup.find_all(['img', 'a'])
+                
                 for tag in tags:
                     src = tag.get('src') or tag.get('href')
                     if not src or not isinstance(src, str): continue
 
+                    # Normalizar URL
                     if src.startswith('http'):
                         img_url = src
                     else:
                         clean_src = src.replace('../', '').lstrip('/')
                         img_url = f"{BASE_URL}/{clean_src}"
 
+                    # Obtener nombre original
                     path = urlparse(img_url).path
                     nombre_original = os.path.basename(path)
 
-                    # Filtro de palabras clave (Latest, VRP, Dist)
+                    # Filtros
                     palabras_clave = ['Latest', 'VRP', 'Dist', 'log', 'Time', 'Map']
-                    
-                    if any(k in nombre_original for k in palabras_clave):
-                        ext_validas = ['.jpg', '.jpeg', '.png']
-                        if not any(nombre_original.lower().endswith(ext) for ext in ext_validas):
+                    ext_validas = ['.jpg', '.jpeg', '.png']
+
+                    # ¿Es un archivo válido?
+                    if any(k in nombre_original for k in palabras_clave) and \
+                       any(nombre_original.lower().endswith(ext) for ext in ext_validas):
+
+                        # Preparamos carpeta
+                        os.makedirs(ruta_final, exist_ok=True)
+                        ruta_archivo = os.path.join(ruta_final, nombre_original)
+
+                        # Evitar re-descargar si ya existe en esa carpeta exacta
+                        if os.path.exists(ruta_archivo):
                             continue
 
                         try:
-                            # Verificar si ya existe para no descargarlo mil veces si es la misma hora
-                            ruta_completa = os.path.join(ruta_final, nombre_original)
-                            if os.path.exists(ruta_completa):
-                                # Si ya existe el archivo en esa carpeta de hora específica, saltamos
-                                continue
-
-                            time.sleep(1)
-                            img_res = session.get(img_url, timeout=15)
+                            # --- CAMBIO DE VELOCIDAD 2: Pausa mínima ---
+                            time.sleep(0.5) 
                             
+                            img_res = session.get(img_url, timeout=10)
                             if img_res.status_code == 200 and len(img_res.content) > 2500:
-                                with open(ruta_completa, 'wb') as f:
+                                with open(ruta_archivo, 'wb') as f:
                                     f.write(img_res.content)
                                 descargas += 1
-                                print(f"      💾 Guardado: {nombre_original}")
-                                
-                        except Exception as e_img:
-                            continue
+                        except: pass
 
+                if descargas > 0:
+                    print(f"   ✅ Guardadas {descargas} imágenes en {carpeta_hora}")
+                
                 registros_ciclo.append({
-                    "Volcan": nombre_v, "Estado": "Ok", "VRP_MW": vrp,
-                    "Sensor": s_label, "Fotos_Guardadas": descargas,
-                    "Fecha_Dato": carpeta_fecha, "Hora_Dato": carpeta_hora # Guardamos la hora real en CSV
+                    "Volcan": nombre_v, 
+                    "Sensor": s_label, 
+                    "VRP_MW": vrp,
+                    "Fecha_Dato": carpeta_fecha,
+                    "Hora_Dato": carpeta_hora,
+                    "Check_Sistema": ahora_sys.strftime("%H:%M:%S")
                 })
 
             except Exception as e:
-                print(f"⚠️ Error: {e}")
+                print(f"   ⚠️ Error: {e}")
 
+    # Guardar CSV
     if registros_ciclo:
         df_nuevo = pd.DataFrame(registros_ciclo)
         if os.path.exists(DB_FILE) and os.path.getsize(DB_FILE) > 10:

@@ -1,0 +1,10 @@
+Volcan,Sensor,VRP_MW,Fecha_Sat,Hora_Sat,Fecha_Scraping,Hora_Scraping,Ruta_Fotos
+Lascar,MODIS,0,2026-01-10,20-54-56_Sys,2026-01-10,20:54:56,monitoreo_datos/imagenes/Lascar/2026-01-10/20-54-56_Sys
+Lascar,VIIRS-750m,0,2026-01-10,20-54-56_Sys,2026-01-10,20:54:56,monitoreo_datos/imagenes/Lascar/2026-01-10/20-54-56_Sys
+Lascar,VIIRS-375m,0,2026-01-10,20-54-56_Sys,2026-01-10,20:54:56,monitoreo_datos/imagenes/Lascar/2026-01-10/20-54-56_Sys
+Villarrica,MODIS,0,2026-01-10,20-54-56_Sys,2026-01-10,20:54:56,monitoreo_datos/imagenes/Villarrica/2026-01-10/20-54-56_Sys
+Villarrica,VIIRS-750m,0,2026-01-10,20-54-56_Sys,2026-01-10,20:54:56,monitoreo_datos/imagenes/Villarrica/2026-01-10/20-54-56_Sys
+Villarrica,VIIRS-375m,0,2026-01-10,20-54-56_Sys,2026-01-10,20:54:56,monitoreo_datos/imagenes/Villarrica/2026-01-10/20-54-56_Sys
+Llaima,MODIS,0,2026-01-10,20-54-56_Sys,2026-01-10,20:54:56,monitoreo_datos/imagenes/Llaima/2026-01-10/20-54-56_Sys
+Llaima,VIIRS-750m,0,2026-01-10,20-54-56_Sys,2026-01-10,20:54:56,monitoreo_datos/imagenes/Llaima/2026-01-10/20-54-56_Sys
+Llaima,VIIRS-375m,0,2026-01-10,20-54-56_Sys,2026-01-10,20:54:56,monitoreo_datos/imagenes/Llaima/2026-01-10/20-54-56_Sys

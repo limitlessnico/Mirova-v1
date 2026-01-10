@@ -12,13 +12,13 @@ BASE_URL = "https://www.mirovaweb.it"
 DB_FILE = "registro_vrp.csv"
 
 def limpiar_imagenes():
-    """Borra el historial para evitar acumular archivos corruptos."""
+    """Borra el historial para empezar una colecta limpia."""
     if os.path.exists('imagenes'):
         shutil.rmtree('imagenes')
     os.makedirs('imagenes', exist_ok=True)
 
 def procesar():
-    limpiar_imagenes()
+    limpiar_imagenes() # Mantiene tu repositorio limpio
     
     session = requests.Session()
     session.headers.update({
@@ -37,61 +37,57 @@ def procesar():
             url_sitio = f"{BASE_URL}/NRT/volcanoDetails_{modo}.php?volcano_id={vid}"
             
             try:
-                print(f"Descargando todo de: {nombre_v} - {s_label}")
-                time.sleep(random.uniform(15, 25)) # Pausa para que el servidor respire
+                print(f"Procesando: {nombre_v} - {s_label}")
+                time.sleep(random.uniform(15, 25)) # Pausa de sigilo
                 
                 res = session.get(url_sitio, timeout=45)
                 if res.status_code != 200: continue
                 
                 soup = BeautifulSoup(res.text, 'html.parser')
                 ruta_final = os.path.join("imagenes", nombre_v, fecha_hoy, hora_carpeta)
-                os.makedirs(ruta_final, exist_ok=True)
 
-                # Extraer VRP para el CSV
+                # Extraer VRP
                 vrp = "0"
                 for b in soup.find_all('b'):
                     if "VRP =" in b.text:
                         vrp = b.text.split('=')[-1].replace('MW', '').strip()
                         break
 
-                # --- DESCARGA MASIVA (ESTRATEGIA ORIGINAL) ---
+                # --- DESCARGA MEJORADA PARA VIIRS ---
                 descargas = 0
-                for img in soup.find_all('img'):
-                    src = img.get('src', '')
-                    if not src: continue
+                # Buscamos imágenes en etiquetas <img> y también en posibles enlaces <a>
+                tags = soup.find_all(['img', 'a'])
+                
+                for tag in tags:
+                    # Extraer el enlace (src para imágenes, href para enlaces directos)
+                    src = tag.get('src') or tag.get('href')
+                    if not src or not isinstance(src, str): continue
                     
-                    # Construir URL completa sin importar cómo se llame la imagen
-                    if src.startswith('http'):
-                        img_url = src
-                    else:
+                    # Filtro para capturar mapas térmicos y tendencias de TODOS los sensores
+                    if any(key in src.lower() for key in ['temp_modis', 'temp_viirs', 'map_last', 'trend']):
+                        os.makedirs(ruta_final, exist_ok=True)
                         img_url = f"{BASE_URL}/{src.replace('../', '').lstrip('/')}"
-                    
-                    try:
-                        # Solo ignoramos iconos pequeños de diseño (flechas, logos, etc.)
-                        if any(x in img_url.lower() for x in ['logo', 'icon', 'arrow', 'header']):
-                            continue
-
-                        img_res = session.get(img_url, timeout=20)
-                        if img_res.status_code == 200 and len(img_res.content) > 2000:
-                            # Guardamos con un nombre genérico pero funcional
-                            nombre_f = f"{s_label}_img_{descargas}.png"
-                            with open(os.path.join(ruta_final, nombre_f), 'wb') as f:
-                                f.write(img_res.content)
-                            descargas += 1
-                    except:
-                        continue
+                        
+                        try:
+                            time.sleep(3)
+                            img_res = session.get(img_url, timeout=20)
+                            if img_res.status_code == 200 and len(img_res.content) > 2500:
+                                nombre_f = f"{s_label}_captura_{descargas}.png"
+                                with open(os.path.join(ruta_final, nombre_f), 'wb') as f:
+                                    f.write(img_res.content)
+                                descargas += 1
+                        except: continue
 
                 registros_ciclo.append({
                     "Volcan": nombre_v, "Estado": "Actualizado", "VRP_MW": vrp,
                     "Ultima_Actualizacion": ahora.strftime("%Y-%m-%d %H:%M"),
                     "Sensor": s_label, "Fecha": fecha_hoy, "Hora": ahora.strftime("%H:%M:%S")
                 })
-                print(f"Finalizado {s_label}: {descargas} imágenes guardadas.")
-
+                print(f"Finalizado {s_label}: {descargas} fotos.")
             except Exception as e:
-                print(f"Error en {nombre_v}: {e}")
+                print(f"Error: {e}")
 
-    # Guardado del CSV
+    # Guardado del CSV (Sigue funcionando correctamente)
     if registros_ciclo:
         df_nuevo = pd.DataFrame(registros_ciclo)
         if os.path.exists(DB_FILE) and os.path.getsize(DB_FILE) > 10:

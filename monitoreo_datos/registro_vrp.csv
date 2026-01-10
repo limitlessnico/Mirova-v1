@@ -17,3 +17,15 @@ Villarrica,VIIRS-375m,0,2026-01-10,21-14-36_Sys,2026-01-10,21:14:36,monitoreo_da
 Llaima,MODIS,0,2026-01-10,21-14-36_Sys,2026-01-10,21:14:36,monitoreo_datos/imagenes/Llaima/2026-01-10/21-14-36_Sys
 Llaima,VIIRS-750m,0,2026-01-10,21-14-36_Sys,2026-01-10,21:14:36,monitoreo_datos/imagenes/Llaima/2026-01-10/21-14-36_Sys
 Llaima,VIIRS-375m,0,2026-01-10,21-14-36_Sys,2026-01-10,21:14:36,monitoreo_datos/imagenes/Llaima/2026-01-10/21-14-36_Sys
+Lascar,MODIS,0,2026-01-10,21-18-07_Sys,2026-01-10,21:18:07,monitoreo_datos/imagenes/Lascar/2026-01-10/21-18-07_Sys
+Lascar,VIIRS-750m,0,2026-01-10,21-18-07_Sys,2026-01-10,21:18:07,monitoreo_datos/imagenes/Lascar/2026-01-10/21-18-07_Sys
+Lascar,VIIRS-375m,0,2026-01-10,21-18-07_Sys,2026-01-10,21:18:07,monitoreo_datos/imagenes/Lascar/2026-01-10/21-18-07_Sys
+Lascar,MIR-Combined,0,2026-01-10,21-18-07_Sys,2026-01-10,21:18:07,monitoreo_datos/imagenes/Lascar/2026-01-10/21-18-07_Sys
+Villarrica,MODIS,0,2026-01-10,21-18-07_Sys,2026-01-10,21:18:07,monitoreo_datos/imagenes/Villarrica/2026-01-10/21-18-07_Sys
+Villarrica,VIIRS-750m,0,2026-01-10,21-18-07_Sys,2026-01-10,21:18:07,monitoreo_datos/imagenes/Villarrica/2026-01-10/21-18-07_Sys
+Villarrica,VIIRS-375m,0,2026-01-10,21-18-07_Sys,2026-01-10,21:18:07,monitoreo_datos/imagenes/Villarrica/2026-01-10/21-18-07_Sys
+Villarrica,MIR-Combined,0,2026-01-10,21-18-07_Sys,2026-01-10,21:18:07,monitoreo_datos/imagenes/Villarrica/2026-01-10/21-18-07_Sys
+Llaima,MODIS,0,2026-01-10,21-18-07_Sys,2026-01-10,21:18:07,monitoreo_datos/imagenes/Llaima/2026-01-10/21-18-07_Sys
+Llaima,VIIRS-750m,0,2026-01-10,21-18-07_Sys,2026-01-10,21:18:07,monitoreo_datos/imagenes/Llaima/2026-01-10/21-18-07_Sys
+Llaima,VIIRS-375m,0,2026-01-10,21-18-07_Sys,2026-01-10,21:18:07,monitoreo_datos/imagenes/Llaima/2026-01-10/21-18-07_Sys
+Llaima,MIR-Combined,0,2026-01-10,21-18-07_Sys,2026-01-10,21:18:07,monitoreo_datos/imagenes/Llaima/2026-01-10/21-18-07_Sys

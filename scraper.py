@@ -8,7 +8,7 @@ import random
 from urllib.parse import urlparse
 import re
 import pytz
-import shutil # Librería necesaria para borrar carpetas
+import shutil
 
 VOLCANES = {"355100": "Lascar", "357120": "Villarrica", "357110": "Llaima"}
 BASE_URL = "https://www.mirovaweb.it"
@@ -20,23 +20,25 @@ DB_FILE = os.path.join(CARPETA_PRINCIPAL, "registro_vrp.csv")
 def limpiar_todo():
     """
     MODO PRUEBAS: Borra todo lo antiguo antes de empezar.
-    Elimina carpetas viejas del raíz y reinicia la carpeta de resultados.
     """
     print("🧹 INICIANDO LIMPIEZA DE ARCHIVOS ANTIGUOS...")
 
-    # 1. Borrar basura "Legacy" (Archivos sueltos en la raíz main)
+    # 1. Borrar basura "Legacy" (Archivos sueltos en la raíz)
     if os.path.exists("registro_vrp.csv"):
-        os.remove("registro_vrp.csv")
-        print("   🗑️ Archivo raíz 'registro_vrp.csv' eliminado.")
+        try: os.remove("registro_vrp.csv")
+        except: pass
     
     if os.path.exists("imagenes"):
-        shutil.rmtree("imagenes") # Borra carpeta y todo su contenido
-        print("   🗑️ Carpeta raíz 'imagenes' eliminada.")
+        try: shutil.rmtree("imagenes")
+        except: pass
 
-    # 2. Borrar carpeta de resultados actual para empezar de cero
+    # 2. Borrar carpeta de resultados actual
     if os.path.exists(CARPETA_PRINCIPAL):
-        shutil.rmtree(CARPETA_PRINCIPAL)
-        print(f"   ✨ Carpeta '{CARPETA_PRINCIPAL}' reiniciada.")
+        try:
+            shutil.rmtree(CARPETA_PRINCIPAL)
+            print(f"   ✨ Carpeta '{CARPETA_PRINCIPAL}' reiniciada.")
+        except Exception as e:
+            print(f"   ⚠️ No se pudo borrar carpeta principal: {e}")
 
 def obtener_datos_chile():
     try:
@@ -46,7 +48,7 @@ def obtener_datos_chile():
         zona_str = f"UTC{offset[:3]}"
         return ahora_chile, zona_str
     except Exception as e:
-        print(f"⚠️ Error zona horaria: {e}. Usando UTC-3 por defecto.")
+        print(f"⚠️ Error zona horaria: {e}. Usando UTC-3.")
         return datetime.now(), "UTC-03"
 
 def obtener_fecha_update(soup):
@@ -71,11 +73,9 @@ def obtener_etiqueta_sensor(codigo):
     return mapa.get(codigo, codigo)
 
 def procesar():
-    # --- PASO 1: LIMPIEZA TOTAL (SOLO PARA PRUEBAS) ---
-    # Comenta esta línea cuando quieras empezar a guardar historial real
+    # --- LIMPIEZA TOTAL ACTIVADA ---
     limpiar_todo()
 
-    # Volvemos a crear la carpeta limpia
     if not os.path.exists(CARPETA_PRINCIPAL):
         os.makedirs(CARPETA_PRINCIPAL, exist_ok=True)
         print(f"📁 Nueva carpeta creada: {CARPETA_PRINCIPAL}")
@@ -173,8 +173,16 @@ def procesar():
             except Exception as e:
                 print(f"⚠️ Error en {nombre_v}: {e}")
 
-    # Guardado CSV (Siempre crea uno nuevo porque borramos la carpeta antes)
+    # --- GUARDADO CSV ---
     if registros_ciclo:
-        columnas_ordenadas = [
-            "Volcan", "Sensor", "VRP_MW", 
-            "Fecha_Sat", "Hora_
+        # Aquí estaba el error: he puesto la lista en una sola línea para evitar cortes
+        cols = ["Volcan", "Sensor", "VRP_MW", "Fecha_Sat", "Hora_Sat", "Fecha_Revision", "Hora_Revision", "Zona_Horaria", "Ruta_Fotos"]
+        
+        df_nuevo = pd.DataFrame(registros_ciclo)
+        df_nuevo = df_nuevo.reindex(columns=cols)
+        
+        df_nuevo.to_csv(DB_FILE, index=False)
+        print(f"🆕 CSV creado desde cero: {DB_FILE}")
+
+if __name__ == "__main__":
+    procesar()

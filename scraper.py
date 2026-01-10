@@ -5,6 +5,7 @@ import pandas as pd
 from datetime import datetime
 import time
 import random
+from urllib.parse import urlparse
 
 VOLCANES = {"355100": "Lascar", "357120": "Villarrica", "357110": "Llaima"}
 BASE_URL = "https://www.mirovaweb.it"
@@ -26,19 +27,16 @@ def procesar():
     registros_ciclo = []
 
     for vid, nombre_v in VOLCANES.items():
-        # Iteramos los 3 sensores
         for modo in ["MOD", "VIR", "VIR375"]:
             s_label = "MODIS" if modo == "MOD" else ("VIIRS-750m" if modo == "VIR" else "VIIRS-375m")
             url_sitio = f"{BASE_URL}/NRT/volcanoDetails_{modo}.php?volcano_id={vid}"
             
             try:
                 print(f"📡 Conectando: {nombre_v} - {s_label}...")
-                time.sleep(random.uniform(15, 25)) # Pausa de seguridad
+                time.sleep(random.uniform(15, 25))
                 
                 res = session.get(url_sitio, timeout=45)
-                if res.status_code != 200: 
-                    print(f"❌ Error HTTP {res.status_code} en {s_label}")
-                    continue
+                if res.status_code != 200: continue
                 
                 soup = BeautifulSoup(res.text, 'html.parser')
                 ruta_final = os.path.join("imagenes", nombre_v, fecha_hoy, hora_carpeta)
@@ -50,56 +48,58 @@ def procesar():
                         vrp = b.text.split('=')[-1].replace('MW', '').strip()
                         break
 
-                # 2. Descarga de Imágenes (Lógica "Red de Arrastre")
+                # 2. Descarga Inteligente (Usando nombres originales)
                 descargas = 0
                 os.makedirs(ruta_final, exist_ok=True)
-
-                # Buscamos TODAS las etiquetas de imagen y enlaces
                 tags = soup.find_all(['img', 'a'])
                 
                 for tag in tags:
                     src = tag.get('src') or tag.get('href')
                     if not src or not isinstance(src, str): continue
+
+                    # Limpieza de URL
+                    if src.startswith('http'):
+                        img_url = src
+                    else:
+                        clean_src = src.replace('../', '').lstrip('/')
+                        img_url = f"{BASE_URL}/{clean_src}"
+
+                    # --- LÓGICA DE NOMBRE ORIGINAL ---
+                    # 1. Obtenemos el nombre real del archivo (ej: Lascar_MODIS_Latest10NTI.png)
+                    path = urlparse(img_url).path
+                    nombre_original = os.path.basename(path)
+
+                    # 2. FILTRO DE ORO: Solo aceptamos archivos que contengan estas palabras clave.
+                    # Esto descarta automáticamente el logo, íconos, botones y basura.
+                    # Basado en tus archivos: 'Latest', 'VRP', 'Dist' son los datos reales.
+                    palabras_clave = ['Latest', 'VRP', 'Dist', 'log', 'Time', 'Map']
                     
-                    # --- MODIFICACIÓN CRÍTICA: FILTRO RELAJADO ---
-                    # Ya no filtramos por palabras clave estrictas como 'vir' o 'modis'.
-                    # Ahora aceptamos cualquier archivo que parezca una imagen por su extensión.
-                    ext_validas = ['.jpg', '.jpeg', '.png', '.gif', '.bmp']
-                    if any(ext in src.lower() for ext in ext_validas):
+                    if any(k in nombre_original for k in palabras_clave):
                         
-                        # Construir URL absoluta
-                        if src.startswith('http'):
-                            img_url = src
-                        else:
-                            # Limpieza de rutas relativas (../)
-                            clean_src = src.replace('../', '').lstrip('/')
-                            img_url = f"{BASE_URL}/{clean_src}"
-                        
+                        # Doble chequeo: debe ser imagen
+                        ext_validas = ['.jpg', '.jpeg', '.png']
+                        if not any(nombre_original.lower().endswith(ext) for ext in ext_validas):
+                            continue
+
                         try:
-                            # Pausa micro para no saturar
-                            time.sleep(1) 
+                            # Descargar
+                            time.sleep(1)
                             img_res = session.get(img_url, timeout=15)
                             
-                            # --- FILTRO DE TAMAÑO (El verdadero guardián) ---
-                            # Si pesa más de 2500 bytes (2.5KB), asumimos que es un mapa/gráfico real.
-                            # Esto descarta íconos pequeños, flechas, líneas, etc.
+                            # Filtro de peso (> 2.5KB) por seguridad
                             if img_res.status_code == 200 and len(img_res.content) > 2500:
                                 
-                                # Determinar extensión real
-                                ext = "png" if ".png" in src.lower() else "jpg"
-                                
-                                # Guardar archivo
-                                nombre_f = f"{s_label}_img_{descargas}.{ext}"
-                                ruta_completa = os.path.join(ruta_final, nombre_f)
+                                # GUARDAMOS CON EL NOMBRE ORIGINAL
+                                # Ya no inventamos nombres. Se guarda tal cual viene de Mirova.
+                                ruta_completa = os.path.join(ruta_final, nombre_original)
                                 
                                 with open(ruta_completa, 'wb') as f:
                                     f.write(img_res.content)
                                 
-                                print(f"   ✅ Guardada: {nombre_f} ({len(img_res.content)//1024} KB)")
                                 descargas += 1
+                                print(f"      💾 Guardado: {nombre_original}")
                                 
                         except Exception as e_img:
-                            # Ignoramos errores puntuales de imágenes para seguir con la siguiente
                             continue
 
                 registros_ciclo.append({
@@ -109,9 +109,8 @@ def procesar():
                 })
 
             except Exception as e:
-                print(f"⚠️ Error General en {nombre_v}: {e}")
+                print(f"⚠️ Error: {e}")
 
-    # Guardado del CSV
     if registros_ciclo:
         df_nuevo = pd.DataFrame(registros_ciclo)
         if os.path.exists(DB_FILE) and os.path.getsize(DB_FILE) > 10:
@@ -119,7 +118,6 @@ def procesar():
             pd.concat([df_base, df_nuevo], ignore_index=True).to_csv(DB_FILE, index=False)
         else:
             df_nuevo.to_csv(DB_FILE, index=False)
-        print("\n📄 CSV Actualizado.")
 
 if __name__ == "__main__":
     procesar()

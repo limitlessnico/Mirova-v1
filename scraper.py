@@ -44,7 +44,7 @@ def log_bitacora(mensaje):
 def obtener_nivel_mirova(vrp, es_alerta):
     try:
         v = float(vrp)
-        if v <= 0: return "NORMAL"
+        if v <= 0: return "NULO"
         if not es_alerta: return "FALSO POSITIVO"
         if v < 1: return "Muy Bajo"
         if v < 10: return "Bajo"
@@ -59,7 +59,6 @@ def descargar_set_completo(session, id_volcan, nombre_volcan, dt_utc):
     h_a = dt_utc.strftime("%H-%M-%S")
     ruta_dia = os.path.join(RUTA_IMAGENES_BASE, nombre_volcan, f_c)
     os.makedirs(ruta_dia, exist_ok=True)
-    
     for s_web in sensores:
         for t in tipos:
             url_img = f"https://www.mirovaweb.it/NRT/get_latest_image.php?volcano_id={id_volcan}&sensor={s_web}&type={t}"
@@ -80,13 +79,11 @@ def procesar():
     hoy_str = ahora_cl.strftime("%Y-%m-%d")
     fecha_proceso_str = ahora_cl.strftime("%Y-%m-%d %H:%M:%S")
     
-    log_bitacora(f"🚀 INICIO CICLO V42.0 (RESTAURACIÓN TOTAL DE COLUMNAS): {ahora_cl}")
+    log_bitacora(f"🚀 INICIO CICLO V44.0 (ACTUALIZACIÓN NULO IN-SITU): {ahora_cl}")
 
     try:
-        # Cargar histórico existente
         df_master = pd.read_csv(DB_MASTER) if os.path.exists(DB_MASTER) else pd.DataFrame()
 
-        # Scraping de nuevos datos
         res = session.get("https://www.mirovaweb.it/NRT/latest.php", timeout=30)
         soup = BeautifulSoup(res.text, 'html.parser')
         filas = soup.find('tbody').find_all('tr')
@@ -101,14 +98,11 @@ def procesar():
             config = VOLCANES_CONFIG[id_v]
             nombre_v = config["nombre"]
             dt_utc = datetime.strptime(cols[0].text.strip(), "%d-%b-%Y %H:%M:%S")
-            vrp_val = float(cols[3].text.strip())
-            dist_val = float(cols[4].text.strip())
+            vrp_val = float(cols[3].text.strip()); dist_val = float(cols[4].text.strip())
             sensor_str = cols[5].text.strip()
-            
             es_alerta = (vrp_val > 0 and dist_val <= config["limite_km"])
             
-            tipo_reg = "RUTINA"
-            ruta_foto = "No descargada"
+            tipo_reg = "RUTINA"; ruta_foto = "No descargada"
             
             if es_alerta:
                 tipo_reg = "ALERTA_TERMICA"
@@ -142,40 +136,26 @@ def procesar():
             df_new = pd.DataFrame(nuevos_datos)
             df_master = pd.concat([df_master, df_new]).drop_duplicates(subset=["Fecha_Satelite_UTC", "Volcan", "Sensor"], keep='last')
             
-            # --- REPARACIÓN MASIVA ---
-            def reparar_fila(row):
-                # Asegurar Fecha_Captura_Chile
-                if 'Fecha_Captura_Chile' not in row or pd.isna(row['Fecha_Captura_Chile']):
-                    dt_u = datetime.strptime(row['Fecha_Satelite_UTC'], "%Y-%m-%d %H:%M:%S")
-                    row['Fecha_Captura_Chile'] = convertir_utc_a_chile(dt_u)
-                
-                # Asegurar Fecha_Proceso_GitHub (si no existe en el viejo, ponemos la actual)
-                if 'Fecha_Proceso_GitHub' not in row or pd.isna(row['Fecha_Proceso_GitHub']):
-                    row['Fecha_Proceso_GitHub'] = fecha_proceso_str
-                
-                # Rescatar Tipo_Registro
+            # --- ACTUALIZACIÓN DE VALORES EN COLUMNAS EXISTENTES ---
+            def actualizar_existentes(row):
                 cfg = next((c for i, c in VOLCANES_CONFIG.items() if c["nombre"] == row['Volcan']), None)
                 d_lim = cfg["limite_km"] if cfg else 5.0
                 es_al = (row['VRP_MW'] > 0 and row['Distancia_km'] <= d_lim)
                 
-                if es_al:
-                    row['Tipo_Registro'] = "ALERTA_TERMICA"
-                elif row['Ruta Foto'] != "No descargada":
-                    row['Tipo_Registro'] = "EVIDENCIA_DIARIA"
-                else:
-                    row['Tipo_Registro'] = "RUTINA"
+                # Sobrescribir valor en la columna actual
+                row['Clasificacion Mirova'] = obtener_nivel_mirova(row['VRP_MW'], es_al)
                 return row
 
-            df_master = df_master.apply(reparar_fila, axis=1)
+            df_master = df_master.apply(actualizar_existentes, axis=1)
             
-            # Orden de columnas final
-            cols_final = ["timestamp", "Fecha_Satelite_UTC", "Fecha_Captura_Chile", "Volcan", "Sensor", "VRP_MW", "Distancia_km", "Tipo_Registro", "Clasificacion Mirova", "Ruta Foto", "Fecha_Proceso_GitHub"]
-            df_master = df_master[[c for c in cols_final if c in df_master.columns]]
+            # Asegurar que no hay duplicados de columnas (por si acaso hubiera basura previa)
+            df_master = df_master.loc[:, ~df_master.columns.duplicated()]
+            
+            # Guardar Consolidado
             df_master.to_csv(DB_MASTER, index=False)
             
-            # --- RECONSTRUCCIÓN DE POSITIVOS E INDIVIDUALES ---
+            # --- RECONSTRUCCIÓN DE TABLAS LIMPIAS ---
             df_pos = df_master[df_master['Tipo_Registro'] == "ALERTA_TERMICA"].copy()
-            # En estas tablas no incluimos Tipo_Registro
             df_out = df_pos.drop(columns=['Tipo_Registro'])
             df_out.to_csv(DB_POSITIVOS, index=False)
             
@@ -183,12 +163,10 @@ def procesar():
                 v_nombre = cfg["nombre"]
                 ruta_v = os.path.join(RUTA_IMAGENES_BASE, v_nombre)
                 os.makedirs(ruta_v, exist_ok=True)
-                
-                df_individual = df_out[df_out['Volcan'] == v_nombre]
-                csv_v = os.path.join(ruta_v, f"registro_{v_nombre.replace(' ', '_')}.csv")
-                df_individual.to_csv(csv_v, index=False)
+                df_v = df_out[df_out['Volcan'] == v_nombre]
+                df_v.to_csv(os.path.join(ruta_v, f"registro_{v_nombre.replace(' ', '_')}.csv"), index=False)
             
-            log_bitacora(f"💾 Tablas reconstruidas con auditoría de GitHub.")
+            log_bitacora(f"💾 Consolidado actualizado con etiquetas 'NULO'.")
 
     except Exception as e:
         log_bitacora(f"❌ ERROR: {e}")

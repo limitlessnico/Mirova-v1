@@ -9,17 +9,16 @@ from urllib.parse import urlparse
 import pytz
 
 # --- CONFIGURACIÓN DE LOS 10 VOLCANES CHILENOS ---
-# Definimos el Nombre y el Límite de distancia (km) para considerar alerta.
-# Si la anomalía está más lejos que 'limite_km', se considera incendio forestal.
+# ID, Nombre y Límite de distancia (km) para considerar alerta real.
 VOLCANES_CONFIG = {
     "355100": {"nombre": "Lascar", "limite_km": 5.0},
     "357120": {"nombre": "Villarrica", "limite_km": 5.0},
     "357110": {"nombre": "Llaima", "limite_km": 5.0},
-    "357070": {"nombre": "Nevados de Chillan", "limite_km": 10.0}, # Complejo más grande
+    "357070": {"nombre": "Nevados de Chillan", "limite_km": 10.0},
     "357090": {"nombre": "Copahue", "limite_km": 8.0},
-    "357150": {"nombre": "Puyehue-Cordon Caulle", "limite_km": 12.0}, # Zona de rift larga
+    "357150": {"nombre": "Puyehue-Cordon Caulle", "limite_km": 12.0},
     "358030": {"nombre": "Chaiten", "limite_km": 5.0},
-    "358060": {"nombre": "Hudson", "limite_km": 10.0}, # Caldera grande
+    "358060": {"nombre": "Hudson", "limite_km": 10.0},
     "358020": {"nombre": "Calbuco", "limite_km": 5.0},
     "357040": {"nombre": "Peteroa", "limite_km": 5.0}
 }
@@ -37,13 +36,13 @@ DB_POSITIVOS = os.path.join(CARPETA_PRINCIPAL, "registro_vrp_positivos.csv")
 
 CARPETA_OBSOLETA = "monitoreo_datos"
 
-# COLUMNAS (Master incluye Clasificación, los otros NO)
+# COLUMNAS (Master incluye Clasificación)
 COLUMNAS_MASTER = [
     "timestamp", "Fecha_Satelite_UTC", "Fecha_Chile", "Volcan", "Sensor", 
     "VRP_MW", "Distancia_km", "Clasificacion", "Fecha_Proceso", "Ruta_Fotos", "Tipo_Registro"
 ]
 
-# Columnas para Positivos e Individuales (Sin Clasificación)
+# Columnas para Positivos e Individuales (SIN Clasificación, porque ya sabemos que son alertas)
 COLUMNAS_REPORTE = [
     "timestamp", "Fecha_Satelite_UTC", "Fecha_Chile", "Volcan", "Sensor", 
     "VRP_MW", "Distancia_km", "Fecha_Proceso", "Ruta_Fotos", "Tipo_Registro"
@@ -60,14 +59,18 @@ def convertir_utc_a_chile(dt_obj_utc):
     except: return dt_obj_utc.strftime("%Y-%m-%d %H:%M:%S")
 
 def modo_nuclear_borrar_todo():
+    """ Borra todo para regenerar estructura limpia (Corrección de sintaxis aplicada) """
     print("☢️  MODO NUCLEAR ACTIVADO: Regenerando estructura para 10 volcanes...")
+    
     if os.path.exists(CARPETA_OBSOLETA):
         try: shutil.rmtree(CARPETA_OBSOLETA)
         except: pass
+        
     if os.path.exists(CARPETA_PRINCIPAL):
-        try: shutil.rmtree(CARPETA_PRINCIPAL)
-        print("✅ Historial eliminado.")
-    except: pass
+        try: 
+            shutil.rmtree(CARPETA_PRINCIPAL)
+            print("✅ Historial eliminado correctamente.") # AHORA SÍ ESTÁ DENTRO DEL TRY
+        except: pass
 
 def mapear_url_sensor(nombre_sensor_web):
     s = nombre_sensor_web.upper().strip()
@@ -129,157 +132,4 @@ def descargar_fotos(session, id_volcan, nombre_volcan, sensor_web, fecha_utc_dt)
 def check_evidencia_existente(nombre_volcan, fecha_utc_dt):
     fecha_carpeta = fecha_utc_dt.strftime("%Y-%m-%d")
     ruta_dia = os.path.join(RUTA_IMAGENES_BASE, nombre_volcan, fecha_carpeta)
-    if os.path.exists(ruta_dia) and len(os.listdir(ruta_dia)) > 0: return True 
-    return False
-
-def procesar():
-    modo_nuclear_borrar_todo() # ¡SOLO UNA VEZ!
-
-    if not os.path.exists(CARPETA_PRINCIPAL): os.makedirs(CARPETA_PRINCIPAL, exist_ok=True)
-
-    session = requests.Session()
-    session.headers.update({'User-Agent': 'Mozilla/5.0'})
-    ahora_cl_proceso = obtener_hora_chile_actual()
-    
-    print(f"🚀 Iniciando V25.0 (10 Volcanes + GeoFiltro): {ahora_cl_proceso}")
-    print(f"🕵️  Consultando {URL_LATEST} ...")
-    
-    try:
-        res = session.get(URL_LATEST, timeout=30)
-        soup = BeautifulSoup(res.text, 'html.parser')
-        tabla = soup.find('table', {'id': 'example'})
-        if not tabla: tabla = soup.find('table')
-        
-        registros_todos = [] # Para el Master
-        registros_positivos = [] # Para el Reporte y los Individuales
-        
-        if tabla:
-            tbody = tabla.find('tbody')
-            filas = tbody.find_all('tr') if tbody else tabla.find_all('tr')[1:]
-            print(f"📊 Filas encontradas: {len(filas)}") 
-            
-            ids_procesados_hoy = set()
-
-            for fila in filas:
-                cols = fila.find_all('td')
-                if len(cols) < 6: continue 
-                
-                try:
-                    hora_str_utc = cols[0].text.strip()
-                    id_volc = cols[1].text.strip()
-                    vrp_str = cols[3].text.strip()
-                    dist_str = cols[4].text.strip()
-                    sensor_str = cols[5].text.strip()
-                    
-                    # 1. FILTRO DE VOLCANES CHILENOS
-                    if id_volc not in VOLCANES_CONFIG: continue
-                    
-                    config = VOLCANES_CONFIG[id_volc]
-                    nombre_v = config["nombre"]
-                    limite_km = config["limite_km"]
-                    
-                    # Fechas
-                    dt_obj_utc = datetime.strptime(hora_str_utc, "%d-%b-%Y %H:%M:%S")
-                    unix_time = int(dt_obj_utc.timestamp())
-                    fecha_fmt_utc = dt_obj_utc.strftime("%Y-%m-%d %H:%M:%S")
-                    fecha_fmt_chile = convertir_utc_a_chile(dt_obj_utc)
-
-                    clave = f"{fecha_fmt_utc}_{nombre_v}_{sensor_str}"
-                    if clave in ids_procesados_hoy: continue
-                    ids_procesados_hoy.add(clave)
-                    
-                    vrp_val = float(vrp_str) if vrp_str.replace('.','').isdigit() else 0.0
-                    dist_val = float(dist_str) if dist_str.replace('.','').isdigit() else 0.0
-                    
-                    # --- LÓGICA DE CLASIFICACIÓN AVANZADA ---
-                    descargar_ahora = False
-                    tipo_registro = "RUTINA"
-                    clasificacion = "NORMAL"
-                    es_alerta_real = False
-
-                    if vrp_val > 0:
-                        if dist_val <= limite_km:
-                            # CASO A: ALERTA REAL
-                            clasificacion = "ALERTA VOLCANICA"
-                            descargar_ahora = True
-                            tipo_registro = "ALERTA"
-                            es_alerta_real = True
-                            print(f"🔥 ALERTA REAL: {nombre_v} | {dist_val}km (Límite: {limite_km}km)")
-                        else:
-                            # CASO B: INCENDIO / FALSO POSITIVO
-                            clasificacion = "FALSO POSITIVO (Fuera de limite)"
-                            descargar_ahora = False # No bajamos fotos de incendios lejos
-                            tipo_registro = "RUTINA"
-                            print(f"⚠️  Falso Positivo: {nombre_v} a {dist_val}km (Ignorando en reportes)")
-                    else:
-                        # CASO C: EVIDENCIA DIARIA
-                        clasificacion = "NORMAL"
-                        if "VIIRS" in sensor_str.upper():
-                            if not check_evidencia_existente(nombre_v, dt_obj_utc):
-                                descargar_ahora = True
-                                tipo_registro = "EVIDENCIA_DIARIA"
-                                print(f"📸 Evidencia Calma: {nombre_v}")
-                    
-                    rutas = "No descargadas"
-                    if descargar_ahora:
-                        rutas = descargar_fotos(session, id_volc, nombre_v, sensor_str, dt_obj_utc)
-                    
-                    # DATO PARA EL MASTER (Incluye todo)
-                    dato_master = {
-                        "timestamp": unix_time,
-                        "Fecha_Satelite_UTC": fecha_fmt_utc,
-                        "Fecha_Chile": fecha_fmt_chile,
-                        "Volcan": nombre_v,
-                        "Sensor": sensor_str,
-                        "VRP_MW": vrp_val,
-                        "Distancia_km": dist_val,
-                        "Clasificacion": clasificacion, # El master SÍ lleva clasificación
-                        "Fecha_Proceso": ahora_cl_proceso.strftime("%Y-%m-%d %H:%M:%S"),
-                        "Ruta_Fotos": rutas,
-                        "Tipo_Registro": tipo_registro
-                    }
-                    registros_todos.append(dato_master)
-
-                    # DATO PARA ALERTAS (Solo si es Real)
-                    if es_alerta_real:
-                        dato_reporte = dato_master.copy()
-                        del dato_reporte["Clasificacion"] # Eliminamos columna solicitada
-                        registros_positivos.append(dato_reporte)
-
-                except Exception as e: continue
-
-            # --- GUARDADO ---
-            
-            # 1. MASTER CSV (Todo)
-            if registros_todos:
-                df_master = pd.DataFrame(registros_todos)
-                df_master = df_master.sort_values(by="timestamp")
-                df_master = df_master.reindex(columns=COLUMNAS_MASTER)
-                df_master.to_csv(DB_MASTER, index=False)
-                print(f"💾 Master regenerado ({len(registros_todos)} registros).")
-
-            # 2. POSITIVOS CSV (Solo Alertas Reales)
-            if registros_positivos:
-                df_pos = pd.DataFrame(registros_positivos)
-                df_pos = df_pos.sort_values(by="timestamp")
-                df_pos = df_pos.reindex(columns=COLUMNAS_REPORTE) # Sin clasificacion
-                df_pos.to_csv(DB_POSITIVOS, index=False)
-                print(f"🔥 Reporte de Alertas generado ({len(registros_positivos)} eventos).")
-
-                # 3. INDIVIDUALES (Solo Alertas Reales)
-                print("🔄 Generando CSVs individuales (Solo Alertas)...")
-                for v in df_pos['Volcan'].unique():
-                    df_v = df_pos[df_pos['Volcan'] == v]
-                    r = os.path.join(RUTA_IMAGENES_BASE, v, f"registro_{v}.csv")
-                    os.makedirs(os.path.dirname(r), exist_ok=True)
-                    df_v.to_csv(r, index=False)
-            else:
-                # Si no hubo alertas reales, creamos archivos vacíos (con cabecera) para evitar errores
-                pd.DataFrame(columns=COLUMNAS_REPORTE).to_csv(DB_POSITIVOS, index=False)
-                print("💤 No se detectaron Alertas Reales en el historial reciente.")
-
-    except Exception as e:
-        print(f"Error general: {e}")
-
-if __name__ == "__main__":
-    procesar()
+    if os.path.exists(ruta_dia) and len(os.listdir(ruta_dia))

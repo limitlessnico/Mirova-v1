@@ -105,9 +105,10 @@ def descargar_fotos_vrp(session, id_volcan, nombre_volcan, sensor_web, fecha_utc
             if url:
                 nombre_archivo = f"{prefijo}{tipo}.png"
                 ruta_final = os.path.join(ruta_dia, nombre_archivo)
-                # En V31, si viene una corrección, sobrescribimos la imagen para tener la mas actual
+                # V32: Sobrescribimos si existe, para asegurar que tenemos la versión corregida de la imagen
                 if os.path.exists(ruta_final):
-                    os.remove(ruta_final) # Borramos la vieja para asegurar que baja la nueva corregida
+                    try: os.remove(ruta_final)
+                    except: pass
                 
                 r_img = session.get(url, timeout=20)
                 if r_img.status_code == 200:
@@ -166,7 +167,7 @@ def procesar():
     session.headers.update({'User-Agent': 'Mozilla/5.0'})
     ahora_cl_proceso = obtener_hora_chile_actual()
     
-    print(f"🚀 Iniciando V31.0 (Auditor de Cambios de Distancia): {ahora_cl_proceso}")
+    print(f"🚀 Iniciando V32.0 (Auditor Total: Distancia + MW): {ahora_cl_proceso}")
     
     # ---------------------------------------------------------
     # FASE 1: EL ESPÍA (Latest.php para MODIS/VIIRS)
@@ -189,8 +190,8 @@ def procesar():
             ids_procesados_hoy = set()
             sensores_vistos_en_ciclo = set() 
             
-            # NUEVO V31: Usamos un Diccionario para recordar la distancia anterior
-            # Clave: "Fecha_Volcan_Sensor" -> Valor: Distancia (float)
+            # MEMORIA INTELIGENTE: Recordamos Distancia Y MW para detectar cambios
+            # Clave: "Fecha_Volcan_Sensor" -> Valor: { 'dist': float, 'mw': float }
             db_conocimiento = {}
             
             if os.path.exists(DB_MASTER):
@@ -200,12 +201,13 @@ def procesar():
                         f_sat = str(row.get('Fecha_Satelite_UTC', ''))
                         volc = str(row.get('Volcan', ''))
                         sens = str(row.get('Sensor', ''))
-                        dist_antigua = float(row.get('Distancia_km', 0.0))
+                        
+                        d_val = float(row.get('Distancia_km', 0.0))
+                        m_val = float(row.get('VRP_MW', 0.0))
                         
                         k = f"{f_sat}_{volc}_{sens}"
-                        # Guardamos la distancia para comparar cambios
-                        # Si hay duplicados en el CSV, esto guardará el último valor (el más reciente)
-                        db_conocimiento[k] = dist_antigua
+                        # Guardamos ambos valores
+                        db_conocimiento[k] = {'dist': d_val, 'mw': m_val}
                 except: pass
 
             for fila in filas:
@@ -232,34 +234,47 @@ def procesar():
 
                     clave = f"{fecha_fmt_utc}_{nombre_v}_{sensor_str}"
                     
-                    # Evitar duplicados dentro del MISMO ciclo de 15 min
+                    # Evitar duplicados del MISMO ciclo
                     if clave in ids_procesados_hoy: continue
                     ids_procesados_hoy.add(clave)
                     
-                    # --- LECTURA DE VALORES ---
+                    # --- LECTURA DE VALORES ACTUALES ---
                     vrp_val = float(vrp_str) if vrp_str.replace('.','').isdigit() else 0.0
                     if dist_str.replace('.','').isdigit():
                         dist_val = float(dist_str)
                     else:
                         dist_val = 999.9
 
-                    # --- DETECCIÓN DE CAMBIOS (LÓGICA V31) ---
+                    # --- AUDITORÍA DE CAMBIOS (V32) ---
                     es_correccion = False
+                    tipo_correccion = ""
                     
                     if clave in db_conocimiento:
-                        dist_guardada = db_conocimiento[clave]
-                        # Si la distancia es IGUAL, es duplicado -> Ignorar
-                        if abs(dist_val - dist_guardada) < 0.01: # Tolerancia minúscula
+                        datos_old = db_conocimiento[clave]
+                        dist_old = datos_old['dist']
+                        mw_old = datos_old['mw']
+                        
+                        cambio_dist = abs(dist_val - dist_old) > 0.05
+                        cambio_mw = abs(vrp_val - mw_old) > 0.5 # Tolerancia de 0.5 MW
+                        
+                        if not cambio_dist and not cambio_mw:
+                            # Todo igual, es un duplicado real
                             continue
                         else:
-                            # Si es DIFERENTE, es una corrección -> Procesar
+                            # Algo cambió
                             es_correccion = True
-                            print(f"🔄 CORRECCIÓN DETECTADA en {nombre_v}: {dist_guardada}km -> {dist_val}km")
+                            if cambio_dist and cambio_mw: tipo_correccion = "DIST+MW"
+                            elif cambio_dist: tipo_correccion = "DIST"
+                            elif cambio_mw: tipo_correccion = "MW"
+                            
+                            print(f"🔄 CORRECCIÓN ({tipo_correccion}) en {nombre_v}:")
+                            if cambio_dist: print(f"   -> Dist: {dist_old}km => {dist_val}km")
+                            if cambio_mw: print(f"   -> MW: {mw_old} => {vrp_val}")
                     
-                    # --- LÓGICA DE ALERTA ---
+                    # --- LÓGICA DE PROCESAMIENTO ---
                     descargar_ahora = False
                     tipo_registro = "RUTINA"
-                    if es_correccion: tipo_registro = "CORRECCION_DATA"
+                    if es_correccion: tipo_registro = f"CORRECCION_{tipo_correccion}"
                     
                     clasificacion = "NORMAL"
                     es_alerta_real = False
@@ -273,11 +288,11 @@ def procesar():
                     if vrp_val > 0:
                         if dist_val <= limite_km:
                             clasificacion = "ALERTA VOLCANICA"
-                            if not es_correccion: tipo_registro = "ALERTA" # Si no es correccion, es alerta normal
+                            if not es_correccion: tipo_registro = "ALERTA"
                             es_alerta_real = True
-                            print(f"🔥 ALERTA ACTIVA: {nombre_v} ({sensor_str}) | {dist_val}km")
+                            print(f"🔥 ALERTA ACTIVA: {nombre_v} ({sensor_str}) | {dist_val}km | {vrp_val}MW")
                             
-                            # Descargar si es nuevo O si es una corrección (para actualizar la foto)
+                            # Descargar si es el más nuevo del ciclo (y si hubo corrección, bajamos la nueva foto)
                             if es_el_dato_mas_nuevo:
                                 descargar_ahora = True
                             else:
@@ -285,11 +300,10 @@ def procesar():
                         else:
                             clasificacion = "FALSO POSITIVO"
                             print(f"⚠️  Falso Positivo: {nombre_v} a {dist_val}km")
-                            # Si antes era alerta y ahora es falso positivo (corrección), igual guardamos el cambio
                     else:
                         clasificacion = "NORMAL"
                         if "VIIRS375" in sensor_str.upper():
-                            # Si es corrección, bajamos de nuevo para asegurar
+                            # Si es corrección de un evento diario, bajamos de nuevo
                             should_download = (not check_evidencia_existente(nombre_v, dt_obj_utc)) or es_correccion
                             if should_download and es_el_dato_mas_nuevo:
                                 descargar_ahora = True

@@ -1,9 +1,8 @@
-name: Monitor Volcanico Pro (Modo Ráfaga)
+name: Monitor Volcanico VRP
 
 on:
   schedule:
-    # --- CAMBIO CRÍTICO: Ejecutar cada 15 minutos ---
-    # Esto asegura capturar las actualizaciones de 19 minutos
+    # Ejecutar cada 15 minutos (Modo Ráfaga)
     - cron: '*/15 * * * *' 
   
   workflow_dispatch: # Botón manual
@@ -24,7 +23,7 @@ jobs:
         with:
           python-version: '3.9'
 
-      - name: Instalar Tesseract OCR (Sistema Linux)
+      - name: Instalar Tesseract OCR
         run: |
           sudo apt-get update
           sudo apt-get install -y tesseract-ocr libtesseract-dev
@@ -43,5 +42,4 @@ jobs:
           git config --global user.name "VolcanoBot"
           git config --global user.email "bot@volcano.com"
           git add -A
-          # Commit seguro: Solo guarda si hay cambios reales
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto: Actualización Ráfaga (15 min)" && git push)
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto: Actualización VRP" && git push)

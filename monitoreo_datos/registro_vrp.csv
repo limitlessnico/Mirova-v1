@@ -1,13 +1,13 @@
-ID,Unix_Time,Fecha_Completa,Volcan,Sensor,VRP_MW,Fecha_Revision_Completa,Ruta_Fotos
-0,1768074900,2026-01-10 19:55:00,Lascar,MODIS,0,2026-01-10 21:17:25,monitoreo_datos/imagenes/Lascar/2026-01-10/19-55-00_Lascar_MODIS_Latest10NTI.png
-1,1768071960,2026-01-10 19:06:00,Lascar,VIIRS-750m,0,2026-01-10 21:17:25,monitoreo_datos/imagenes/Lascar/2026-01-10/19-06-00_Lascar_VIIRS750_Latest10NTI.png
-2,1768071960,2026-01-10 19:06:00,Lascar,VIIRS-375m,0,2026-01-10 21:17:25,monitoreo_datos/imagenes/Lascar/2026-01-10/19-06-00_Lascar_VIIRS375_Latest10NTI.png
-3,1768074900,2026-01-10 19:55:00,Lascar,MIR-Combined,0,2026-01-10 21:17:25,monitoreo_datos/imagenes/Lascar/2026-01-10/19-55-00_Lascar_COMB_logVRP.png
-4,1768074600,2026-01-10 19:50:00,Villarrica,MODIS,0,2026-01-10 21:17:25,monitoreo_datos/imagenes/Villarrica/2026-01-10/19-50-00_Villarrica_MODIS_Latest10NTI.png
-5,1768073041,2026-01-10 19:24:01,Villarrica,VIIRS-750m,0,2026-01-10 21:17:25,monitoreo_datos/imagenes/Villarrica/2026-01-10/19-24-01_Villarrica_VIIRS750_Latest10NTI.png
-6,1768073041,2026-01-10 19:24:01,Villarrica,VIIRS-375m,0,2026-01-10 21:17:25,monitoreo_datos/imagenes/Villarrica/2026-01-10/19-24-01_Villarrica_VIIRS375_Latest10NTI.png
-7,1768074600,2026-01-10 19:50:00,Villarrica,MIR-Combined,0,2026-01-10 21:17:25,monitoreo_datos/imagenes/Villarrica/2026-01-10/19-50-00_Villarrica_COMB_logVRP.png
-8,1768048800,2026-01-10 12:40:00,Llaima,MODIS,0,2026-01-10 21:17:25,monitoreo_datos/imagenes/Llaima/2026-01-10/12-40-00_Llaima_MODIS_Latest10NTI.png
-9,1768073041,2026-01-10 19:24:01,Llaima,VIIRS-750m,0,2026-01-10 21:17:25,monitoreo_datos/imagenes/Llaima/2026-01-10/19-24-01_Llaima_VIIRS750_Latest10NTI.png
-10,1768073041,2026-01-10 19:24:01,Llaima,VIIRS-375m,0,2026-01-10 21:17:25,monitoreo_datos/imagenes/Llaima/2026-01-10/19-24-01_Llaima_VIIRS375_Latest10NTI.png
-11,1768073041,2026-01-10 19:24:01,Llaima,MIR-Combined,0,2026-01-10 21:17:25,monitoreo_datos/imagenes/Llaima/2026-01-10/19-24-01_Llaima_COMB_logVRP.png
+ID,timestamp,Fecha_Satelite,Volcan,Sensor,VRP_MW,Fecha_Proceso,Ruta_Fotos
+0,1768074900,2026-01-10 19:55:00,Lascar,MODIS,0,2026-01-10 21:24:17,monitoreo_datos/imagenes/Lascar/2026-01-10/19-55-00_Lascar_MODIS_Latest10NTI.png
+1,1768071960,2026-01-10 19:06:00,Lascar,VIIRS-750m,0,2026-01-10 21:24:17,monitoreo_datos/imagenes/Lascar/2026-01-10/19-06-00_Lascar_VIIRS750_Latest10NTI.png
+2,1768071960,2026-01-10 19:06:00,Lascar,VIIRS-375m,0,2026-01-10 21:24:17,monitoreo_datos/imagenes/Lascar/2026-01-10/19-06-00_Lascar_VIIRS375_Latest10NTI.png
+3,1768074900,2026-01-10 19:55:00,Lascar,MIR-Combined,0,2026-01-10 21:24:17,monitoreo_datos/imagenes/Lascar/2026-01-10/19-55-00_Lascar_COMB_logVRP.png
+4,1768074600,2026-01-10 19:50:00,Villarrica,MODIS,0,2026-01-10 21:24:17,monitoreo_datos/imagenes/Villarrica/2026-01-10/19-50-00_Villarrica_MODIS_Latest10NTI.png
+5,1768073041,2026-01-10 19:24:01,Villarrica,VIIRS-750m,0,2026-01-10 21:24:17,monitoreo_datos/imagenes/Villarrica/2026-01-10/19-24-01_Villarrica_VIIRS750_Latest10NTI.png
+6,1768073041,2026-01-10 19:24:01,Villarrica,VIIRS-375m,0,2026-01-10 21:24:17,monitoreo_datos/imagenes/Villarrica/2026-01-10/19-24-01_Villarrica_VIIRS375_Latest10NTI.png
+7,1768074600,2026-01-10 19:50:00,Villarrica,MIR-Combined,0,2026-01-10 21:24:17,monitoreo_datos/imagenes/Villarrica/2026-01-10/19-50-00_Villarrica_COMB_logVRP.png
+8,1768048800,2026-01-10 12:40:00,Llaima,MODIS,0,2026-01-10 21:24:17,monitoreo_datos/imagenes/Llaima/2026-01-10/12-40-00_Llaima_MODIS_Latest10NTI.png
+9,1768073041,2026-01-10 19:24:01,Llaima,VIIRS-750m,0,2026-01-10 21:24:17,monitoreo_datos/imagenes/Llaima/2026-01-10/19-24-01_Llaima_VIIRS750_Latest10NTI.png
+10,1768073041,2026-01-10 19:24:01,Llaima,VIIRS-375m,0,2026-01-10 21:24:17,monitoreo_datos/imagenes/Llaima/2026-01-10/19-24-01_Llaima_VIIRS375_Latest10NTI.png
+11,1768073041,2026-01-10 19:24:01,Llaima,MIR-Combined,0,2026-01-10 21:24:17,monitoreo_datos/imagenes/Llaima/2026-01-10/19-24-01_Llaima_COMB_logVRP.png

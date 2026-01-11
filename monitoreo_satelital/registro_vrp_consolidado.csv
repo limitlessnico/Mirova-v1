@@ -1,10 +1,25 @@
-timestamp,Fecha_Satelite,Volcan,Sensor,VRP_MW,Distancia_km,Clasificacion,Fecha_Proceso,Ruta_Fotos
-1768048800,2026-01-10 12:40:00,Llaima,MODIS,0.0,0.0,NORMAL,2026-01-11 00:00:00,monitoreo_satelital/imagenes_satelitales/Llaima/2026-01-10/12-40-00_Llaima_MODIS_Latest.png
-1768071960,2026-01-10 19:06:00,Lascar,VIIRS375,0.0,0.0,NORMAL,2026-01-11 00:00:00,monitoreo_satelital/imagenes_satelitales/Lascar/2026-01-10/19-06-00_Lascar_VIIRS375_Latest.png
-1768071960,2026-01-10 19:06:00,Lascar,VIIRS,0.0,0.0,NORMAL,2026-01-11 00:00:00,monitoreo_satelital/imagenes_satelitales/Lascar/2026-01-10/19-06-00_Lascar_VIIRS_Latest.png
-1768073041,2026-01-10 19:24:01,Villarrica,VIIRS375,0.0,0.0,NORMAL,2026-01-11 00:00:00,monitoreo_satelital/imagenes_satelitales/Villarrica/2026-01-10/19-24-01_Villarrica_VIIRS375_Latest.png
-1768073041,2026-01-10 19:24:01,Llaima,VIIRS,0.0,0.0,NORMAL,2026-01-11 00:00:00,monitoreo_satelital/imagenes_satelitales/Llaima/2026-01-10/19-24-01_Llaima_VIIRS_Latest.png
-1768073041,2026-01-10 19:24:01,Villarrica,VIIRS,0.0,0.0,NORMAL,2026-01-11 00:00:00,monitoreo_satelital/imagenes_satelitales/Villarrica/2026-01-10/19-24-01_Villarrica_VIIRS_Latest.png
-1768073041,2026-01-10 19:24:01,Llaima,VIIRS375,0.0,0.0,NORMAL,2026-01-11 00:00:00,monitoreo_satelital/imagenes_satelitales/Llaima/2026-01-10/19-24-01_Llaima_VIIRS375_Latest.png
-1768074600,2026-01-10 19:50:00,Villarrica,MODIS,0.0,0.0,NORMAL,2026-01-11 00:00:00,monitoreo_satelital/imagenes_satelitales/Villarrica/2026-01-10/19-50-00_Villarrica_MODIS_Latest.png
-1768074900,2026-01-10 19:55:00,Lascar,MODIS,0.0,0.0,NORMAL,2026-01-11 00:00:00,monitoreo_satelital/imagenes_satelitales/Lascar/2026-01-10/19-55-00_Lascar_MODIS_Latest.png
+timestamp,Fecha_Satelite_UTC,Fecha_Chile,Volcan,Sensor,VRP_MW,Distancia_km,Clasificacion,Fecha_Proceso,Ruta_Fotos,Tipo_Registro
+1768048800,2026-01-10 12:40:00,2026-01-10 09:40:00,Llaima,MODIS,0.0,0.0,NORMAL,2026-01-11 00:34:14,No descargadas,RUTINA
+1768071960,2026-01-10 19:06:00,2026-01-10 16:06:00,Lascar,VIIRS,0.0,0.0,NORMAL,2026-01-11 00:34:14,monitoreo_satelital/imagenes_satelitales/Lascar/2026-01-10/19-06-00_Lascar_VIIRS_Latest.png,EVIDENCIA_DIARIA
+1768071960,2026-01-10 19:06:00,2026-01-10 16:06:00,Lascar,VIIRS375,0.0,0.0,NORMAL,2026-01-11 00:34:14,No descargadas,RUTINA
+1768072320,2026-01-10 19:12:00,2026-01-10 16:12:00,Isluga,VIIRS,0.0,0.0,NORMAL,2026-01-11 00:34:14,monitoreo_satelital/imagenes_satelitales/Isluga/2026-01-10/19-12-00_Isluga_VIIRS_Latest.png,EVIDENCIA_DIARIA
+1768072320,2026-01-10 19:12:00,2026-01-10 16:12:00,Isluga,VIIRS375,0.0,0.0,NORMAL,2026-01-11 00:34:14,No descargadas,RUTINA
+1768073041,2026-01-10 19:24:01,2026-01-10 16:24:01,Llaima,VIIRS375,0.0,0.0,NORMAL,2026-01-11 00:34:14,monitoreo_satelital/imagenes_satelitales/Llaima/2026-01-10/19-24-01_Llaima_VIIRS375_Latest.png,EVIDENCIA_DIARIA
+1768073041,2026-01-10 19:24:01,2026-01-10 16:24:01,Peteroa,VIIRS375,0.0,0.0,NORMAL,2026-01-11 00:34:14,No descargadas,RUTINA
+1768073041,2026-01-10 19:24:01,2026-01-10 16:24:01,Puyehue-Cordon Caulle,VIIRS375,0.0,0.0,NORMAL,2026-01-11 00:34:14,monitoreo_satelital/imagenes_satelitales/Puyehue-Cordon Caulle/2026-01-10/19-24-01_Puyehue-Cordon Caulle_VIIRS375_Latest.png,EVIDENCIA_DIARIA
+1768073041,2026-01-10 19:24:01,2026-01-10 16:24:01,Villarrica,VIIRS375,0.0,0.0,NORMAL,2026-01-11 00:34:14,No descargadas,RUTINA
+1768073041,2026-01-10 19:24:01,2026-01-10 16:24:01,Nevados de Chillan,VIIRS375,0.0,0.0,NORMAL,2026-01-11 00:34:14,No descargadas,RUTINA
+1768073041,2026-01-10 19:24:01,2026-01-10 16:24:01,Copahue,VIIRS375,5.73,25.86,FALSO POSITIVO (Fuera de limite),2026-01-11 00:34:14,No descargadas,RUTINA
+1768073041,2026-01-10 19:24:01,2026-01-10 16:24:01,Villarrica,VIIRS,0.0,0.0,NORMAL,2026-01-11 00:34:14,monitoreo_satelital/imagenes_satelitales/Villarrica/2026-01-10/19-24-01_Villarrica_VIIRS_Latest.png,EVIDENCIA_DIARIA
+1768073041,2026-01-10 19:24:01,2026-01-10 16:24:01,Peteroa,VIIRS,0.0,0.0,NORMAL,2026-01-11 00:34:14,monitoreo_satelital/imagenes_satelitales/Peteroa/2026-01-10/19-24-01_Peteroa_VIIRS_Latest.png,EVIDENCIA_DIARIA
+1768073041,2026-01-10 19:24:01,2026-01-10 16:24:01,Llaima,VIIRS,0.0,0.0,NORMAL,2026-01-11 00:34:14,No descargadas,RUTINA
+1768073041,2026-01-10 19:24:01,2026-01-10 16:24:01,Copahue,VIIRS,0.0,0.0,NORMAL,2026-01-11 00:34:14,monitoreo_satelital/imagenes_satelitales/Copahue/2026-01-10/19-24-01_Copahue_VIIRS_Latest.png,EVIDENCIA_DIARIA
+1768073041,2026-01-10 19:24:01,2026-01-10 16:24:01,Nevados de Chillan,VIIRS,0.0,0.0,NORMAL,2026-01-11 00:34:14,monitoreo_satelital/imagenes_satelitales/Nevados de Chillan/2026-01-10/19-24-01_Nevados de Chillan_VIIRS_Latest.png,EVIDENCIA_DIARIA
+1768073041,2026-01-10 19:24:01,2026-01-10 16:24:01,Puyehue-Cordon Caulle,VIIRS,0.0,0.0,NORMAL,2026-01-11 00:34:14,No descargadas,RUTINA
+1768074600,2026-01-10 19:50:00,2026-01-10 16:50:00,Villarrica,MODIS,0.0,0.0,NORMAL,2026-01-11 00:34:14,No descargadas,RUTINA
+1768074600,2026-01-10 19:50:00,2026-01-10 16:50:00,Puyehue-Cordon Caulle,MODIS,0.0,0.0,NORMAL,2026-01-11 00:34:14,No descargadas,RUTINA
+1768074900,2026-01-10 19:55:00,2026-01-10 16:55:00,Nevados de Chillan,MODIS,0.0,0.0,NORMAL,2026-01-11 00:34:14,No descargadas,RUTINA
+1768074900,2026-01-10 19:55:00,2026-01-10 16:55:00,Peteroa,MODIS,0.0,0.0,NORMAL,2026-01-11 00:34:14,No descargadas,RUTINA
+1768074900,2026-01-10 19:55:00,2026-01-10 16:55:00,Copahue,MODIS,0.0,0.0,NORMAL,2026-01-11 00:34:14,No descargadas,RUTINA
+1768074900,2026-01-10 19:55:00,2026-01-10 16:55:00,Lascar,MODIS,0.0,0.0,NORMAL,2026-01-11 00:34:14,No descargadas,RUTINA
+1768075200,2026-01-10 20:00:00,2026-01-10 17:00:00,Isluga,MODIS,0.0,0.0,NORMAL,2026-01-11 00:34:14,No descargadas,RUTINA

@@ -209,3 +209,5 @@
 [2026-01-11 17:25:26] 💾 Sincronización completa. Individuales re-formateados desde positivos.
 [2026-01-11 17:44:40] 🚀 INICIO CICLO V36.4 (RE-FORMATEO INDIVIDUALES): 2026-01-11 17:44:40.915849-03:00
 [2026-01-11 17:44:56] 💾 Sincronización completa. Individuales re-formateados desde positivos.
+[2026-01-11 17:56:07] 🚀 INICIO CICLO V36.4 (RE-FORMATEO INDIVIDUALES): 2026-01-11 17:56:07.054982-03:00
+[2026-01-11 17:56:22] 💾 Sincronización completa. Individuales re-formateados desde positivos.

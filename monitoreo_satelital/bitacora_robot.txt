@@ -197,3 +197,5 @@
 [2026-01-11 16:16:36] 💾 Sincronización completa y limpieza realizada.
 [2026-01-11 16:20:27] 🚀 INICIO CICLO V36.3 (FILTRADO POSITIVOS): 2026-01-11 16:20:27.530841-03:00
 [2026-01-11 16:20:44] 💾 Sincronización completa. CSVs individuales filtrados por energía térmica.
+[2026-01-11 16:37:01] 🚀 INICIO CICLO V36.3 (FILTRADO POSITIVOS): 2026-01-11 16:37:01.523766-03:00
+[2026-01-11 16:37:15] 💾 Sincronización completa. CSVs individuales filtrados por energía térmica.

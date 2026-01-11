@@ -1,5 +1,5 @@
-ID,timestamp,Fecha_Satelite,Volcan,Sensor,VRP_MW,Fecha_Proceso,Ruta_Fotos
-4,1768074600,2026-01-10 19:50:00,Villarrica,MODIS,0,2026-01-10 21:32:26,monitoreo_satelital/imagenes_satelitales/Villarrica/2026-01-10/19-50-00_Villarrica_MODIS_Latest10NTI.png
-5,1768073041,2026-01-10 19:24:01,Villarrica,VIIRS-750m,0,2026-01-10 21:32:26,monitoreo_satelital/imagenes_satelitales/Villarrica/2026-01-10/19-24-01_Villarrica_VIIRS750_Latest10NTI.png
-6,1768073041,2026-01-10 19:24:01,Villarrica,VIIRS-375m,0,2026-01-10 21:32:26,monitoreo_satelital/imagenes_satelitales/Villarrica/2026-01-10/19-24-01_Villarrica_VIIRS375_Latest10NTI.png
-7,1768074600,2026-01-10 19:50:00,Villarrica,MIR-Combined,0,2026-01-10 21:32:26,monitoreo_satelital/imagenes_satelitales/Villarrica/2026-01-10/19-50-00_Villarrica_COMB_logVRP.png
+ID,timestamp,Fecha_Satelite,Volcan,Sensor,VRP_MW,Distancia_km,Es_Volcanico,Fecha_Proceso,Ruta_Fotos
+4,1768074600,2026-01-10 19:50:00,Villarrica,MODIS,0.0,0.0,False,2026-01-10 22:29:14,monitoreo_satelital/imagenes_satelitales/Villarrica/2026-01-10/19-50-00_Villarrica_MODIS_Latest10NTI.png
+5,1768073041,2026-01-10 19:24:01,Villarrica,VIIRS,0.0,0.0,False,2026-01-10 22:29:14,monitoreo_satelital/imagenes_satelitales/Villarrica/2026-01-10/19-24-01_Villarrica_VIIRS750_Latest10NTI.png
+6,1768073041,2026-01-10 19:24:01,Villarrica,VIIRS375,0.0,0.0,False,2026-01-10 22:29:14,monitoreo_satelital/imagenes_satelitales/Villarrica/2026-01-10/19-24-01_Villarrica_VIIRS375_Latest10NTI.png
+7,1768094954,2026-01-10 22:29:14,Villarrica,MIR-Combined,0.0,0.0,False,2026-01-10 22:29:14,No encontrada

@@ -221,3 +221,5 @@
 [2026-01-11 18:51:29] 💾 Ciclo finalizado. Registros: 30 nuevos.
 [2026-01-11 18:52:38] 🚀 INICIO CICLO V42.0 (RESTAURACIÓN TOTAL DE COLUMNAS): 2026-01-11 18:52:38.884858-03:00
 [2026-01-11 18:52:40] 💾 Tablas reconstruidas con auditoría de GitHub.
+[2026-01-11 18:59:53] 🚀 INICIO CICLO V44.0 (ACTUALIZACIÓN NULO IN-SITU): 2026-01-11 18:59:53.049913-03:00
+[2026-01-11 18:59:54] 💾 Consolidado actualizado con etiquetas 'NULO'.

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌋 VolcanoBot Dashboard</title>
+    <style>
+        body { background-color: #121212; color: #e0e0e0; font-family: sans-serif; margin: 0; padding: 20px; }
+        h1 { text-align: center; color: #ff5733; }
+        .last-update { text-align: center; color: #888; font-size: 0.9em; margin-bottom: 20px; }
+        .grid-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; justify-items: center; }
+        .card { background-color: #1e1e1e; border-radius: 10px; padding: 10px; width: 100%; max-width: 600px; text-align: center; border: 1px solid #333; }
+        .card h2 { margin: 10px 0; font-size: 1.2em; color: #00bcd4; }
+        img { width: 100%; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>🌋 Centro de Monitoreo VolcanoBot</h1>
+    <div class="last-update" id="reloj">Cargando...</div>
+    <div class="grid-container" id="galeria"></div>
+
+<script>
+    // --- TUS DATOS ---
+    const usuario = "MendozaVolcanic";   // <--- Verifica esto
+    const repo = "Mirova-v1";            // <--- Verifica esto
+    const rama = "main"; 
+
+    const volcanes = [
+        "Villarrica", "Lascar", "Nevados de Chillan", 
+        "Puyehue-Cordon Caulle", "Llaima", "Copahue", 
+        "Chaiten", "Peteroa", "Isluga", "Lastarria"
+    ];
+
+    const baseUrl = `https://raw.githubusercontent.com/${usuario}/${repo}/${rama}/monitoreo_satelital/graficos_tendencia`;
+
+    function actualizarTablero() {
+        const contenedor = document.getElementById('galeria');
+        contenedor.innerHTML = ''; 
+        const timestamp = new Date().getTime(); // Evita caché
+
+        volcanes.forEach(volcan => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            
+            const titulo = document.createElement('h2');
+            titulo.textContent = volcan;
+            
+            const img = document.createElement('img');
+            img.src = `${baseUrl}/${volcan}/Grafico_${volcan}_Mensual.png?t=${timestamp}`;
+            img.alt = `Gráfico ${volcan}`;
+            img.onerror = function() { this.style.display='none'; }; 
+
+            card.appendChild(titulo);
+            card.appendChild(img);
+            contenedor.appendChild(card);
+        });
+        document.getElementById('reloj').innerText = `Actualizado: ${new Date().toLocaleTimeString()}`;
+    }
+    actualizarTablero();
+    setInterval(actualizarTablero, 600000); // 10 minutos
+</script>
+</body>
+</html>

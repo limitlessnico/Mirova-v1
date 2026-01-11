@@ -195,3 +195,5 @@
 [2026-01-11 16:16:21] 🗑️ Borrado archivo fuera de lugar: registro_Nevados_de_Chillan.csv
 [2026-01-11 16:16:21] 🗑️ Borrado archivo fuera de lugar: registro_Villarrica.csv
 [2026-01-11 16:16:36] 💾 Sincronización completa y limpieza realizada.
+[2026-01-11 16:20:27] 🚀 INICIO CICLO V36.3 (FILTRADO POSITIVOS): 2026-01-11 16:20:27.530841-03:00
+[2026-01-11 16:20:44] 💾 Sincronización completa. CSVs individuales filtrados por energía térmica.

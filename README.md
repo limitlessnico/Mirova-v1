@@ -29,15 +29,15 @@ Para filtrar los datos de MIROVA y descartar anomalías que no sean volcánicas 
 | Volcán (Chile) | ID MIROVA | Límite Aplicado | Tipo de Estructura |
 | :--- | :--- | :--- | :--- |
 | **Láscar** | 355100 | 5.0 km | Cráter central |
-| **Lastarria** | 355101 | 3.0 km | Cráter pequeño |
+| **Lastarria** | 355101 | 3.0 km | Cráter central |
 | **Isluga** | 355030 | 5.0 km | Cráter central |
-| **Villarrica** | 357120 | 5.0 km | Lago de lava |
+| **Villarrica** | 357120 | 5.0 km | Cráter central|
 | **Llaima** | 357110 | 5.0 km | Cráter central |
 | **Nevados de Chillán** | 357070 | 5.0 km | Complejo de domos |
-| **Copahue** | 357090 | 4.0 km | Cráter activo |
+| **Copahue** | 357090 | 4.0 km | Cráter central |
 | **Puyehue-C. Caulle** | 357150 | **20.0 km** | Complejo Fisural |
 | **Chaitén** | 358030 | 5.0 km | Domo |
-| **Planchón-Peteroa** | 357040 | 3.0 km | Cráter complejo |
+| **Planchón-Peteroa** | 357040 | 3.0 km | Cráter central |
 
 ---
 

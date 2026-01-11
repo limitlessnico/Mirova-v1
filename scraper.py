@@ -31,32 +31,24 @@ def obtener_hora_chile():
     except: return datetime.now(pytz.utc)
 
 def limpiar_todo():
-    """ MODO PRUEBAS: Borra todo para verificar el nuevo formato limpio. """
+    """ MODO PRUEBAS: Borra todo para verificar el nuevo formato de columnas. """
     print("🧹 LIMPIEZA DE PRUEBAS ACTIVADA...")
     
     if os.path.exists("registro_vrp.csv"):
-        try: 
-            os.remove("registro_vrp.csv")
-        except: 
-            pass
+        try: os.remove("registro_vrp.csv")
+        except: pass
             
     if os.path.exists(DB_FILE):
-        try: 
-            os.remove(DB_FILE)
-        except: 
-            pass
+        try: os.remove(DB_FILE)
+        except: pass
             
     if os.path.exists("imagenes"):
-        try: 
-            shutil.rmtree("imagenes")
-        except: 
-            pass
+        try: shutil.rmtree("imagenes")
+        except: pass
             
     if os.path.exists(CARPETA_PRINCIPAL):
-        try: 
-            shutil.rmtree(CARPETA_PRINCIPAL)
-        except: 
-            pass
+        try: shutil.rmtree(CARPETA_PRINCIPAL)
+        except: pass
 
 def procesar_imagen_ocr(imagen_pil):
     gray = imagen_pil.convert('L')
@@ -66,7 +58,6 @@ def procesar_imagen_ocr(imagen_pil):
 
 def validar_y_corregir_fecha(fecha_ocr, fecha_sistema):
     """ Evita fechas del futuro. """
-    # Comparamos solo la fecha (date) sin hora
     if fecha_ocr.date() > (fecha_sistema.date() + timedelta(days=1)):
         print(f"   ⚠️ CORRECCIÓN: Fecha futura ({fecha_ocr.date()}). Ajustando a hoy.")
         fecha_corregida = fecha_ocr.replace(year=fecha_sistema.year, 
@@ -123,14 +114,14 @@ def procesar():
     session.headers.update({'User-Agent': 'Mozilla/5.0', 'Referer': BASE_URL})
 
     ahora_cl = obtener_hora_chile()
-    # Fecha/Hora de ejecución combinada para la columna de revisión
-    fecha_revision_full = ahora_cl.strftime("%Y-%m-%d %H:%M:%S")
+    # Fecha/Hora de ejecución para la columna de "Fecha_Proceso"
+    fecha_proceso_str = ahora_cl.strftime("%Y-%m-%d %H:%M:%S")
     
-    # Variables simples para carpetas
+    # Variables simples para nombres de archivo
     fecha_exec_simple = ahora_cl.strftime("%Y-%m-%d")
     hora_exec_simple = ahora_cl.strftime("%H:%M:%S")
     
-    print(f"🕒 Iniciando V11.1 (Sintaxis Corregida): {fecha_revision_full}")
+    print(f"🕒 Iniciando V11.2 (Renombrado de Columnas): {fecha_proceso_str}")
     registros_nuevos = []
     
     # Contador para el ID
@@ -175,25 +166,24 @@ def procesar():
                     else:
                         origen = "❌ FALLBACK"
 
-                # --- LÓGICA DE FECHAS Y UNIX TIMESTAMP ---
+                # --- LÓGICA DE FECHAS ---
                 if fecha_detectada:
-                    # Usamos la fecha leída por OCR
-                    fecha_completa_str = fecha_detectada.strftime("%Y-%m-%d %H:%M:%S")
-                    # Convertimos a Unix Timestamp (segundos desde 1970)
+                    # Fecha leída del satélite
+                    fecha_satelite_str = fecha_detectada.strftime("%Y-%m-%d %H:%M:%S")
+                    # Unix timestamp
                     unix_time = int(fecha_detectada.timestamp())
                     
-                    # Variables para carpetas
                     fecha_carpeta = fecha_detectada.strftime("%Y-%m-%d")
                     hora_archivo = fecha_detectada.strftime("%H:%M:%S")
                 else:
-                    # Usamos la fecha del sistema (Fallback)
-                    fecha_completa_str = f"{fecha_exec_simple} {hora_exec_simple}"
+                    # Fallback sistema
+                    fecha_satelite_str = f"{fecha_exec_simple} {hora_exec_simple}"
                     unix_time = int(ahora_cl.timestamp())
                     
                     fecha_carpeta = fecha_exec_simple
                     hora_archivo = f"{hora_exec_simple}_Sys"
 
-                print(f"   👁️ {nombre_v} {s_label} -> {fecha_completa_str} [{origen}]")
+                print(f"   👁️ {nombre_v} {s_label} -> {fecha_satelite_str} [{origen}]")
 
                 # Carpetas
                 ruta_carpeta = os.path.join(CARPETA_PRINCIPAL, "imagenes", nombre_v, fecha_carpeta)
@@ -218,19 +208,18 @@ def procesar():
                     
                     with open(ruta_archivo, 'wb') as f: f.write(contenido_imagen)
 
-                # --- AGREGAR REGISTRO ---
+                # --- AGREGAR REGISTRO CON NUEVOS NOMBRES ---
                 registros_nuevos.append({
                     "ID": contador_id,
-                    "Unix_Time": unix_time,
-                    "Fecha_Completa": fecha_completa_str,
+                    "timestamp": unix_time,            # Nombre solicitado
+                    "Fecha_Satelite": fecha_satelite_str, # Nombre solicitado (Adquisición)
                     "Volcan": nombre_v,
                     "Sensor": s_label,
                     "VRP_MW": vrp,
-                    "Fecha_Revision_Completa": fecha_revision_full,
+                    "Fecha_Proceso": fecha_proceso_str,   # Nombre solicitado (Revisión/Ejecución)
                     "Ruta_Fotos": ruta_foto_csv
                 })
                 
-                # Aumentamos el contador
                 contador_id += 1
 
             except Exception as e:
@@ -240,12 +229,12 @@ def procesar():
     if registros_nuevos:
         cols = [
             "ID", 
-            "Unix_Time", 
-            "Fecha_Completa", 
+            "timestamp", 
+            "Fecha_Satelite", 
             "Volcan", 
             "Sensor", 
             "VRP_MW", 
-            "Fecha_Revision_Completa", 
+            "Fecha_Proceso", 
             "Ruta_Fotos"
         ]
         
@@ -253,7 +242,7 @@ def procesar():
         df_nuevo = df_nuevo.reindex(columns=cols)
         
         df_nuevo.to_csv(DB_FILE, index=False)
-        print(f"💾 CSV V11.1 Generado: {DB_FILE}")
+        print(f"💾 CSV V11.2 Generado: {DB_FILE}")
 
 if __name__ == "__main__":
     procesar()

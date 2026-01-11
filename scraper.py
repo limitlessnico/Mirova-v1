@@ -4,7 +4,7 @@ import os
 import pandas as pd
 from datetime import datetime
 import time
-import shutil  # Reincorporado para gestión de archivos
+import shutil
 import pytz
 
 # --- CONFIGURACIÓN DE VOLCANES ---
@@ -72,7 +72,7 @@ def procesar():
     hoy_str = ahora_cl.strftime("%Y-%m-%d")
     fecha_proceso_actual = ahora_cl.strftime("%Y-%m-%d %H:%M:%S")
     
-    log_bitacora(f"🚀 INICIO CICLO V47.0 (SANEADO): {ahora_cl}")
+    log_bitacora(f"🚀 INICIO CICLO V48.0 (OPTIMIZACIÓN EVIDENCIA): {ahora_cl}")
 
     try:
         df_master = pd.read_csv(DB_MASTER) if os.path.exists(DB_MASTER) else pd.DataFrame()
@@ -103,13 +103,18 @@ def procesar():
                 s_l = "VIIRS750" if "375" not in sensor else "VIIRS375"
                 ruta = f"imagenes_satelitales/{conf['nombre']}/{dt_utc.strftime('%Y-%m-%d')}/{dt_utc.strftime('%H-%M-%S')}_{conf['nombre']}_{s_l}_VRP.png"
             else:
-                ya_descargado = False
+                # --- LÓGICA DE EVIDENCIA MEJORADA ---
+                # Solo descargamos evidencia si NO hay ninguna ALERTA ni ninguna EVIDENCIA previa hoy.
+                ya_hay_registro_hoy = False
                 if not df_master.empty:
-                    ya_descargado = not df_master[(df_master['Volcan'] == conf['nombre']) & 
-                                                 (df_master['Fecha_Satelite_UTC'].str.contains(hoy_str)) & 
-                                                 (df_master['Ruta Foto'] != "No descargada")].empty
+                    # Filtramos el historial de hoy para este volcán
+                    df_hoy = df_master[(df_master['Volcan'] == conf['nombre']) & 
+                                      (df_master['Fecha_Satelite_UTC'].str.contains(hoy_str))]
+                    
+                    # ¿Hay alguna fila que ya tenga una imagen descargada hoy?
+                    ya_hay_registro_hoy = not df_hoy[df_hoy['Ruta Foto'] != "No descargada"].empty
                 
-                if not ya_descargado:
+                if not ya_hay_registro_hoy:
                     tipo = "EVIDENCIA_DIARIA"
                     descargar_set_completo(session, id_v, conf["nombre"], dt_utc)
                     s_l = "VIIRS750" if "375" not in sensor else "VIIRS375"
@@ -128,25 +133,18 @@ def procesar():
             df_new = pd.DataFrame(nuevos_datos)
             df_master = pd.concat([df_master, df_new]).drop_duplicates(subset=["Fecha_Satelite_UTC", "Volcan", "Sensor"], keep='last')
             
-            # --- SANEAMIENTO Y RESPETO DE FECHAS ANTIGUAS ---
-            def limpiar_fila(row):
-                # Mantener vacío si no hay fecha de proceso previa
-                if 'Fecha_Proceso_GitHub' not in row or pd.isna(row['Fecha_Proceso_GitHub']):
-                    row['Fecha_Proceso_GitHub'] = ""
-                return row
-
-            df_master = df_master.apply(limpiar_fila, axis=1)
+            # Saneamiento de fechas antiguas
+            df_master['Fecha_Proceso_GitHub'] = df_master['Fecha_Proceso_GitHub'].fillna("")
             
-            # Columnas exactas
             cols_final = ["timestamp", "Fecha_Satelite_UTC", "Fecha_Captura_Chile", "Volcan", "Sensor", "VRP_MW", "Distancia_km", "Tipo_Registro", "Clasificacion Mirova", "Ruta Foto", "Fecha_Proceso_GitHub"]
             df_master = df_master[[c for c in cols_final if c in df_master.columns]]
             df_master.to_csv(DB_MASTER, index=False)
             
-            # --- RECONSTRUCCIÓN DE TABLAS ---
+            # Tablas de Positivos (Solo Alertas)
             df_pos = df_master[df_master['Tipo_Registro'] == "ALERTA_TERMICA"].drop(columns=['Tipo_Registro'])
             df_pos.to_csv(DB_POSITIVOS, index=False)
             
-            # Actualización inteligente de individuales
+            # Individuales inteligentes
             v_afectados = df_new[df_new['Tipo_Registro'] == "ALERTA_TERMICA"]['Volcan'].unique()
             for v_nom in df_master['Volcan'].unique():
                 csv_path = os.path.join(RUTA_IMAGENES_BASE, v_nom, f"registro_{v_nom.replace(' ', '_')}.csv")
@@ -155,7 +153,7 @@ def procesar():
                     os.makedirs(os.path.join(RUTA_IMAGENES_BASE, v_nom), exist_ok=True)
                     df_v.to_csv(csv_path, index=False)
             
-            log_bitacora(f"💾 Ciclo V47.0 completado exitosamente.")
+            log_bitacora(f"💾 Ciclo V48.0 completado.")
 
     except Exception as e:
         log_bitacora(f"❌ ERROR: {e}")

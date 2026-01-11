@@ -3,74 +3,61 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🌋 VolcanoBot Dashboard</title>
+    <title>🌋 SIVOM - VolcanoBot Dashboard</title>
     <style>
-        body { background-color: #121212; color: #e0e0e0; font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; padding: 20px; }
-        h1 { text-align: center; color: #ff5733; margin-top: 50px; text-transform: uppercase; letter-spacing: 2px; }
-        .last-update { text-align: center; color: #888; font-size: 0.9em; margin-bottom: 30px; }
+        body { background-color: #121212; color: #e0e0e0; font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; padding: 0; }
         
-        .grid-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 25px; justify-items: center; }
+        /* BARRA DE AUDITORÍA (NUEVA) */
+        #audit-bar { 
+            background: #1a1a1a; padding: 15px; border-bottom: 2px solid #333; 
+            display: flex; justify-content: space-around; align-items: center; 
+            position: sticky; top: 0; z-index: 1000; font-size: 0.9em;
+        }
+        .status-badge { padding: 4px 12px; border-radius: 20px; font-weight: bold; background: #222; border: 1px solid #444; }
+
+        h1 { text-align: center; color: #ff5733; margin-top: 30px; text-transform: uppercase; letter-spacing: 2px; }
+        
+        .grid-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 25px; padding: 25px; justify-items: center; }
         
         .card { 
-            background-color: #1e1e1e; 
-            border-radius: 12px; 
-            padding: 15px; 
-            width: 100%; 
-            max-width: 600px; 
-            text-align: center; 
-            border: 1px solid #333;
+            background-color: #1e1e1e; border-radius: 12px; padding: 15px; 
+            width: 100%; max-width: 600px; text-align: center; border: 1px solid #333;
             transition: transform 0.3s ease;
         }
         .card:hover { transform: scale(1.02); border-color: #ff5733; }
-        
         .card h2 { margin: 5px 0; font-size: 1.4em; color: #00bcd4; }
         
-        /* Etiqueta de Región */
         .region-tag {
-            display: inline-block;
-            background-color: #333;
-            color: #bbb;
-            padding: 3px 10px;
-            border-radius: 20px;
-            font-size: 0.75em;
-            margin-bottom: 15px;
-            text-transform: uppercase;
+            display: inline-block; background-color: #333; color: #bbb;
+            padding: 3px 10px; border-radius: 20px; font-size: 0.75em;
+            margin-bottom: 15px; text-transform: uppercase;
         }
 
-        img { width: 100%; border-radius: 8px; border: 1px solid #222; margin-top: 10px; }
+        img { width: 100%; border-radius: 8px; border: 1px solid #222; margin-top: 10px; min-height: 200px; }
 
         #btnFullscreen {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 12px 20px;
-            background-color: #ff5733;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: bold;
-            z-index: 1000;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            position: fixed; bottom: 20px; right: 20px; padding: 12px 20px;
+            background-color: #ff5733; color: white; border: none;
+            border-radius: 8px; cursor: pointer; font-weight: bold;
+            z-index: 1000; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
         }
-        #btnFullscreen:hover { background-color: #e64a19; }
     </style>
 </head>
 <body>
 
+    <div id="audit-bar">
+        <div><strong>📡 MONITOREO SIVOM</strong></div>
+        <div id="sys-status" class="status-badge">CONECTANDO...</div>
+        <div>ÚLTIMA SINCRONIZACIÓN: <span id="last-sync" style="color:#ff5733;">--:--</span></div>
+    </div>
+
     <button id="btnFullscreen">📺 PANTALLA COMPLETA</button>
 
     <h1>🌋 Centro de Monitoreo VolcanoBot</h1>
-    <div class="last-update" id="reloj">Sincronizando datos...</div>
     
     <div class="grid-container" id="galeria"></div>
 
 <script>
-    const usuario = "MendozaVolcanic"; 
-    const repo = "Mirova-v1"; 
-    const rama = "main"; 
-
-    // Lista Maestra: Nombre y Región (Ordenada de Norte a Sur)
     const datosVolcanes = [
         { nombre: "Isluga", region: "Tarapacá" },
         { nombre: "Lascar", region: "Antofagasta" },
@@ -84,16 +71,25 @@
         { nombre: "Chaiten", region: "Los Lagos" }
     ];
 
-    const baseUrl = `https://raw.githubusercontent.com/${usuario}/${repo}/${rama}/monitoreo_satelital/graficos_tendencia`;
-
     // Lógica de Pantalla Completa
     document.getElementById('btnFullscreen').addEventListener('click', () => {
-        if (!document.fullscreenElement) {
-            document.documentElement.requestFullscreen();
-        } else {
-            document.exitFullscreen();
-        }
+        if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+        else document.exitFullscreen();
     });
+
+    function checkAudit() {
+        // Buscamos el estado del sistema generado por visualizador.py
+        fetch('monitoreo_satelital/estado_sistema.json?t=' + new Date().getTime())
+        .then(res => res.json())
+        .then(data => {
+            const badge = document.getElementById('sys-status');
+            badge.innerText = data.estado;
+            badge.style.color = data.color;
+            badge.style.borderColor = data.color;
+            document.getElementById('last-sync').innerText = data.ultima_actualizacion;
+        })
+        .catch(() => { document.getElementById('sys-status').innerText = "⚪ FUERA DE LÍNEA"; });
+    }
 
     function actualizarTablero() {
         const contenedor = document.getElementById('galeria');
@@ -104,31 +100,29 @@
             const card = document.createElement('div');
             card.className = 'card';
             
-            // Título del Volcán
             const titulo = document.createElement('h2');
             titulo.textContent = v.nombre;
             
-            // Etiqueta de la Región
             const region = document.createElement('div');
             region.className = 'region-tag';
             region.textContent = `Región de ${v.region}`;
             
-            // Imagen del Gráfico
             const img = document.createElement('img');
-            img.src = `${baseUrl}/${v.nombre}/Grafico_${v.nombre}_Mensual.png?t=${timestamp}`;
-            img.alt = `Monitoreo ${v.nombre}`;
+            // Nueva ruta según la auditoría (Carpeta por volcán)
+            img.src = `monitoreo_satelital/graficos_tendencia/${v.nombre}/Grafico_${v.nombre}_Mensual.png?t=${timestamp}`;
             
-            // Si no hay alerta (imagen no existe), ocultamos la tarjeta para limpiar el dashboard
-            img.onerror = function() { card.style.display = 'none'; }; 
+            // Si no hay alerta, mostramos un estado "Nominal" en lugar de ocultar la tarjeta
+            img.onerror = function() {
+                this.onerror = null;
+                this.src = `https://placehold.co/600x300/1e1e1e/888?text=${v.nombre}+-+Monitoreo+Nominal+(Sin+Anomalias)`;
+            }; 
 
             card.appendChild(titulo);
             card.appendChild(region);
             card.appendChild(img);
             contenedor.appendChild(card);
         });
-        
-        const ahora = new Date();
-        document.getElementById('reloj').innerText = `Última actualización: ${ahora.toLocaleTimeString()} | Orden Geográfico: Norte a Sur`;
+        checkAudit();
     }
 
     actualizarTablero();

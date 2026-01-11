@@ -24,7 +24,7 @@ RUTA_IMAGENES_BASE = os.path.join(CARPETA_PRINCIPAL, NOMBRE_CARPETA_IMAGENES)
 DB_FILE = os.path.join(CARPETA_PRINCIPAL, "registro_vrp_consolidado.csv")
 CARPETA_OBSOLETA = "monitoreo_datos"
 
-# COLUMNAS OFICIALES (Estandar para todos los CSV)
+# COLUMNAS OFICIALES
 COLUMNAS_OFICIALES = [
     "timestamp", 
     "Fecha_Satelite", 
@@ -43,10 +43,24 @@ def obtener_hora_chile():
         return datetime.now(tz_chile)
     except: return datetime.now(pytz.utc)
 
-def limpiar_basura_legacy():
+def modo_nuclear_borrar_todo():
+    """
+    ⚠️ PELIGRO: Borra todo para reiniciar la base de datos limpia.
+    """
+    print("☢️  MODO NUCLEAR ACTIVADO: Borrando historial corrupto...")
+    
+    # Borrar carpeta obsoleta
     if os.path.exists(CARPETA_OBSOLETA):
         try: shutil.rmtree(CARPETA_OBSOLETA)
         except: pass
+
+    # Borrar carpeta principal (CSVs y Fotos)
+    if os.path.exists(CARPETA_PRINCIPAL):
+        try: 
+            shutil.rmtree(CARPETA_PRINCIPAL)
+            print("✅ Carpeta 'monitoreo_satelital' eliminada.")
+        except Exception as e: 
+            print(f"⚠️ No se pudo borrar carpeta: {e}")
 
 def mapear_url_sensor(nombre_sensor_web):
     s = nombre_sensor_web.upper().strip()
@@ -106,16 +120,17 @@ def descargar_fotos(session, id_volcan, nombre_volcan, sensor_web, fecha_utc_dt)
     return rutas_guardadas
 
 def procesar():
-    limpiar_basura_legacy()
+    # 1. EJECUTAR LIMPIEZA COMPLETA (Solicitado por usuario)
+    modo_nuclear_borrar_todo()
+
     if not os.path.exists(CARPETA_PRINCIPAL): os.makedirs(CARPETA_PRINCIPAL, exist_ok=True)
 
     session = requests.Session()
     session.headers.update({'User-Agent': 'Mozilla/5.0'})
     
     ahora_cl = obtener_hora_chile()
-    print(f"🚀 Iniciando V21.0 (Sincronización CSV): {ahora_cl}")
+    print(f"🚀 Iniciando V21.1 (Hard Reset + Columnas Nuevas): {ahora_cl}")
     
-    # 1. LEER DATOS WEB
     print(f"🕵️  Consultando {URL_LATEST} ...")
     try:
         res = session.get(URL_LATEST, timeout=30)
@@ -130,21 +145,7 @@ def procesar():
             filas = tbody.find_all('tr') if tbody else tabla.find_all('tr')[1:]
             print(f"📊 Filas encontradas: {len(filas)}") 
             
-            # Cargar llaves existentes para no duplicar
-            db_keys = set()
-            if os.path.exists(DB_FILE):
-                try:
-                    df_old = pd.read_csv(DB_FILE)
-                    # Si faltan columnas en el archivo viejo, no importa, lo arreglamos al guardar
-                    for _, row in df_old.iterrows():
-                        # Usamos get para evitar error si falta columna
-                        f_sat = row.get('Fecha_Satelite', '')
-                        volc = row.get('Volcan', '')
-                        sens = row.get('Sensor', '')
-                        k = f"{f_sat}_{volc}_{sens}"
-                        db_keys.add(k)
-                except: pass
-
+            # Como borramos todo, no hay claves previas
             ids_procesados_hoy = set()
 
             for fila in filas:
@@ -152,7 +153,6 @@ def procesar():
                 if len(cols) < 6: continue 
                 
                 try:
-                    # 0:Time, 1:ID, 2:Name, 3:VRP, 4:Dist, 5:Sensor
                     hora_str = cols[0].text.strip()
                     id_volc = cols[1].text.strip()
                     vrp_str = cols[3].text.strip()
@@ -168,7 +168,6 @@ def procesar():
                     
                     clave = f"{fecha_fmt}_{nombre_limpio}_{sensor_str}"
                     
-                    if clave in db_keys: continue
                     if clave in ids_procesados_hoy: continue
                     ids_procesados_hoy.add(clave)
                     
@@ -180,7 +179,7 @@ def procesar():
                         if dist_val <= 5.0: clasificacion = "ALERTA VOLCANICA"
                         else: clasificacion = "FALSO POSITIVO"
                     
-                    print(f"🔥 NUEVO DATO: {nombre_limpio} | {fecha_fmt} | Dist:{dist_val}km | {clasificacion}")
+                    print(f"🔥 RECUPERANDO: {nombre_limpio} | {fecha_fmt} | Dist:{dist_val}km")
                     
                     rutas = descargar_fotos(session, id_volc, nombre_limpio, sensor_str, dt_obj)
                     
@@ -198,49 +197,26 @@ def procesar():
 
                 except Exception as e: continue
 
-            # --- GUARDADO MAESTRO ---
+            # --- GUARDADO ---
             if registros_nuevos:
                 df_new = pd.DataFrame(registros_nuevos)
-                # Asegurar orden columnas
+                # Ordenar por fecha (opcional)
+                df_new = df_new.sort_values(by="timestamp")
+                # Asegurar columnas
                 df_new = df_new.reindex(columns=COLUMNAS_OFICIALES)
                 
-                if os.path.exists(DB_FILE):
-                    try:
-                        df_old = pd.read_csv(DB_FILE)
-                        df_combined = pd.concat([df_old, df_new], ignore_index=True)
-                        # Reindexar combinado para asegurar que los viejos tengan las columnas nuevas (rellenas con vacio)
-                        df_combined = df_combined.reindex(columns=COLUMNAS_OFICIALES)
-                    except:
-                        df_combined = df_new
-                else:
-                    df_combined = df_new
+                df_new.to_csv(DB_FILE, index=False)
+                print(f"💾 CSV Maestro generado desde cero ({len(registros_nuevos)} registros).")
                 
-                df_combined.to_csv(DB_FILE, index=False)
-                print(f"💾 CSV Maestro actualizado ({len(registros_nuevos)} nuevos).")
+                # Generar individuales
+                print("🔄 Generando CSVs individuales...")
+                for v in df_new['Volcan'].unique():
+                    df_v = df_new[df_new['Volcan'] == v]
+                    r = os.path.join(RUTA_IMAGENES_BASE, v, f"registro_{v}.csv")
+                    os.makedirs(os.path.dirname(r), exist_ok=True)
+                    df_v.to_csv(r, index=False)
             else:
-                print("💤 Sin datos nuevos.")
-                # Si no hay nuevos, cargamos el existente para regenerar los individuales de todas formas
-                if os.path.exists(DB_FILE):
-                    df_combined = pd.read_csv(DB_FILE)
-                    df_combined = df_combined.reindex(columns=COLUMNAS_OFICIALES)
-                else:
-                    df_combined = pd.DataFrame(columns=COLUMNAS_OFICIALES)
-
-            # --- GUARDADO INDIVIDUAL (REGENERACIÓN FORZADA) ---
-            # Esto soluciona tu problema: Sobrescribe los CSV individuales 
-            # usando los datos y columnas del Maestro.
-            if not df_combined.empty:
-                print("🔄 Sincronizando CSVs individuales...")
-                for v in df_combined['Volcan'].unique():
-                    df_v = df_combined[df_combined['Volcan'] == v]
-                    ruta_csv_ind = os.path.join(RUTA_IMAGENES_BASE, v, f"registro_{v}.csv")
-                    
-                    # Asegurar carpeta
-                    os.makedirs(os.path.dirname(ruta_csv_ind), exist_ok=True)
-                    
-                    # Sobrescribir forzosamente con las columnas nuevas
-                    df_v.to_csv(ruta_csv_ind, index=False)
-                    # print(f"   -> Actualizado: {ruta_csv_ind}")
+                print("💤 No se encontraron datos en la tabla (¿Error de conexión?).")
 
     except Exception as e:
         print(f"Error general: {e}")

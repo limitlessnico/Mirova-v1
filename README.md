@@ -1,111 +1,88 @@
-# 🌋 VolcanoBot - Automatización de Vigilancia sobre Plataforma MIROVA
+# 🌋 Mirova-OVDAS VRP Monitor (Chile)
 
-**VolcanoBot** es una herramienta de **automatización de consultas** diseñada para optimizar el seguimiento de la actividad volcánica en Chile. Su función exclusiva es consultar, organizar y respaldar periódicamente la información pública disponible en la plataforma científica **MIROVA** (Middle InfraRed Observation of Volcanic Activity), desarrollada por la Universidad de Turín.
+**Mirova-OVDAS VRP Monitor** es una plataforma de **automatización y visualización científica** diseñada para el seguimiento de la Potencia Radiada Volcánica (VRP) en los principales centros eruptivos de Chile. El sistema actúa como un nodo de respaldo y análisis que captura, procesa y grafica la información pública de la plataforma **MIROVA** (Universidad de Turín).
 
-⚠️ **Aclaración Importante:** Este software **no realiza monitoreo satelital directo** ni genera alertas tempranas por cuenta propia. Actúa como un "asistente virtual" que revisa la web de MIROVA cada 15 minutos para asegurar que los datos publicados por dicha institución sean capturados y archivados antes de que sean sobrescritos por nuevas actualizaciones.
-
----
-
-## 🚀 Cómo funciona el Sistema (V34.0)
-
-El código se ejecuta en la nube (GitHub Actions) siguiendo un ciclo de 15 minutos, aplicando una estrategia de doble fase para extraer información de `mirovaweb.it`:
-
-### 1. Fase "El Espía" (Monitor de Reportes VRP) 🕵️
-
-El bot lee la tabla pública de "Latest Measurements" de MIROVA buscando reportes de **Energía Radiativa Volcánica (VRP)**.
-
-* **Fuente:** Datos procesados por MIROVA basados en sensores **MODIS**, **VIIRS750** y **VIIRS375**.
-* **Función:** Identifica si la plataforma ha publicado un nuevo valor de energía (MW) y lo registra en una base de datos histórica.
-
-### 2. Fase "El Patrullero" (Respaldo de Imágenes HD) 🛰️
-
-Dado que MIROVA publica imágenes de alta resolución que son efímeras (se actualizan constantemente), el bot visita las páginas específicas de cada volcán para respaldar estos productos visuales.
-
-* **Fuente:** Composiciones visuales de sensores **Sentinel-2 (MSI)** y **Landsat-8/9 (OLI)** disponibles en la web.
-* **Función:** Descarga y organiza las imágenes compuestas ("Latest 6 Images") para mantener un archivo visual permanente que sirva para análisis topográfico posterior.
+⚠️ **Aclaración:** Este software es una herramienta independiente de soporte técnico. No reemplaza los canales oficiales de alerta temprana de instituciones estatales.
 
 ---
 
-## 🛡️ Robustez e Integridad de Datos (Nuevas Funciones)
+## 📡 Dashboard e Interfaz de Auditoría
 
-Para garantizar que la información extraída sea fidedigna y manejar las particularidades de los datos satelitales, el sistema V34.0 incorpora capas de seguridad lógica:
+El sistema cuenta con un **Dashboard Profesional** que permite visualizar el estado de salud del monitor y las tendencias térmicas en tiempo real.
 
-### 🔍 1. Auditoría de Reprocesamiento (NRT vs. Standard)
+> [!IMPORTANT]
+> **[👉 ACCEDER AL MONITOR EN VIVO (Standard OVDAS)](https://mendozavolcanic.github.io/Mirova-v1/)**
 
-Los datos satelitales suelen publicarse en dos etapas: una "Rápida" (NRT) con posición estimada y una "Refinada" (horas después) con GPS corregido.
+### 🟢 Semáforo de Salud del Sistema
 
-* **El Bot detecta este cambio:** Si MIROVA corrige la distancia o la energía de un evento pasado, el sistema actualiza el registro y marca el dato como `CORRECCION_DATA`, asegurando que tengamos el dato científico final y no solo el preliminar.
+El Dashboard integra una **Barra de Auditoría Técnica** que verifica la sincronización con los satélites:
 
-### 🛑 2. Protección de Evidencia Visual
-
-Si ocurre una corrección de datos antiguos, el bot **bloquea la descarga de nuevas imágenes** para ese evento específico. Esto evita que una foto satelital actual (del momento de la corrección) sobrescriba la foto histórica que corresponde verdaderamente al momento de la alerta.
-
-### 🐦 3. Validación Estructural ("Canario en la Mina")
-
-Antes de procesar datos, el bot verifica la integridad del sitio web. Si MIROVA cambia su estructura interna o la tabla de datos desaparece, el sistema aborta la operación y notifica un error crítico, evitando guardar "falsos negativos" o datos vacíos.
-
-### 🧠 4. Filtros de Cordura (Sanity Checks)
-
-Se aplican reglas lógicas para descartar errores de telemetría del sensor original, como valores de energía negativos (MW < 0) o fechas futuras erróneas provocadas por desajustes en relojes satelitales.
+* **Monitor Operativo:** Confirma que el robot ha procesado los datos exitosamente en el último ciclo.
+* **Sincronización UTC:** Indica la hora exacta de la última captura de datos desde MIROVA.
 
 ---
 
-## 🎯 Filtros de Precisión (Geofencing)
+## 📈 Visualización de Tendencias (V35.1)
 
-Para clasificar los reportes de MIROVA y distinguir entre anomalías volcánicas probables y otros eventos térmicos (como incendios en laderas), se aplica un filtro de distancia referencial respecto al cráter:
+El módulo `visualizador.py` genera gráficos de alta precisión con las siguientes características técnicas:
 
-| Volcán (Chile) | ID MIROVA | Límite Aplicado | Tipo de Estructura |
+* **Sombreado Dinámico Inteligente:** El fondo del gráfico se colorea automáticamente (Verde, Amarillo, Naranja) solo si la energía detectada alcanza los umbrales de alerta, evitando distorsiones visuales en niveles bajos.
+* **Iconografía Multisensor:** Diferenciación visual de la fuente del dato para auditoría científica:
+* `▲` **MODIS**: Sensor histórico de amplio espectro.
+* `■` **VIIRS 375m**: Alta resolución para detección de anomalías pequeñas.
+* `●` **VIIRS 750m**: Alta sensibilidad térmica.
+
+
+* **Etiquetado Automático:** Marcado dinámico del valor **MAX** (en MW) detectado en el periodo mensual y anual.
+
+---
+
+## 🛰️ Estrategia de Captura y Respaldo (V34.1)
+
+El robot ejecuta un ciclo de vigilancia cada 15-30 minutos aplicando una política de **Evidencia Multisensor**:
+
+1. **Detección de Alerta:** Si se detecta **VRP > 0** dentro del radio de seguridad, el sistema identifica el sensor informante y descarga el set de evidencia disponible (hasta 4 gráficos: `logVRP`, `VRP`, `Latest` y `Dist`).
+2. **Soporte Tri-Sensor:** El bot intenta capturar el registro gráfico de los tres sensores principales (**MODIS**, **VIIRS 375m** y **VIIRS 750m**) para el mismo evento, permitiendo una comparación técnica y auditoría visual completa.
+3. **Respaldo en Calma:** En ausencia de alertas (VRP = 0), el sistema prioriza al sensor **VIIRS 375m** para descargar una captura de respaldo diaria, documentando la estabilidad del volcán con la mayor resolución espacial.
+4. **Auditoría de Datos:** El sistema monitorea cambios en el estado de procesamiento de MIROVA (paso de datos NRT a Standard) y actualiza los registros históricos automáticamente.
+
+---
+
+## 🎯 Red de Vigilancia (Configuración OVDAS)
+
+Se aplica un filtro de precisión geográfica (**Geofencing**) para validar que las anomalías térmicas provengan del cráter activo:
+
+| Volcán | ID MIROVA | Límite (km) | Región |
 | --- | --- | --- | --- |
-| **Láscar** | 355100 | 5.0 km | Cráter central |
-| **Lastarria** | 355101 | 3.0 km | Cráter central |
-| **Isluga** | 355030 | 5.0 km | Cráter central |
-| **Villarrica** | 357120 | 5.0 km | Cráter central |
-| **Llaima** | 357110 | 5.0 km | Cráter central |
-| **Nevados de Chillán** | 357070 | 5.0 km | Complejo de domos |
-| **Copahue** | 357090 | 4.0 km | Cráter central |
-| **Puyehue-C. Caulle** | 357150 | **20.0 km** | Complejo Fisural |
-| **Chaitén** | 358030 | 5.0 km | Domo |
-| **Planchón-Peteroa** | 357040 | 3.0 km | Cráter central |
+| **Isluga** | 354030 | 5.0 | Tarapacá |
+| **Láscar** | 355100 | 5.0 | Antofagasta |
+| **Lastarria** | 355160 | 3.0 | Antofagasta |
+| **Peteroa** | 357040 | 3.0 | Maule |
+| **N. de Chillán** | 357060 | 5.0 | Ñuble |
+| **Copahue** | 357080 | 4.0 | Biobío |
+| **Llaima** | 357110 | 5.0 | Araucanía |
+| **Villarrica** | 357120 | 5.0 | Araucanía |
+| **Puyehue-C. Caulle** | 357150 | 20.0 | Los Ríos |
+| **Chaitén** | 358041 | 5.0 | Los Lagos |
 
 ---
 
-## 📂 Bases de Datos Generadas
+## 📂 Estructura de Datos
 
-El bot organiza la información extraída en cuatro tipos de archivos CSV:
-
-1. `registro_vrp_consolidado.csv`: **Bitácora Maestra.** Historial absoluto de todas las detecciones (incluye datos brutos, correcciones y eventos descartados).
-2. `registro_vrp_positivos.csv`: **Resumen de Alertas.** Solo eventos con VRP > 0 MW que cumplen con el criterio de distancia.
-3. `registro_hd_msi_oli.csv`: **Catálogo Visual.** Registro de las imágenes Sentinel/Landsat respaldadas.
-4. **Reportes Individuales por Volcán:** Dentro de la carpeta de imágenes de cada volcán (ej: `imagenes_satelitales/Villarrica/`), se genera un archivo `registro_Villarrica.csv` exclusivo con el historial filtrado de ese volcán específico.
+* `registro_vrp_positivos.csv`: Base de datos histórica utilizada por el visualizador.
+* `imagenes_satelitales/`: Repositorio organizado por volcán y fecha con la evidencia visual de los sensores.
+* `graficos_tendencia/`: Gráficos de actividad térmica procesados para el Dashboard.
+* `bitacora_robot.txt`: Registro técnico de cada ciclo de ejecución.
 
 ---
 
-## 🌍 Personalización
+## 🛠️ Tecnologías y Autoría
 
-### Agregar Volcanes
-
-Para sumar otro volcán disponible en MIROVA:
-
-1. Busca el ID en [MIROVA Volcanoes](https://www.mirovaweb.it/NRT/volcanoes.php).
-2. Agrégalo al diccionario `VOLCANES_CONFIG` en `scraper.py`.
-
-### Ajuste de Horario
-
-El bot convierte la hora UTC de los satélites a **Hora Local de Chile** (Continental). Para otros países, ajustar la zona horaria en la función `convertir_utc_a_chile`.
+* **Motor:** Python 3.9 (Pandas, Matplotlib, BeautifulSoup4).
+* **Infraestructura:** GitHub Actions (Automated Workflows).
+* **Arquitectura:** Mendoza Volcanic.
+* **Asistencia Técnica:** Gemini AI (Google).
 
 ---
 
-## 🛠️ Tecnologías y Créditos
-
-* **Motor:** Python 3.9 (Requests + BeautifulSoup4 + Pandas).
-* **Infraestructura:** GitHub Actions (Ejecución programada).
-* **Fuente de Datos:** [MIROVA (Middle InfraRed Observation of Volcanic Activity)](https://www.mirovaweb.it).
-* *Developed by the University of Turin, Italy (Department of Earth Science).*
-* *Este proyecto es una herramienta independiente y no tiene afiliación oficial con la Universidad de Turín.*
-
-
-
-## 👨‍💻 Autoría y Diseño
-
-* **Concepto y Arquitectura del Sistema:** Nmendoza
-* **Implementación de Código:** Generado con asistencia de IA (Gemini).
+**¿Te gustaría que ahora configuremos el sistema de notificaciones automáticas para que recibas un aviso cuando un volcán supere los 5 MW?**

@@ -21,46 +21,61 @@ BASE_URL = "https://www.mirovaweb.it"
 CARPETA_PRINCIPAL = "monitoreo_satelital"
 NOMBRE_CARPETA_IMAGENES = "imagenes_satelitales"
 RUTA_IMAGENES_BASE = os.path.join(CARPETA_PRINCIPAL, NOMBRE_CARPETA_IMAGENES)
-DB_FILE = os.path.join(CARPETA_PRINCIPAL, "registro_vrp_consolidado.csv")
+
+# DOS BASES DE DATOS
+DB_MASTER = os.path.join(CARPETA_PRINCIPAL, "registro_vrp_consolidado.csv") 
+DB_POSITIVOS = os.path.join(CARPETA_PRINCIPAL, "registro_vrp_positivos.csv")
+
 CARPETA_OBSOLETA = "monitoreo_datos"
 
-# COLUMNAS OFICIALES
+# COLUMNAS OFICIALES (Con Fecha_Chile incluida)
 COLUMNAS_OFICIALES = [
     "timestamp", 
-    "Fecha_Satelite", 
+    "Fecha_Satelite_UTC", 
+    "Fecha_Chile",        
     "Volcan", 
     "Sensor", 
     "VRP_MW", 
-    "Distancia_km",   # Nueva
-    "Clasificacion",  # Nueva
+    "Distancia_km",
+    "Clasificacion",
     "Fecha_Proceso", 
-    "Ruta_Fotos"
+    "Ruta_Fotos",
+    "Tipo_Registro"
 ]
 
-def obtener_hora_chile():
+def obtener_hora_chile_actual():
     try:
-        tz_chile = pytz.timezone('Chile/Continental')
+        tz_chile = pytz.timezone('America/Santiago')
         return datetime.now(tz_chile)
     except: return datetime.now(pytz.utc)
 
+def convertir_utc_a_chile(dt_obj_utc):
+    """ Convierte UTC a Hora Chile (Invierno/Verano automático) """
+    try:
+        utc_zone = pytz.utc
+        dt_utc = dt_obj_utc.replace(tzinfo=utc_zone)
+        chile_zone = pytz.timezone('America/Santiago')
+        dt_chile = dt_utc.astimezone(chile_zone)
+        return dt_chile.strftime("%Y-%m-%d %H:%M:%S")
+    except Exception as e:
+        return dt_obj_utc.strftime("%Y-%m-%d %H:%M:%S")
+
 def modo_nuclear_borrar_todo():
+    """ 
+    ☢️ MODO NUCLEAR: Borra todo para iniciar limpio con la nueva estructura.
     """
-    ⚠️ PELIGRO: Borra todo para reiniciar la base de datos limpia.
-    """
-    print("☢️  MODO NUCLEAR ACTIVADO: Borrando historial corrupto...")
+    print("☢️  BORRANDO HISTORIAL COMPLETO para regeneración limpia...")
     
-    # Borrar carpeta obsoleta
+    # Borrar carpeta obsoleta si existe
     if os.path.exists(CARPETA_OBSOLETA):
         try: shutil.rmtree(CARPETA_OBSOLETA)
         except: pass
 
-    # Borrar carpeta principal (CSVs y Fotos)
+    # Borrar la carpeta principal actual
     if os.path.exists(CARPETA_PRINCIPAL):
-        try: 
-            shutil.rmtree(CARPETA_PRINCIPAL)
-            print("✅ Carpeta 'monitoreo_satelital' eliminada.")
-        except Exception as e: 
-            print(f"⚠️ No se pudo borrar carpeta: {e}")
+        try: shutil.rmtree(CARPETA_PRINCIPAL)
+        print("✅ Carpeta antigua eliminada con éxito.")
+    except: pass
 
 def mapear_url_sensor(nombre_sensor_web):
     s = nombre_sensor_web.upper().strip()
@@ -119,8 +134,15 @@ def descargar_fotos(session, id_volcan, nombre_volcan, sensor_web, fecha_utc_dt)
 
     return rutas_guardadas
 
+def check_evidencia_existente(nombre_volcan, fecha_utc_dt):
+    fecha_carpeta = fecha_utc_dt.strftime("%Y-%m-%d")
+    ruta_dia = os.path.join(RUTA_IMAGENES_BASE, nombre_volcan, fecha_carpeta)
+    if os.path.exists(ruta_dia):
+        if len(os.listdir(ruta_dia)) > 0: return True 
+    return False
+
 def procesar():
-    # 1. EJECUTAR LIMPIEZA COMPLETA (Solicitado por usuario)
+    # 1. EJECUTAR BORRADO NUCLEAR (Solo para esta versión de limpieza)
     modo_nuclear_borrar_todo()
 
     if not os.path.exists(CARPETA_PRINCIPAL): os.makedirs(CARPETA_PRINCIPAL, exist_ok=True)
@@ -128,8 +150,8 @@ def procesar():
     session = requests.Session()
     session.headers.update({'User-Agent': 'Mozilla/5.0'})
     
-    ahora_cl = obtener_hora_chile()
-    print(f"🚀 Iniciando V21.1 (Hard Reset + Columnas Nuevas): {ahora_cl}")
+    ahora_cl_proceso = obtener_hora_chile_actual()
+    print(f"🚀 Iniciando V24.1 (Reinicio Total + Hora CL): {ahora_cl_proceso}")
     
     print(f"🕵️  Consultando {URL_LATEST} ...")
     try:
@@ -145,7 +167,7 @@ def procesar():
             filas = tbody.find_all('tr') if tbody else tabla.find_all('tr')[1:]
             print(f"📊 Filas encontradas: {len(filas)}") 
             
-            # Como borramos todo, no hay claves previas
+            # Como borramos todo, empezamos de cero
             ids_procesados_hoy = set()
 
             for fila in filas:
@@ -153,7 +175,7 @@ def procesar():
                 if len(cols) < 6: continue 
                 
                 try:
-                    hora_str = cols[0].text.strip()
+                    hora_str_utc = cols[0].text.strip()
                     id_volc = cols[1].text.strip()
                     vrp_str = cols[3].text.strip()
                     dist_str = cols[4].text.strip()
@@ -162,11 +184,14 @@ def procesar():
                     if id_volc not in MIS_VOLCANES: continue
                     
                     nombre_limpio = MIS_VOLCANES[id_volc]
-                    dt_obj = datetime.strptime(hora_str, "%d-%b-%Y %H:%M:%S")
-                    unix_time = int(dt_obj.timestamp())
-                    fecha_fmt = dt_obj.strftime("%Y-%m-%d %H:%M:%S")
                     
-                    clave = f"{fecha_fmt}_{nombre_limpio}_{sensor_str}"
+                    # Fechas
+                    dt_obj_utc = datetime.strptime(hora_str_utc, "%d-%b-%Y %H:%M:%S")
+                    unix_time = int(dt_obj_utc.timestamp())
+                    fecha_fmt_utc = dt_obj_utc.strftime("%Y-%m-%d %H:%M:%S")
+                    fecha_fmt_chile = convertir_utc_a_chile(dt_obj_utc) # CONVERSIÓN
+
+                    clave = f"{fecha_fmt_utc}_{nombre_limpio}_{sensor_str}"
                     
                     if clave in ids_procesados_hoy: continue
                     ids_procesados_hoy.add(clave)
@@ -174,25 +199,44 @@ def procesar():
                     vrp_val = float(vrp_str) if vrp_str.replace('.','').isdigit() else 0.0
                     dist_val = float(dist_str) if dist_str.replace('.','').isdigit() else 0.0
                     
+                    # Lógica Alerta vs Evidencia
+                    descargar_ahora = False
+                    tipo_registro = "RUTINA"
                     clasificacion = "NORMAL"
+
+                    # 1. Alerta
                     if vrp_val > 0:
                         if dist_val <= 5.0: clasificacion = "ALERTA VOLCANICA"
                         else: clasificacion = "FALSO POSITIVO"
+                        descargar_ahora = True
+                        tipo_registro = "ALERTA"
+                        print(f"🔥 RECUPERANDO ALERTA: {nombre_limpio} | {fecha_fmt_chile} (CL)")
+
+                    # 2. Evidencia (Como estamos reiniciando, guardará 1 evidencia por día)
+                    else:
+                        clasificacion = "NORMAL"
+                        if "VIIRS" in sensor_str.upper():
+                            if not check_evidencia_existente(nombre_limpio, dt_obj_utc):
+                                descargar_ahora = True
+                                tipo_registro = "EVIDENCIA_DIARIA"
+                                print(f"📸 Recuperando Evidencia: {nombre_limpio} | {fecha_fmt_chile} (CL)")
                     
-                    print(f"🔥 RECUPERANDO: {nombre_limpio} | {fecha_fmt} | Dist:{dist_val}km")
-                    
-                    rutas = descargar_fotos(session, id_volc, nombre_limpio, sensor_str, dt_obj)
+                    rutas = "No descargadas"
+                    if descargar_ahora:
+                        rutas = descargar_fotos(session, id_volc, nombre_limpio, sensor_str, dt_obj_utc)
                     
                     registros_nuevos.append({
                         "timestamp": unix_time,
-                        "Fecha_Satelite": fecha_fmt,
+                        "Fecha_Satelite_UTC": fecha_fmt_utc,
+                        "Fecha_Chile": fecha_fmt_chile,
                         "Volcan": nombre_limpio,
                         "Sensor": sensor_str,
                         "VRP_MW": vrp_val,
                         "Distancia_km": dist_val,
                         "Clasificacion": clasificacion,
-                        "Fecha_Proceso": ahora_cl.strftime("%Y-%m-%d %H:%M:%S"),
-                        "Ruta_Fotos": rutas
+                        "Fecha_Proceso": ahora_cl_proceso.strftime("%Y-%m-%d %H:%M:%S"),
+                        "Ruta_Fotos": rutas,
+                        "Tipo_Registro": tipo_registro
                     })
 
                 except Exception as e: continue
@@ -200,23 +244,28 @@ def procesar():
             # --- GUARDADO ---
             if registros_nuevos:
                 df_new = pd.DataFrame(registros_nuevos)
-                # Ordenar por fecha (opcional)
+                # Ordenar por fecha para que el CSV quede bonito
                 df_new = df_new.sort_values(by="timestamp")
-                # Asegurar columnas
                 df_new = df_new.reindex(columns=COLUMNAS_OFICIALES)
-                
-                df_new.to_csv(DB_FILE, index=False)
-                print(f"💾 CSV Maestro generado desde cero ({len(registros_nuevos)} registros).")
-                
-                # Generar individuales
-                print("🔄 Generando CSVs individuales...")
+
+                # Guardar Master
+                df_new.to_csv(DB_MASTER, index=False)
+                print(f"💾 Master regenerado ({len(registros_nuevos)} registros).")
+
+                # Guardar Positivos
+                df_positivos = df_new[df_new['VRP_MW'] > 0]
+                df_positivos.to_csv(DB_POSITIVOS, index=False)
+                print(f"🔥 Reporte Positivos regenerado.")
+
+                # Guardar Individuales (Solo Positivos)
+                print("🔄 Regenerando carpetas individuales...")
                 for v in df_new['Volcan'].unique():
-                    df_v = df_new[df_new['Volcan'] == v]
+                    df_v = df_new[(df_new['Volcan'] == v) & (df_new['VRP_MW'] > 0)]
                     r = os.path.join(RUTA_IMAGENES_BASE, v, f"registro_{v}.csv")
                     os.makedirs(os.path.dirname(r), exist_ok=True)
                     df_v.to_csv(r, index=False)
             else:
-                print("💤 No se encontraron datos en la tabla (¿Error de conexión?).")
+                print("💤 No se encontraron datos en la tabla.")
 
     except Exception as e:
         print(f"Error general: {e}")

@@ -34,7 +34,7 @@ def generar_grafico_volcan(df_volcan, nombre_volcan, dias, sufijo_archivo, color
     plt.figure(figsize=(10, 6.5))
     ax = plt.gca()
     
-    # AJUSTE: Eje X siempre termina en el momento actual
+    # Eje X siempre termina en el momento actual
     ax.set_xlim([fecha_limite, ahora])
 
     if df_volcan is not None and not df_volcan.empty:
@@ -64,6 +64,7 @@ def generar_grafico_volcan(df_volcan, nombre_volcan, dias, sufijo_archivo, color
 
             plt.legend(loc='upper center', bbox_to_anchor=(0.5, 1.15), ncol=3, fontsize=9, frameon=True, shadow=True)
             
+            # Anotación MAX
             plt.annotate(f"MAX: {v_max} MW", xy=(df_f.loc[df_f['VRP_MW'].idxmax(), 'Fecha_Obj'], v_max),
                          xytext=(10, 10), textcoords='offset points', fontsize=9, fontweight='bold',
                          bbox=dict(boxstyle="round", fc="white", ec=color_tema, alpha=0.9))
@@ -73,11 +74,11 @@ def generar_grafico_volcan(df_volcan, nombre_volcan, dias, sufijo_archivo, color
         plt.text(0.5, 0.5, 'MONITOREO NOMINAL', ha='center', va='center', transform=ax.transAxes, color='gray', fontweight='bold')
 
     # --- MEJORA DE CUADRÍCULA (GRID) ---
-    # Marcadores mayores cada 5 días (con texto)
+    # Marcadores mayores cada 5 días
     ax.xaxis.set_major_locator(mdates.DayLocator(interval=5))
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%d-%m-%Y'))
     
-    # Marcadores menores cada 1 día (las líneas verticales para contar días)
+    # Marcadores menores cada 1 día (para contar visualmente)
     ax.xaxis.set_minor_locator(mdates.DayLocator(interval=1))
     
     # Dibujamos las líneas: sólidas para fechas, punteadas suaves para días intermedios
@@ -100,7 +101,7 @@ def procesar():
         
         if os.path.exists(ARCHIVO_POSITIVOS):
             df = pd.read_csv(ARCHIVO_POSITIVOS)
-            # Aseguramos que las fechas se lean con zona horaria UTC para luego comparar
+            # Conversión de fechas a la zona horaria de Chile
             df['Fecha_Obj'] = pd.to_datetime(df['Fecha_Satelite_UTC']).dt.tz_localize('UTC').dt.tz_convert('America/Santiago')
             df['VRP_MW'] = pd.to_numeric(df['VRP_MW'], errors='coerce')
         else:
@@ -108,5 +109,15 @@ def procesar():
 
         for v in VOLCANES:
             df_v = df[df['Volcan'] == v] if not df.empty and v in df['Volcan'].values else None
+            # Gráfico Mensual (30 días)
             generar_grafico_volcan(df_v, v, 30, "Mensual", "#e67e22")
-            generar_grafico_volcan(df_v, v, 365, "Anual", "#29
+            # Gráfico Anual (365 días)
+            generar_grafico_volcan(df_v, v, 365, "Anual", "#2980b9")
+            
+        actualizar_estado_sistema(True)
+    except Exception as e:
+        print(f"Error procesando gráficos: {e}")
+        actualizar_estado_sistema(False)
+
+if __name__ == "__main__":
+    procesar()

@@ -1,1 +1,1 @@
-timestamp,Fecha_Satelite_UTC,Volcan,Sensor,VRP_MW,Distancia_km,Clasificacion Mirova,Ruta Foto
+timestamp,Fecha_Satelite_UTC,Fecha_Captura_Chile,Volcan,Sensor,VRP_MW,Distancia_km,Clasificacion Mirova,Ruta Foto,Fecha_Proceso_GitHub

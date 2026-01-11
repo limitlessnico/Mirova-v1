@@ -8,7 +8,7 @@ import shutil
 from urllib.parse import urlparse
 import pytz
 
-# --- CONFIGURACIÓN DE LOS 8 VOLCANES CHILENOS ---
+# --- CONFIGURACIÓN DE LOS 10 VOLCANES CHILENOS ---
 VOLCANES_CONFIG = {
     "355100": {"nombre": "Lascar", "limite_km": 5.0},
     "355101": {"nombre": "Lastarria", "limite_km": 3.0},
@@ -60,10 +60,6 @@ def convertir_utc_a_chile(dt_obj_utc):
     except: return dt_obj_utc.strftime("%Y-%m-%d %H:%M:%S")
 
 def limpieza_mantenimiento():
-    """
-    MODO PRODUCCIÓN: Solo borra carpetas basura antiguas.
-    ¡YA NO BORRA EL HISTORIAL PRINCIPAL!
-    """
     if os.path.exists(CARPETA_OBSOLETA):
         try: shutil.rmtree(CARPETA_OBSOLETA)
         except: pass
@@ -147,7 +143,6 @@ def patrullar_hd(session, id_volcan, nombre_volcan, sensor_hd):
             nombre_archivo = f"{sensor_hd}_Latest_Composite.png"
             ruta_final = os.path.join(ruta_carpeta, nombre_archivo)
             
-            # Sobrescribimos siempre. Git es quien decide si guarda el cambio o no.
             r_img = session.get(target_img_url, timeout=30)
             if r_img.status_code == 200:
                 with open(ruta_final, 'wb') as f: f.write(r_img.content)
@@ -163,7 +158,6 @@ def check_evidencia_existente(nombre_volcan, fecha_utc_dt):
     return False
 
 def procesar():
-    # 1. LIMPIEZA DE MANTENIMIENTO (Ya no es Nuclear)
     limpieza_mantenimiento()
 
     if not os.path.exists(CARPETA_PRINCIPAL): os.makedirs(CARPETA_PRINCIPAL, exist_ok=True)
@@ -172,7 +166,7 @@ def procesar():
     session.headers.update({'User-Agent': 'Mozilla/5.0'})
     ahora_cl_proceso = obtener_hora_chile_actual()
     
-    print(f"🚀 Iniciando V28.0 (PRODUCCIÓN - Historial Activo): {ahora_cl_proceso}")
+    print(f"🚀 Iniciando V29.0 (Anti-Duplicidad + Historial Activo): {ahora_cl_proceso}")
     
     # ---------------------------------------------------------
     # FASE 1: EL ESPÍA (Latest.php para MODIS/VIIRS)
@@ -194,7 +188,11 @@ def procesar():
             
             ids_procesados_hoy = set()
             
-            # --- CARGAR HISTORIAL PREVIO (Para no duplicar filas en CSV) ---
+            # NUEVO V29: Control de qué sensores ya descargamos en ESTA ejecución
+            # Para evitar bajar la foto de las 14:19 pensando que es la de las 14:00
+            sensores_vistos_en_ciclo = set() 
+            
+            # DB Keys para no duplicar CSV
             db_keys = set()
             if os.path.exists(DB_MASTER):
                 try:
@@ -231,37 +229,54 @@ def procesar():
 
                     clave = f"{fecha_fmt_utc}_{nombre_v}_{sensor_str}"
                     
-                    # Evitar duplicados de la sesión actual
                     if clave in ids_procesados_hoy: continue
                     ids_procesados_hoy.add(clave)
                     
-                    # Evitar duplicados del historial guardado
                     if clave in db_keys: continue
                     
                     vrp_val = float(vrp_str) if vrp_str.replace('.','').isdigit() else 0.0
                     dist_val = float(dist_str) if dist_str.replace('.','').isdigit() else 0.0
                     
-                    # LÓGICA VRP
+                    # LOGICA VRP V29
                     descargar_ahora = False
                     tipo_registro = "RUTINA"
                     clasificacion = "NORMAL"
                     es_alerta_real = False
+                    
+                    # CLAVE DE SENSOR (Ej: Lascar_VIIRS375)
+                    clave_sensor_volcan = f"{nombre_v}_{sensor_str}"
+
+                    # Verificar si este sensor ya se actualizó con un dato MÁS NUEVO en este ciclo
+                    # Como la tabla viene ordenada por fecha desc (lo nuevo primero), 
+                    # si ya vimos este sensor, significa que este dato es VIEJO y la foto en la web ya cambió.
+                    es_el_dato_mas_nuevo = False
+                    if clave_sensor_volcan not in sensores_vistos_en_ciclo:
+                        es_el_dato_mas_nuevo = True
+                        sensores_vistos_en_ciclo.add(clave_sensor_volcan)
 
                     if vrp_val > 0:
                         if dist_val <= limite_km:
                             clasificacion = "ALERTA VOLCANICA"
-                            descargar_ahora = True
                             tipo_registro = "ALERTA"
                             es_alerta_real = True
                             print(f"🔥 ALERTA NUEVA: {nombre_v} ({sensor_str}) | {dist_val}km")
+                            
+                            # SOLO descargamos si es el dato más fresco. 
+                            # Si es un dato viejo (ej: 14:00 y ya vimos 14:19), NO bajamos foto para no falsear.
+                            if es_el_dato_mas_nuevo:
+                                descargar_ahora = True
+                            else:
+                                print(f"   🛑 Saltando descarga img antigua ({hora_str_utc}) para evitar duplicado falso.")
+                                rutas = "Imagen Sobreescrita en Web"
+
                         else:
                             clasificacion = "FALSO POSITIVO"
-                            print(f"⚠️  Falso Positivo (Ignorado): {nombre_v} a {dist_val}km")
+                            print(f"⚠️  Falso Positivo: {nombre_v} a {dist_val}km")
                     else:
                         clasificacion = "NORMAL"
-                        # Solo VIIRS375 guarda evidencia diaria si no hay nada más
                         if "VIIRS375" in sensor_str.upper():
-                            if not check_evidencia_existente(nombre_v, dt_obj_utc):
+                            # Para evidencia diaria también aplicamos la lógica: solo la más nueva
+                            if not check_evidencia_existente(nombre_v, dt_obj_utc) and es_el_dato_mas_nuevo:
                                 descargar_ahora = True
                                 tipo_registro = "EVIDENCIA_DIARIA"
                                 print(f"📸 Evidencia Calma: {nombre_v}")
@@ -269,6 +284,8 @@ def procesar():
                     rutas = "No descargadas"
                     if descargar_ahora:
                         rutas = descargar_fotos_vrp(session, id_volc, nombre_v, sensor_str, dt_obj_utc)
+                    elif not es_el_dato_mas_nuevo and es_alerta_real:
+                         rutas = "Imagen No Disponible (Sobreescrita)"
                     
                     dato_master = {
                         "timestamp": unix_time,
@@ -303,7 +320,6 @@ def procesar():
     for vid, config in VOLCANES_CONFIG.items():
         nombre_v = config["nombre"]
         
-        # Patrullar MSI
         ruta_msi = patrullar_hd(session, vid, nombre_v, "MSI")
         if ruta_msi:
             registros_hd.append({
@@ -315,7 +331,6 @@ def procesar():
                 "Fecha_Proceso": ahora_cl_proceso.strftime("%Y-%m-%d %H:%M:%S")
             })
             
-        # Patrullar OLI
         ruta_oli = patrullar_hd(session, vid, nombre_v, "OLI")
         if ruta_oli:
             registros_hd.append({
@@ -328,10 +343,9 @@ def procesar():
             })
 
     # ---------------------------------------------------------
-    # GUARDADO INCREMENTAL (APPEND MODE)
+    # GUARDADO INCREMENTAL
     # ---------------------------------------------------------
     
-    # 1. MASTER (Concatenar)
     if registros_todos:
         df_new = pd.DataFrame(registros_todos).reindex(columns=COLUMNAS_MASTER)
         if os.path.exists(DB_MASTER):
@@ -343,7 +357,6 @@ def procesar():
         df_comb.to_csv(DB_MASTER, index=False)
         print(f"💾 Master actualizado (+{len(registros_todos)}).")
 
-    # 2. POSITIVOS (Concatenar)
     if registros_positivos:
         df_new_pos = pd.DataFrame(registros_positivos).reindex(columns=COLUMNAS_REPORTE)
         if os.path.exists(DB_POSITIVOS):
@@ -356,29 +369,20 @@ def procesar():
         df_comb_pos.to_csv(DB_POSITIVOS, index=False)
         print(f"🔥 Reporte Alertas actualizado.")
         
-        # Individuales
         for v in df_comb_pos['Volcan'].unique():
             df_v = df_comb_pos[df_comb_pos['Volcan'] == v]
             r = os.path.join(RUTA_IMAGENES_BASE, v, f"registro_{v}.csv")
             os.makedirs(os.path.dirname(r), exist_ok=True)
             df_v.to_csv(r, index=False)
 
-    # 3. HD REPORT (Concatenar si es nuevo día/imagen)
     if registros_hd:
-        # Aquí la lógica es simple: si Git detecta cambios en la foto, guardamos la fila en CSV.
-        # Pero como el CSV es texto, mejor lo sobrescribimos o adjuntamos. 
-        # Para simplificar y evitar spam en el CSV HD (que tendría miles de líneas iguales),
-        # lo dejamos en modo 'append' solo si cambió la fecha detectada.
-        # Por ahora, modo simple: Append.
         df_new_hd = pd.DataFrame(registros_hd).reindex(columns=COLUMNAS_HD)
         if os.path.exists(DB_HD):
              try:
                 df_old_hd = pd.read_csv(DB_HD)
-                # Evitar duplicados exactos (misma fecha, mismo sensor)
                 df_comb_hd = pd.concat([df_old_hd, df_new_hd]).drop_duplicates(subset=['Fecha_Detectada', 'Volcan', 'Sensor'])
              except: df_comb_hd = df_new_hd
         else: df_comb_hd = df_new_hd
-        
         df_comb_hd.to_csv(DB_HD, index=False)
         print(f"💎 Reporte HD actualizado.")
 

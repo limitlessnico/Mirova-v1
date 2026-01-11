@@ -1,4 +1,4 @@
-import pd
+import pandas as pd  # <--- Esta es la línea corregida
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import os

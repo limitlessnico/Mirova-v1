@@ -1,0 +1,5 @@
+ID,timestamp,Fecha_Satelite,Volcan,Sensor,VRP_MW,Fecha_Proceso,Ruta_Fotos
+8,1768048800,2026-01-10 12:40:00,Llaima,MODIS,0,2026-01-10 21:32:26,monitoreo_satelital/imagenes_satelitales/Llaima/2026-01-10/12-40-00_Llaima_MODIS_Latest10NTI.png
+9,1768073041,2026-01-10 19:24:01,Llaima,VIIRS-750m,0,2026-01-10 21:32:26,monitoreo_satelital/imagenes_satelitales/Llaima/2026-01-10/19-24-01_Llaima_VIIRS750_Latest10NTI.png
+10,1768073041,2026-01-10 19:24:01,Llaima,VIIRS-375m,0,2026-01-10 21:32:26,monitoreo_satelital/imagenes_satelitales/Llaima/2026-01-10/19-24-01_Llaima_VIIRS375_Latest10NTI.png
+11,1768073041,2026-01-10 19:24:01,Llaima,MIR-Combined,0,2026-01-10 21:32:26,monitoreo_satelital/imagenes_satelitales/Llaima/2026-01-10/19-24-01_Llaima_COMB_logVRP.png

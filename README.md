@@ -74,5 +74,9 @@ El bot convierte la hora UTC de MIROVA a **Hora Local de Chile** (Continental). 
 * **Fuente de Datos Principal:** [MIROVA (Middle InfraRed Observation of Volcanic Activity)](https://www.mirovaweb.it).
     * *Developed by the University of Turin, Italy (Department of Earth Science).*
     * *Este proyecto es una herramienta independiente y no tiene afiliación oficial con la Universidad de Turín.*
+    * ## 👨‍💻 Autoría y Diseño
+
+* **Concepto y Arquitectura del Sistema:** Nmendoza
+* **Implementación de Código:** Generado con asistencia de IA (Gemini).
 
 ---

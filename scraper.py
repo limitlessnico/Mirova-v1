@@ -105,14 +105,13 @@ def descargar_fotos_vrp(session, id_volcan, nombre_volcan, sensor_web, fecha_utc
             if url:
                 nombre_archivo = f"{prefijo}{tipo}.png"
                 ruta_final = os.path.join(ruta_dia, nombre_archivo)
-                # V32: Sobrescribimos si existe, para asegurar que tenemos la versión corregida de la imagen
-                if os.path.exists(ruta_final):
-                    try: os.remove(ruta_final)
-                    except: pass
-                
-                r_img = session.get(url, timeout=20)
-                if r_img.status_code == 200:
-                    with open(ruta_final, 'wb') as f: f.write(r_img.content)
+                # En V33: NO borramos si existe, para proteger la foto original
+                if not os.path.exists(ruta_final):
+                    r_img = session.get(url, timeout=20)
+                    if r_img.status_code == 200:
+                        with open(ruta_final, 'wb') as f: f.write(r_img.content)
+                        archivos_bajados.append(ruta_final)
+                else:
                     archivos_bajados.append(ruta_final)
         
         if archivos_bajados:
@@ -167,7 +166,7 @@ def procesar():
     session.headers.update({'User-Agent': 'Mozilla/5.0'})
     ahora_cl_proceso = obtener_hora_chile_actual()
     
-    print(f"🚀 Iniciando V32.0 (Auditor Total: Distancia + MW): {ahora_cl_proceso}")
+    print(f"🚀 Iniciando V33.0 (Auditoría Estricta + Protección de Fotos): {ahora_cl_proceso}")
     
     # ---------------------------------------------------------
     # FASE 1: EL ESPÍA (Latest.php para MODIS/VIIRS)
@@ -190,8 +189,7 @@ def procesar():
             ids_procesados_hoy = set()
             sensores_vistos_en_ciclo = set() 
             
-            # MEMORIA INTELIGENTE: Recordamos Distancia Y MW para detectar cambios
-            # Clave: "Fecha_Volcan_Sensor" -> Valor: { 'dist': float, 'mw': float }
+            # MEMORIA INTELIGENTE
             db_conocimiento = {}
             
             if os.path.exists(DB_MASTER):
@@ -206,7 +204,6 @@ def procesar():
                         m_val = float(row.get('VRP_MW', 0.0))
                         
                         k = f"{f_sat}_{volc}_{sens}"
-                        # Guardamos ambos valores
                         db_conocimiento[k] = {'dist': d_val, 'mw': m_val}
                 except: pass
 
@@ -234,18 +231,22 @@ def procesar():
 
                     clave = f"{fecha_fmt_utc}_{nombre_v}_{sensor_str}"
                     
-                    # Evitar duplicados del MISMO ciclo
                     if clave in ids_procesados_hoy: continue
                     ids_procesados_hoy.add(clave)
                     
-                    # --- LECTURA DE VALORES ACTUALES ---
-                    vrp_val = float(vrp_str) if vrp_str.replace('.','').isdigit() else 0.0
+                    # --- LECTURA DE VALORES (Sanitizada V33) ---
+                    # MW puede venir vacio o con errores
+                    if vrp_str.replace('.','').isdigit():
+                        vrp_val = float(vrp_str)
+                    else:
+                        vrp_val = 0.0
+
                     if dist_str.replace('.','').isdigit():
                         dist_val = float(dist_str)
                     else:
                         dist_val = 999.9
 
-                    # --- AUDITORÍA DE CAMBIOS (V32) ---
+                    # --- AUDITORÍA DE CAMBIOS ---
                     es_correccion = False
                     tipo_correccion = ""
                     
@@ -255,13 +256,11 @@ def procesar():
                         mw_old = datos_old['mw']
                         
                         cambio_dist = abs(dist_val - dist_old) > 0.05
-                        cambio_mw = abs(vrp_val - mw_old) > 0.5 # Tolerancia de 0.5 MW
+                        cambio_mw = abs(vrp_val - mw_old) > 0.5 
                         
                         if not cambio_dist and not cambio_mw:
-                            # Todo igual, es un duplicado real
-                            continue
+                            continue # DUPLICADO EXACTO
                         else:
-                            # Algo cambió
                             es_correccion = True
                             if cambio_dist and cambio_mw: tipo_correccion = "DIST+MW"
                             elif cambio_dist: tipo_correccion = "DIST"
@@ -292,9 +291,20 @@ def procesar():
                             es_alerta_real = True
                             print(f"🔥 ALERTA ACTIVA: {nombre_v} ({sensor_str}) | {dist_val}km | {vrp_val}MW")
                             
-                            # Descargar si es el más nuevo del ciclo (y si hubo corrección, bajamos la nueva foto)
+                            # LOGICA DE DESCARGA V33 (PROTECCIÓN)
                             if es_el_dato_mas_nuevo:
-                                descargar_ahora = True
+                                if es_correccion:
+                                    # Si es corrección, SOLO bajamos si NO tenemos evidencia previa.
+                                    # Si ya tenemos foto, la protegemos para no bajar una desfasada.
+                                    if not check_evidencia_existente(nombre_v, dt_obj_utc):
+                                        descargar_ahora = True
+                                        print("   ⚠️ Bajando evidencia tardía (No existía).")
+                                    else:
+                                        print("   🛡️ Corrección Numérica: Manteniendo foto original NRT.")
+                                        rutas = "Foto Original Conservada"
+                                else:
+                                    # Dato nuevo, bajamos foto nueva
+                                    descargar_ahora = True
                             else:
                                 rutas = "Imagen Sobreescrita en Web"
                         else:
@@ -303,17 +313,18 @@ def procesar():
                     else:
                         clasificacion = "NORMAL"
                         if "VIIRS375" in sensor_str.upper():
-                            # Si es corrección de un evento diario, bajamos de nuevo
-                            should_download = (not check_evidencia_existente(nombre_v, dt_obj_utc)) or es_correccion
-                            if should_download and es_el_dato_mas_nuevo:
+                            should_download = (not check_evidencia_existente(nombre_v, dt_obj_utc))
+                            # En correcciones de evidencia diaria, mejor NO tocar para no mezclar fotos
+                            if should_download and es_el_dato_mas_nuevo and not es_correccion:
                                 descargar_ahora = True
                                 tipo_registro = "EVIDENCIA_DIARIA"
-                                if es_correccion: tipo_registro = "CORREC_EVIDENCIA"
                                 print(f"📸 Evidencia: {nombre_v}")
                     
                     rutas = "No descargadas"
                     if descargar_ahora:
                         rutas = descargar_fotos_vrp(session, id_volc, nombre_v, sensor_str, dt_obj_utc)
+                    elif not descargar_ahora and es_correccion and "Foto Original" in locals().get('rutas', ''):
+                        pass # Ya definimos rutas arriba
                     elif not es_el_dato_mas_nuevo and es_alerta_real:
                          rutas = "Imagen No Disponible (Sobreescrita)"
                     

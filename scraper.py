@@ -129,3 +129,45 @@ def procesar():
                 "Fecha_Chile": convertir_utc_a_chile(dt_utc),
                 "Volcan": nombre_v,
                 "Sensor": sensor_str,
+                "VRP_MW": vrp_val,
+                "Distancia_km": dist_val,
+                "Clasificacion": obtener_nivel_mirova(vrp_val, es_alerta_distancia),
+                "Fecha_Proceso": ahora_cl.strftime("%Y-%m-%d %H:%M:%S")
+            }
+            nuevos_datos.append(dato)
+
+            if es_alerta_distancia or (vrp_val == 0 and "375" in sensor_str):
+                descargar_set_completo(session, id_v, nombre_v, dt_utc)
+
+        if nuevos_datos:
+            df_new = pd.DataFrame(nuevos_datos)
+            if os.path.exists(DB_MASTER):
+                df_old = pd.read_csv(DB_MASTER)
+                df_master = pd.concat([df_old, df_new]).drop_duplicates(subset=["Fecha_Satelite_UTC", "Volcan", "Sensor"])
+            else:
+                df_master = df_new
+
+            def reclasificar_fila(row):
+                for _, cfg in VOLCANES_CONFIG.items():
+                    if cfg["nombre"] == row['Volcan']:
+                        d_lim = cfg["limite_km"]
+                        es_al = (row['VRP_MW'] > 0 and row['Distancia_km'] <= d_lim)
+                        return obtener_nivel_mirova(row['VRP_MW'], es_al)
+                return row['Clasificacion']
+
+            df_master['Clasificacion'] = df_master.apply(reclasificar_fila, axis=1)
+            df_master.to_csv(DB_MASTER, index=False)
+            
+            niveles_intensos = ["Muy Bajo", "Bajo", "Moderado", "Alto"]
+            df_pos = df_master[df_master['Clasificacion'].isin(niveles_intensos)]
+            df_pos.to_csv(DB_POSITIVOS, index=False)
+            
+            log_bitacora(f"💾 CSVs sincronizados y reclasificados. Total master: {len(df_master)}")
+
+    except Exception as e:
+        log_bitacora(f"❌ ERROR GENERAL: {e}")
+
+    log_bitacora("✅ CICLO FINALIZADO EXITOSAMENTE.\n")
+
+if __name__ == "__main__":
+    procesar()

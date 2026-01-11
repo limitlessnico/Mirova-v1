@@ -1,11 +1,3 @@
-Toda la razón, ese es un detalle muy útil para el orden y se nos estaba pasando en la documentación.
-
-Aquí tienes el `README.md` **definitivo y completo**. Agregué el punto **4** en la sección de Bases de Datos explicando que también se generan reportes individuales dentro de cada carpeta.
-
-Copia y pega todo esto:
-
----
-
 # 🌋 VolcanoBot - Automatización de Vigilancia sobre Plataforma MIROVA
 
 **VolcanoBot** es una herramienta de **automatización de consultas** diseñada para optimizar el seguimiento de la actividad volcánica en Chile. Su función exclusiva es consultar, organizar y respaldar periódicamente la información pública disponible en la plataforma científica **MIROVA** (Middle InfraRed Observation of Volcanic Activity), desarrollada por la Universidad de Turín.

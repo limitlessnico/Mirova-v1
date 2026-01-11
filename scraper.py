@@ -18,17 +18,18 @@ try:
 except ImportError:
     pass
 
-# --- CONFIGURACIÓN DE NOMBRES ---
+# --- CONFIGURACIÓN ---
 VOLCANES = {"355100": "Lascar", "357120": "Villarrica", "357110": "Llaima"}
 BASE_URL = "https://www.mirovaweb.it"
 
-# 1. CAMBIO DE NOMBRE: Carpeta Principal
+# Carpetas Nuevas
 CARPETA_PRINCIPAL = "monitoreo_satelital"
-# 2. CAMBIO DE NOMBRE: Subcarpeta de Imágenes
 NOMBRE_CARPETA_IMAGENES = "imagenes_satelitales"
-
 RUTA_IMAGENES_BASE = os.path.join(CARPETA_PRINCIPAL, NOMBRE_CARPETA_IMAGENES)
 DB_FILE = os.path.join(CARPETA_PRINCIPAL, "registro_vrp_consolidado.csv")
+
+# Carpeta Antigua a eliminar
+CARPETA_OBSOLETA = "monitoreo_datos"
 
 def obtener_hora_chile():
     try:
@@ -36,9 +37,21 @@ def obtener_hora_chile():
         return datetime.now(tz_chile)
     except: return datetime.now(pytz.utc)
 
-def limpiar_todo():
-    """ MODO PRUEBAS: Borra la carpeta nueva para iniciar limpio. """
-    print(f"🧹 LIMPIEZA ACTIVADA: Borrando {CARPETA_PRINCIPAL}...")
+def limpiar_basura():
+    """ 
+    1. Borra la carpeta obsoleta 'monitoreo_datos' si existe.
+    2. (Modo Pruebas) Borra la carpeta actual para iniciar limpio.
+    """
+    # 1. Eliminar carpeta antigua (solicitud usuario)
+    if os.path.exists(CARPETA_OBSOLETA):
+        try:
+            shutil.rmtree(CARPETA_OBSOLETA)
+            print(f"🗑️ Carpeta obsoleta '{CARPETA_OBSOLETA}' eliminada con éxito.")
+        except Exception as e:
+            print(f"⚠️ No se pudo borrar carpeta antigua: {e}")
+
+    # 2. Limpieza de pruebas de la carpeta actual
+    print(f"🧹 LIMPIEZA DE PRUEBAS: Borrando {CARPETA_PRINCIPAL}...")
     if os.path.exists(CARPETA_PRINCIPAL):
         try: shutil.rmtree(CARPETA_PRINCIPAL)
         except: pass
@@ -57,12 +70,9 @@ def validar_y_corregir_fecha(fecha_ocr, fecha_sistema):
         return fecha_corregida
     return fecha_ocr
 
-def leer_fecha_de_imagen(session, img_url, fecha_referencia_cl):
+def leer_fecha_de_imagen_bytes(contenido_imagen, fecha_referencia_cl):
     try:
-        res = session.get(img_url, timeout=10)
-        if res.status_code != 200: return None, None
-        
-        imagen_original = Image.open(BytesIO(res.content))
+        imagen_original = Image.open(BytesIO(contenido_imagen))
         imagen_procesada = procesar_imagen_ocr(imagen_original)
         texto_leido = pytesseract.image_to_string(imagen_procesada, config='--psm 6')
         
@@ -78,17 +88,41 @@ def leer_fecha_de_imagen(session, img_url, fecha_referencia_cl):
                 except: pass
             
             if fecha_obj:
-                fecha_obj = validar_y_corregir_fecha(fecha_obj, fecha_referencia_cl)
-                return fecha_obj, res.content
-        return None, res.content
-    except: return None, None
+                return validar_y_corregir_fecha(fecha_obj, fecha_referencia_cl)
+        return None
+    except: return None
 
 def obtener_etiqueta_sensor(codigo):
-    mapa = {"MOD": "MODIS", "VIR": "VIIRS-750m", "VIR375": "VIIRS-375m", "MIR": "MIR-Combined"}
+    # --- CAMBIO DE NOMBRES SOLICITADO ---
+    mapa = {
+        "MOD": "MODIS", 
+        "VIR": "VIIRS",       # Antes VIIRS-750m
+        "VIR375": "VIIRS375", # Antes VIIRS-375m
+        "MIR": "MIR-Combined"
+    }
     return mapa.get(codigo, codigo)
 
+def buscar_distancia_en_html(soup_text):
+    try:
+        patron = r"Dist\s*[=:]\s*([\d\.]+)"
+        match = re.search(patron, soup_text, re.IGNORECASE)
+        if match: return float(match.group(1))
+    except: pass
+    return 0.0
+
+def descargar_y_guardar(session, url, ruta_guardado):
+    try:
+        r = session.get(url, timeout=10)
+        if r.status_code == 200:
+            with open(ruta_guardado, 'wb') as f:
+                f.write(r.content)
+            return True
+    except: pass
+    return False
+
 def procesar():
-    limpiar_todo() # Limpieza para pruebas
+    # Ejecuta la limpieza (Borra carpeta vieja y limpia la nueva para pruebas)
+    limpiar_basura()
 
     if not os.path.exists(CARPETA_PRINCIPAL): 
         os.makedirs(CARPETA_PRINCIPAL, exist_ok=True)
@@ -101,13 +135,13 @@ def procesar():
     fecha_exec_simple = ahora_cl.strftime("%Y-%m-%d")
     hora_exec_simple = ahora_cl.strftime("%H:%M:%S")
     
-    print(f"🕒 Iniciando V12.0 (Estructura y CSVs Individuales): {fecha_proceso_str}")
+    print(f"🕒 Iniciando V15.0 (Limpieza y Nombres Cortos): {fecha_proceso_str}")
     registros_nuevos = []
     contador_id = 0
 
     for vid, nombre_v in VOLCANES.items():
         for modo in ["MOD", "VIR", "VIR375", "MIR"]:
-            s_label = obtener_etiqueta_sensor(modo)
+            s_label = obtener_etiqueta_sensor(modo) # Ahora devuelve VIIRS o VIIRS375
             url_sitio = f"{BASE_URL}/NRT/volcanoDetails_{modo}.php?volcano_id={vid}"
             
             try:
@@ -116,38 +150,45 @@ def procesar():
                 if res.status_code != 200: continue
                 soup = BeautifulSoup(res.text, 'html.parser')
 
-                # Buscar Imagen
-                img_url_final = None
+                # 1. Detectar las 4 imágenes
+                urls_imagenes = {"Latest": None, "VRP": None, "LogVRP": None, "Dist": None}
                 tags = soup.find_all(['img', 'a'])
-                palabras_clave = ['Latest', 'VRP', 'Dist', 'log', 'Time', 'Map']
+                
                 for tag in tags:
                     src = tag.get('src') or tag.get('href')
                     if not src: continue
-                    if any(k in src for k in palabras_clave) and src.lower().endswith(('.png', '.jpg')):
-                        if src.startswith('http'): img_url_final = src
-                        else: img_url_final = f"{BASE_URL}/{src.replace('../', '').lstrip('/')}"
-                        break 
+                    if src.startswith('http'): full_url = src
+                    else: full_url = f"{BASE_URL}/{src.replace('../', '').lstrip('/')}"
+                    
+                    lower_src = src.lower()
+                    if not lower_src.endswith(('.png', '.jpg', '.jpeg')): continue
 
-                # OCR
+                    if "latest10nti" in lower_src: urls_imagenes["Latest"] = full_url
+                    elif "logvrp" in lower_src: urls_imagenes["LogVRP"] = full_url
+                    elif "_vrp" in lower_src: urls_imagenes["VRP"] = full_url
+                    elif "_dist" in lower_src: urls_imagenes["Dist"] = full_url
+
+                # 2. OCR
                 fecha_detectada = None
-                contenido_imagen = None
+                contenido_latest = None
                 origen = "..."
-                if img_url_final:
-                    fecha_obj, contenido_descargado = leer_fecha_de_imagen(session, img_url_final, ahora_cl)
-                    contenido_imagen = contenido_descargado
-                    if fecha_obj:
-                        fecha_detectada = fecha_obj
-                        origen = "✅ OCR"
-                    else:
-                        origen = "❌ FALLBACK"
+                
+                if urls_imagenes["Latest"]:
+                    try:
+                        resp_img = session.get(urls_imagenes["Latest"], timeout=10)
+                        if resp_img.status_code == 200:
+                            contenido_latest = resp_img.content
+                            fecha_detectada = leer_fecha_de_imagen_bytes(contenido_latest, ahora_cl)
+                    except: pass
 
-                # Lógica de Fechas
                 if fecha_detectada:
+                    origen = "✅ OCR"
                     fecha_satelite_str = fecha_detectada.strftime("%Y-%m-%d %H:%M:%S")
                     unix_time = int(fecha_detectada.timestamp())
                     fecha_carpeta = fecha_detectada.strftime("%Y-%m-%d")
                     hora_archivo = fecha_detectada.strftime("%H:%M:%S")
                 else:
+                    origen = "❌ FALLBACK"
                     fecha_satelite_str = f"{fecha_exec_simple} {hora_exec_simple}"
                     unix_time = int(ahora_cl.timestamp())
                     fecha_carpeta = fecha_exec_simple
@@ -155,70 +196,76 @@ def procesar():
 
                 print(f"   👁️ {nombre_v} {s_label} -> {fecha_satelite_str} [{origen}]")
 
-                # --- RUTAS NUEVAS ---
-                # monitoreo_satelital / imagenes_satelitales / Volcan / Fecha
-                ruta_carpeta_volcan = os.path.join(RUTA_IMAGENES_BASE, nombre_v) # Carpeta del volcán
-                ruta_carpeta_dia = os.path.join(ruta_carpeta_volcan, fecha_carpeta) # Carpeta del día
+                # 3. Guardar Imágenes
+                ruta_carpeta_volcan = os.path.join(RUTA_IMAGENES_BASE, nombre_v)
+                ruta_carpeta_dia = os.path.join(ruta_carpeta_volcan, fecha_carpeta)
                 os.makedirs(ruta_carpeta_dia, exist_ok=True)
+                
+                if "✅" in origen: prefijo = hora_archivo.replace(":", "-") + "_"
+                else: prefijo = hora_exec_simple.replace(":", "-") + "_Sys_"
 
-                vrp = "0"
+                ruta_foto_principal = "No encontrada"
+
+                for tipo, url in urls_imagenes.items():
+                    if url:
+                        nombre_orig = os.path.basename(urlparse(url).path)
+                        nombre_final = f"{prefijo}{nombre_orig}"
+                        ruta_final = os.path.join(ruta_carpeta_dia, nombre_final)
+                        
+                        if tipo == "Latest" and contenido_latest:
+                            with open(ruta_final, 'wb') as f: f.write(contenido_latest)
+                            ruta_foto_principal = ruta_final
+                        else:
+                            descargar_y_guardar(session, url, ruta_final)
+
+                # 4. Datos VRP/Dist
+                vrp_valor = 0.0
+                distancia_km = 0.0
                 for b in soup.find_all('b'):
                     if "VRP =" in b.text:
-                        vrp = b.text.split('=')[-1].replace('MW', '').strip()
+                        try:
+                            vrp_txt = b.text.split('=')[-1].replace('MW', '').strip()
+                            vrp_valor = float(vrp_txt) if vrp_txt != "NaN" else 0.0
+                        except: pass
                         break
                 
-                # Guardar Imagen
-                ruta_foto_csv = "Sin descarga"
-                if img_url_final and contenido_imagen:
-                    if "✅" in origen: prefijo = hora_archivo.replace(":", "-") + "_"
-                    else: prefijo = hora_exec_simple.replace(":", "-") + "_Sys_"
-                    
-                    nombre_orig = os.path.basename(urlparse(img_url_final).path)
-                    nombre_final = f"{prefijo}{nombre_orig}"
-                    ruta_archivo = os.path.join(ruta_carpeta_dia, nombre_final)
-                    ruta_foto_csv = ruta_archivo
-                    
-                    with open(ruta_archivo, 'wb') as f: f.write(contenido_imagen)
+                if vrp_valor > 0:
+                    distancia_km = buscar_distancia_en_html(soup.get_text())
 
-                # Agregar al registro
+                es_volcanico = False
+                if vrp_valor > 0 and distancia_km <= 5.0: es_volcanico = True
+                
                 registros_nuevos.append({
                     "ID": contador_id,
                     "timestamp": unix_time,
                     "Fecha_Satelite": fecha_satelite_str,
                     "Volcan": nombre_v,
                     "Sensor": s_label,
-                    "VRP_MW": vrp,
+                    "VRP_MW": vrp_valor,
+                    "Distancia_km": distancia_km,
+                    "Es_Volcanico": es_volcanico,
                     "Fecha_Proceso": fecha_proceso_str,
-                    "Ruta_Fotos": ruta_foto_csv
+                    "Ruta_Fotos": ruta_foto_principal
                 })
                 contador_id += 1
 
             except Exception as e:
                 print(f"⚠️ Error en {nombre_v}: {e}")
 
-    # --- GUARDADO DE CSVS ---
+    # --- GUARDAR CSVS ---
     if registros_nuevos:
-        cols = ["ID", "timestamp", "Fecha_Satelite", "Volcan", "Sensor", "VRP_MW", "Fecha_Proceso", "Ruta_Fotos"]
+        cols = ["ID", "timestamp", "Fecha_Satelite", "Volcan", "Sensor", "VRP_MW", "Distancia_km", "Es_Volcanico", "Fecha_Proceso", "Ruta_Fotos"]
         df_completo = pd.DataFrame(registros_nuevos)
         df_completo = df_completo.reindex(columns=cols)
         
-        # 1. GUARDAR CSV CONSOLIDADO (TODOS)
         df_completo.to_csv(DB_FILE, index=False)
         print(f"💾 CSV Maestro generado: {DB_FILE}")
         
-        # 2. GUARDAR CSV INDIVIDUALES (POR VOLCÁN)
-        lista_volcanes = df_completo['Volcan'].unique()
-        
-        for v in lista_volcanes:
-            # Filtramos solo los datos de este volcán
+        for v in df_completo['Volcan'].unique():
             df_volcan = df_completo[df_completo['Volcan'] == v]
-            
-            # Ruta: monitoreo_satelital/imagenes_satelitales/Lascar/registro_Lascar.csv
             ruta_csv_volcan = os.path.join(RUTA_IMAGENES_BASE, v, f"registro_{v}.csv")
-            
-            # Guardamos
             df_volcan.to_csv(ruta_csv_volcan, index=False)
-            print(f"   📄 CSV Individual generado: {ruta_csv_volcan}")
+            print(f"   📄 CSV Individual: {ruta_csv_volcan}")
 
 if __name__ == "__main__":
     procesar()

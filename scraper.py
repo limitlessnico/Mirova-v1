@@ -105,12 +105,13 @@ def descargar_fotos_vrp(session, id_volcan, nombre_volcan, sensor_web, fecha_utc
             if url:
                 nombre_archivo = f"{prefijo}{tipo}.png"
                 ruta_final = os.path.join(ruta_dia, nombre_archivo)
-                if not os.path.exists(ruta_final):
-                    r_img = session.get(url, timeout=20)
-                    if r_img.status_code == 200:
-                        with open(ruta_final, 'wb') as f: f.write(r_img.content)
-                        archivos_bajados.append(ruta_final)
-                else:
+                # En V31, si viene una corrección, sobrescribimos la imagen para tener la mas actual
+                if os.path.exists(ruta_final):
+                    os.remove(ruta_final) # Borramos la vieja para asegurar que baja la nueva corregida
+                
+                r_img = session.get(url, timeout=20)
+                if r_img.status_code == 200:
+                    with open(ruta_final, 'wb') as f: f.write(r_img.content)
                     archivos_bajados.append(ruta_final)
         
         if archivos_bajados:
@@ -165,7 +166,7 @@ def procesar():
     session.headers.update({'User-Agent': 'Mozilla/5.0'})
     ahora_cl_proceso = obtener_hora_chile_actual()
     
-    print(f"🚀 Iniciando V30.0 (Blindada: Distancias Seguras + Optimización CSV): {ahora_cl_proceso}")
+    print(f"🚀 Iniciando V31.0 (Auditor de Cambios de Distancia): {ahora_cl_proceso}")
     
     # ---------------------------------------------------------
     # FASE 1: EL ESPÍA (Latest.php para MODIS/VIIRS)
@@ -188,22 +189,23 @@ def procesar():
             ids_procesados_hoy = set()
             sensores_vistos_en_ciclo = set() 
             
-            db_keys = set()
+            # NUEVO V31: Usamos un Diccionario para recordar la distancia anterior
+            # Clave: "Fecha_Volcan_Sensor" -> Valor: Distancia (float)
+            db_conocimiento = {}
+            
             if os.path.exists(DB_MASTER):
                 try:
-                    # OPTIMIZACIÓN: Solo leer las últimas 1000 filas para chequeo rápido
-                    # Esto evita cargar 50.000 filas en memoria en el futuro
-                    df_old = pd.read_csv(DB_MASTER) # Leemos todo para estar seguros de keys viejas por ahora, 
-                    # pero en produccion masiva podriamos usar tail. 
-                    # Como el archivo crece localmente, leerlo completo es rapido aun (hasta 100MB).
-                    # Dejamos lectura completa pero protegida.
-                    
+                    df_old = pd.read_csv(DB_MASTER)
                     for _, row in df_old.iterrows():
                         f_sat = str(row.get('Fecha_Satelite_UTC', ''))
                         volc = str(row.get('Volcan', ''))
                         sens = str(row.get('Sensor', ''))
+                        dist_antigua = float(row.get('Distancia_km', 0.0))
+                        
                         k = f"{f_sat}_{volc}_{sens}"
-                        db_keys.add(k)
+                        # Guardamos la distancia para comparar cambios
+                        # Si hay duplicados en el CSV, esto guardará el último valor (el más reciente)
+                        db_conocimiento[k] = dist_antigua
                 except: pass
 
             for fila in filas:
@@ -230,23 +232,35 @@ def procesar():
 
                     clave = f"{fecha_fmt_utc}_{nombre_v}_{sensor_str}"
                     
+                    # Evitar duplicados dentro del MISMO ciclo de 15 min
                     if clave in ids_procesados_hoy: continue
                     ids_procesados_hoy.add(clave)
                     
-                    if clave in db_keys: continue
-                    
+                    # --- LECTURA DE VALORES ---
                     vrp_val = float(vrp_str) if vrp_str.replace('.','').isdigit() else 0.0
-                    
-                    # CORRECCIÓN SEGURIDAD: Si la distancia es ilegible, usar 999.0 en vez de 0.0
-                    # Esto evita que un dato vacío se interprete como "Dentro del Cráter"
                     if dist_str.replace('.','').isdigit():
                         dist_val = float(dist_str)
                     else:
                         dist_val = 999.9
+
+                    # --- DETECCIÓN DE CAMBIOS (LÓGICA V31) ---
+                    es_correccion = False
                     
-                    # LOGICA VRP
+                    if clave in db_conocimiento:
+                        dist_guardada = db_conocimiento[clave]
+                        # Si la distancia es IGUAL, es duplicado -> Ignorar
+                        if abs(dist_val - dist_guardada) < 0.01: # Tolerancia minúscula
+                            continue
+                        else:
+                            # Si es DIFERENTE, es una corrección -> Procesar
+                            es_correccion = True
+                            print(f"🔄 CORRECCIÓN DETECTADA en {nombre_v}: {dist_guardada}km -> {dist_val}km")
+                    
+                    # --- LÓGICA DE ALERTA ---
                     descargar_ahora = False
                     tipo_registro = "RUTINA"
+                    if es_correccion: tipo_registro = "CORRECCION_DATA"
+                    
                     clasificacion = "NORMAL"
                     es_alerta_real = False
                     
@@ -259,26 +273,29 @@ def procesar():
                     if vrp_val > 0:
                         if dist_val <= limite_km:
                             clasificacion = "ALERTA VOLCANICA"
-                            tipo_registro = "ALERTA"
+                            if not es_correccion: tipo_registro = "ALERTA" # Si no es correccion, es alerta normal
                             es_alerta_real = True
-                            print(f"🔥 ALERTA NUEVA: {nombre_v} ({sensor_str}) | {dist_val}km")
+                            print(f"🔥 ALERTA ACTIVA: {nombre_v} ({sensor_str}) | {dist_val}km")
                             
+                            # Descargar si es nuevo O si es una corrección (para actualizar la foto)
                             if es_el_dato_mas_nuevo:
                                 descargar_ahora = True
                             else:
-                                print(f"   🛑 Saltando descarga img antigua ({hora_str_utc}) para evitar duplicado falso.")
                                 rutas = "Imagen Sobreescrita en Web"
-
                         else:
                             clasificacion = "FALSO POSITIVO"
                             print(f"⚠️  Falso Positivo: {nombre_v} a {dist_val}km")
+                            # Si antes era alerta y ahora es falso positivo (corrección), igual guardamos el cambio
                     else:
                         clasificacion = "NORMAL"
                         if "VIIRS375" in sensor_str.upper():
-                            if not check_evidencia_existente(nombre_v, dt_obj_utc) and es_el_dato_mas_nuevo:
+                            # Si es corrección, bajamos de nuevo para asegurar
+                            should_download = (not check_evidencia_existente(nombre_v, dt_obj_utc)) or es_correccion
+                            if should_download and es_el_dato_mas_nuevo:
                                 descargar_ahora = True
                                 tipo_registro = "EVIDENCIA_DIARIA"
-                                print(f"📸 Evidencia Calma: {nombre_v}")
+                                if es_correccion: tipo_registro = "CORREC_EVIDENCIA"
+                                print(f"📸 Evidencia: {nombre_v}")
                     
                     rutas = "No descargadas"
                     if descargar_ahora:
@@ -379,7 +396,6 @@ def procesar():
         if os.path.exists(DB_HD):
              try:
                 df_old_hd = pd.read_csv(DB_HD)
-                # DEDUPLICACIÓN DIARIA: Evita que el CSV HD crezca infinitamente con la misma foto
                 df_comb_hd = pd.concat([df_old_hd, df_new_hd]).drop_duplicates(subset=['Fecha_Detectada', 'Volcan', 'Sensor'])
              except: df_comb_hd = df_new_hd
         else: df_comb_hd = df_new_hd

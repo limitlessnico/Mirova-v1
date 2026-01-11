@@ -1,0 +1,42 @@
+name: Generador de Graficos
+
+on:
+  workflow_run:
+    workflows: ["Monitor Volcanico VRP"] # Coincide con el nombre de tu main.yml
+    types:
+      - completed
+
+jobs:
+  pintar_y_publicar:
+    # Solo se ejecuta si el scraper terminó con éxito
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Instalar librerías de visualización
+        run: |
+          python -m pip install --upgrade pip
+          # Solo instalamos lo necesario para generar los gráficos
+          pip install pandas matplotlib pytz
+
+      - name: Ejecutar el Visualizador
+        run: python visualizador.py
+
+      - name: Guardar Gráficos en GitHub
+        run: |
+          git config --global user.name "VolcanoVisualizer"
+          git config --global user.email "viz@volcano.com"
+          git add monitoreo_satelital/graficos_tendencia/
+          # No falla si no hay cambios en los gráficos
+          git diff --quiet && git diff --staged --quiet || (git commit -m "📊 Auto: Gráficos de tendencia actualizados" && git push)

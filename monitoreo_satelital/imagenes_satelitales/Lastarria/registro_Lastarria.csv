@@ -1,2 +1,1 @@
-timestamp,Fecha_Satelite_UTC,Fecha_Chile,Volcan,Sensor,VRP_MW,Distancia_km,Clasificacion Mirova,Fecha_Proceso,Ruta_Fotos,Tipo_Registro,Ruta Foto
-1768112640,2026-01-11 06:24:00,2026-01-11 03:24:00,Lastarria,VIIRS375,0.15,1.55,Muy Bajo,2026-01-11 15:15:34,,,imagenes_satelitales/Lastarria/2026-01-11/06-24-00_Lastarria_VIIRS375_VRP.png
+timestamp,Fecha_Satelite_UTC,Volcan,Sensor,VRP_MW,Distancia_km,Clasificacion Mirova,Ruta Foto

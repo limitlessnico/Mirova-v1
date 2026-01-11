@@ -26,7 +26,7 @@ BASE_URL = "https://www.mirovaweb.it"
 CARPETA_PRINCIPAL = "monitoreo_satelital"
 RUTA_IMAGENES_BASE = os.path.join(CARPETA_PRINCIPAL, "imagenes_satelitales")
 
-# ARCHIVOS QUE NO SE DEBEN BORRAR
+# ARCHIVOS MAESTROS
 DB_MASTER = os.path.join(CARPETA_PRINCIPAL, "registro_vrp_consolidado.csv") 
 DB_POSITIVOS = os.path.join(CARPETA_PRINCIPAL, "registro_vrp_positivos.csv")
 ARCHIVO_BITACORA = os.path.join(CARPETA_PRINCIPAL, "bitacora_robot.txt")
@@ -80,20 +80,17 @@ def procesar():
     if not os.path.exists(CARPETA_PRINCIPAL): os.makedirs(CARPETA_PRINCIPAL)
     session = requests.Session()
     ahora_cl = obtener_hora_chile_actual()
-    log_bitacora(f"🚀 INICIO CICLO V36.3 (FILTRADO POSITIVOS): {ahora_cl}")
+    log_bitacora(f"🚀 INICIO CICLO V36.4 (RE-FORMATEO INDIVIDUALES): {ahora_cl}")
 
     try:
-        # --- 1. LIMPIEZA DE ARCHIVOS SUELTOS ERRÓNEOS ---
+        # 1. LIMPIEZA DE ARCHIVOS FUERA DE LUGAR
         for archivo in os.listdir(CARPETA_PRINCIPAL):
             if archivo.startswith("registro_") and archivo.endswith(".csv"):
                 ruta_full = os.path.join(CARPETA_PRINCIPAL, archivo)
                 if ruta_full not in [DB_MASTER, DB_POSITIVOS]:
-                    try:
-                        os.remove(ruta_full)
-                        log_bitacora(f"🗑️ Borrado archivo fuera de lugar: {archivo}")
-                    except: pass
+                    os.remove(ruta_full)
 
-        # --- 2. SCRAPING ---
+        # 2. SCRAPING
         res = session.get(URL_LATEST, timeout=30)
         soup = BeautifulSoup(res.text, 'html.parser')
         tabla = soup.find('table', {'id': 'example'}) or soup.find('table')
@@ -126,7 +123,7 @@ def procesar():
             if es_alerta_distancia or (vrp_val == 0 and "375" in sensor_str):
                 descargar_set_completo(session, id_v, nombre_v, dt_utc)
 
-        # --- 3. GUARDADO MASTER Y MIGRACIÓN ---
+        # 3. ACTUALIZACIÓN MASTER Y CONSOLIDADO POSITIVOS
         if nuevos_datos:
             df_new = pd.DataFrame(nuevos_datos)
             if os.path.exists(DB_MASTER):
@@ -137,6 +134,7 @@ def procesar():
             else:
                 df_master = df_new
 
+            # Re-clasificar histórico
             def reclasificar(row):
                 for _, cfg in VOLCANES_CONFIG.items():
                     if cfg["nombre"] == row['Volcan']:
@@ -147,25 +145,26 @@ def procesar():
             df_master['Clasificacion Mirova'] = df_master.apply(reclasificar, axis=1)
             df_master.to_csv(DB_MASTER, index=False)
             
-            # --- 4. FILTRADO DE POSITIVOS ---
+            # Guardar Consolidado Positivos
             niveles_intensos = ["Muy Bajo", "Bajo", "Moderado", "Alto"]
             df_pos = df_master[df_master['Clasificacion Mirova'].isin(niveles_intensos)]
             df_pos.to_csv(DB_POSITIVOS, index=False)
 
-            # --- 5. ACTUALIZACIÓN DE CSV INDIVIDUALES (SOLO POSITIVOS) ---
-            for v_nombre in df_pos['Volcan'].unique():
-                ruta_carpeta_volcan = os.path.join(RUTA_IMAGENES_BASE, v_nombre)
-                if os.path.exists(ruta_carpeta_volcan):
-                    nombre_csv = f"registro_{v_nombre.replace(' ', '_')}.csv"
-                    ruta_csv_final = os.path.join(ruta_carpeta_volcan, nombre_csv)
+            # 4. RE-FORMATEO DE INDIVIDUALES DESDE EL CONSOLIDADO DE POSITIVOS
+            for v_id, cfg in VOLCANES_CONFIG.items():
+                v_nombre = cfg["nombre"]
+                ruta_carpeta = os.path.join(RUTA_IMAGENES_BASE, v_nombre)
+                
+                if os.path.exists(ruta_carpeta):
+                    ruta_csv = os.path.join(ruta_carpeta, f"registro_{v_nombre.replace(' ', '_')}.csv")
+                    # Filtramos el consolidado de positivos para este volcán
+                    df_v_limpio = df_pos[df_pos['Volcan'] == v_nombre].copy()
                     
-                    # Filtramos solo los positivos de este volcán
-                    df_v_pos = df_pos[df_pos['Volcan'] == v_nombre].copy()
-                    
-                    # Guardamos (sobreescribimos o creamos para limpiar registros 0 previos)
-                    df_v_pos.to_csv(ruta_csv_final, index=False)
+                    # Sobrescribimos el archivo: si no hay positivos, el archivo quedará vacío (solo encabezados)
+                    # pero sin registros de valor 0.
+                    df_v_limpio.to_csv(ruta_csv, index=False)
             
-            log_bitacora(f"💾 Sincronización completa. CSVs individuales filtrados por energía térmica.")
+            log_bitacora(f"💾 Sincronización completa. Individuales re-formateados desde positivos.")
 
     except Exception as e:
         log_bitacora(f"❌ ERROR: {e}")

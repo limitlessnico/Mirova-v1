@@ -80,21 +80,20 @@ def procesar():
     if not os.path.exists(CARPETA_PRINCIPAL): os.makedirs(CARPETA_PRINCIPAL)
     session = requests.Session()
     ahora_cl = obtener_hora_chile_actual()
-    log_bitacora(f"🚀 INICIO CICLO V36.2 (LIMPIEZA Y REUBICACIÓN): {ahora_cl}")
+    log_bitacora(f"🚀 INICIO CICLO V36.3 (FILTRADO POSITIVOS): {ahora_cl}")
 
     try:
         # --- 1. LIMPIEZA DE ARCHIVOS SUELTOS ERRÓNEOS ---
         for archivo in os.listdir(CARPETA_PRINCIPAL):
             if archivo.startswith("registro_") and archivo.endswith(".csv"):
                 ruta_full = os.path.join(CARPETA_PRINCIPAL, archivo)
-                # No borrar los consolidados
                 if ruta_full not in [DB_MASTER, DB_POSITIVOS]:
                     try:
                         os.remove(ruta_full)
                         log_bitacora(f"🗑️ Borrado archivo fuera de lugar: {archivo}")
                     except: pass
 
-        # --- 2. SCRAPING Y PROCESAMIENTO ---
+        # --- 2. SCRAPING ---
         res = session.get(URL_LATEST, timeout=30)
         soup = BeautifulSoup(res.text, 'html.parser')
         tabla = soup.find('table', {'id': 'example'}) or soup.find('table')
@@ -111,8 +110,7 @@ def procesar():
             config = VOLCANES_CONFIG[id_v]
             nombre_v = config["nombre"]
             dt_utc = datetime.strptime(cols[0].text.strip(), "%d-%b-%Y %H:%M:%S")
-            vrp_val = float(cols[3].text.strip())
-            dist_val = float(cols[4].text.strip())
+            vrp_val = float(cols[3].text.strip()); dist_val = float(cols[4].text.strip())
             sensor_str = cols[5].text.strip()
             es_alerta_distancia = (vrp_val > 0 and dist_val <= config["limite_km"])
 
@@ -120,21 +118,17 @@ def procesar():
                 "timestamp": int(dt_utc.timestamp()),
                 "Fecha_Satelite_UTC": dt_utc.strftime("%Y-%m-%d %H:%M:%S"),
                 "Fecha_Chile": convertir_utc_a_chile(dt_utc),
-                "Volcan": nombre_v,
-                "Sensor": sensor_str,
-                "VRP_MW": vrp_val,
-                "Distancia_km": dist_val,
-                "Clasificacion Mirova": obtener_nivel_mirova(vrp_val, es_alerta_distancia),
+                "Volcan": nombre_v, "Sensor": sensor_str, "VRP_MW": vrp_val,
+                "Distancia_km": dist_val, "Clasificacion Mirova": obtener_nivel_mirova(vrp_val, es_alerta_distancia),
                 "Fecha_Proceso": ahora_cl.strftime("%Y-%m-%d %H:%M:%S")
             }
             nuevos_datos.append(dato)
             if es_alerta_distancia or (vrp_val == 0 and "375" in sensor_str):
                 descargar_set_completo(session, id_v, nombre_v, dt_utc)
 
-        # --- 3. GUARDADO Y MIGRACIÓN DE COLUMNAS ---
+        # --- 3. GUARDADO MASTER Y MIGRACIÓN ---
         if nuevos_datos:
             df_new = pd.DataFrame(nuevos_datos)
-            
             if os.path.exists(DB_MASTER):
                 df_old = pd.read_csv(DB_MASTER)
                 if 'Clasificacion' in df_old.columns:
@@ -153,29 +147,25 @@ def procesar():
             df_master['Clasificacion Mirova'] = df_master.apply(reclasificar, axis=1)
             df_master.to_csv(DB_MASTER, index=False)
             
-            niveles = ["Muy Bajo", "Bajo", "Moderado", "Alto"]
-            df_pos = df_master[df_master['Clasificacion Mirova'].isin(niveles)]
+            # --- 4. FILTRADO DE POSITIVOS ---
+            niveles_intensos = ["Muy Bajo", "Bajo", "Moderado", "Alto"]
+            df_pos = df_master[df_master['Clasificacion Mirova'].isin(niveles_intensos)]
             df_pos.to_csv(DB_POSITIVOS, index=False)
 
-            # --- 4. ACTUALIZACIÓN DE CSV INDIVIDUALES EN CARPETAS CORRECTAS ---
-            for v_nombre in df_master['Volcan'].unique():
+            # --- 5. ACTUALIZACIÓN DE CSV INDIVIDUALES (SOLO POSITIVOS) ---
+            for v_nombre in df_pos['Volcan'].unique():
                 ruta_carpeta_volcan = os.path.join(RUTA_IMAGENES_BASE, v_nombre)
-                # Si la carpeta existe (debería existir por el scraper de imágenes)
                 if os.path.exists(ruta_carpeta_volcan):
                     nombre_csv = f"registro_{v_nombre.replace(' ', '_')}.csv"
                     ruta_csv_final = os.path.join(ruta_carpeta_volcan, nombre_csv)
                     
-                    df_v = df_master[df_master['Volcan'] == v_nombre].copy()
+                    # Filtramos solo los positivos de este volcán
+                    df_v_pos = df_pos[df_pos['Volcan'] == v_nombre].copy()
                     
-                    if os.path.exists(ruta_csv_final):
-                        df_old_v = pd.read_csv(ruta_csv_final)
-                        if 'Clasificacion' in df_old_v.columns:
-                            df_old_v = df_old_v.rename(columns={'Clasificacion': 'Clasificacion Mirova'})
-                        df_v = pd.concat([df_old_v, df_v]).drop_duplicates(subset=["Fecha_Satelite_UTC", "Sensor"])
-
-                    df_v.to_csv(ruta_csv_final, index=False)
+                    # Guardamos (sobreescribimos o creamos para limpiar registros 0 previos)
+                    df_v_pos.to_csv(ruta_csv_final, index=False)
             
-            log_bitacora(f"💾 Sincronización completa y limpieza realizada.")
+            log_bitacora(f"💾 Sincronización completa. CSVs individuales filtrados por energía térmica.")
 
     except Exception as e:
         log_bitacora(f"❌ ERROR: {e}")

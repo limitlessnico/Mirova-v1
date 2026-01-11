@@ -1,5 +1,4 @@
-ID,timestamp,Fecha_Satelite,Volcan,Sensor,VRP_MW,Distancia_km,Es_Volcanico,Fecha_Proceso,Ruta_Fotos
-0,1768074900,2026-01-10 19:55:00,Lascar,MODIS,0.0,0.0,False,2026-01-10 22:29:14,monitoreo_satelital/imagenes_satelitales/Lascar/2026-01-10/19-55-00_Lascar_MODIS_Latest10NTI.png
-1,1768071960,2026-01-10 19:06:00,Lascar,VIIRS,0.0,0.0,False,2026-01-10 22:29:14,monitoreo_satelital/imagenes_satelitales/Lascar/2026-01-10/19-06-00_Lascar_VIIRS750_Latest10NTI.png
-2,1768071960,2026-01-10 19:06:00,Lascar,VIIRS375,0.0,0.0,False,2026-01-10 22:29:14,monitoreo_satelital/imagenes_satelitales/Lascar/2026-01-10/19-06-00_Lascar_VIIRS375_Latest10NTI.png
-3,1768094954,2026-01-10 22:29:14,Lascar,MIR-Combined,0.0,0.0,False,2026-01-10 22:29:14,No encontrada
+timestamp,Fecha_Satelite,Volcan,Sensor,VRP_MW,Distancia_km,Clasificacion,Fecha_Proceso,Ruta_Fotos
+1768071960,2026-01-10 19:06:00,Lascar,VIIRS375,0.0,0.0,NORMAL,2026-01-10 23:26:13,monitoreo_satelital/imagenes_satelitales/Lascar/2026-01-10/19-06-00_Lascar_VIIRS375_Latest.png
+1768071960,2026-01-10 19:06:00,Lascar,VIIRS,0.0,0.0,NORMAL,2026-01-10 23:26:13,monitoreo_satelital/imagenes_satelitales/Lascar/2026-01-10/19-06-00_Lascar_VIIRS_Latest.png
+1768074900,2026-01-10 19:55:00,Lascar,MODIS,0.0,0.0,NORMAL,2026-01-10 23:26:13,monitoreo_satelital/imagenes_satelitales/Lascar/2026-01-10/19-55-00_Lascar_MODIS_Latest.png

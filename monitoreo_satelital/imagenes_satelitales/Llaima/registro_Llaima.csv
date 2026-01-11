@@ -1,5 +1,4 @@
-ID,timestamp,Fecha_Satelite,Volcan,Sensor,VRP_MW,Distancia_km,Es_Volcanico,Fecha_Proceso,Ruta_Fotos
-8,1768048800,2026-01-10 12:40:00,Llaima,MODIS,0.0,0.0,False,2026-01-10 22:29:14,monitoreo_satelital/imagenes_satelitales/Llaima/2026-01-10/12-40-00_Llaima_MODIS_Latest10NTI.png
-9,1768073041,2026-01-10 19:24:01,Llaima,VIIRS,0.0,0.0,False,2026-01-10 22:29:14,monitoreo_satelital/imagenes_satelitales/Llaima/2026-01-10/19-24-01_Llaima_VIIRS750_Latest10NTI.png
-10,1768073041,2026-01-10 19:24:01,Llaima,VIIRS375,0.0,0.0,False,2026-01-10 22:29:14,monitoreo_satelital/imagenes_satelitales/Llaima/2026-01-10/19-24-01_Llaima_VIIRS375_Latest10NTI.png
-11,1768094954,2026-01-10 22:29:14,Llaima,MIR-Combined,0.0,0.0,False,2026-01-10 22:29:14,No encontrada
+timestamp,Fecha_Satelite,Volcan,Sensor,VRP_MW,Distancia_km,Clasificacion,Fecha_Proceso,Ruta_Fotos
+1768048800,2026-01-10 12:40:00,Llaima,MODIS,0.0,0.0,NORMAL,2026-01-10 23:26:13,monitoreo_satelital/imagenes_satelitales/Llaima/2026-01-10/12-40-00_Llaima_MODIS_Latest.png
+1768073041,2026-01-10 19:24:01,Llaima,VIIRS375,0.0,0.0,NORMAL,2026-01-10 23:26:13,monitoreo_satelital/imagenes_satelitales/Llaima/2026-01-10/19-24-01_Llaima_VIIRS375_Latest.png
+1768073041,2026-01-10 19:24:01,Llaima,VIIRS,0.0,0.0,NORMAL,2026-01-10 23:26:13,monitoreo_satelital/imagenes_satelitales/Llaima/2026-01-10/19-24-01_Llaima_VIIRS_Latest.png

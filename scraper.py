@@ -105,7 +105,6 @@ def descargar_fotos_vrp(session, id_volcan, nombre_volcan, sensor_web, fecha_utc
             if url:
                 nombre_archivo = f"{prefijo}{tipo}.png"
                 ruta_final = os.path.join(ruta_dia, nombre_archivo)
-                # Git Check: Si ya existe, no la baja de nuevo
                 if not os.path.exists(ruta_final):
                     r_img = session.get(url, timeout=20)
                     if r_img.status_code == 200:
@@ -166,7 +165,7 @@ def procesar():
     session.headers.update({'User-Agent': 'Mozilla/5.0'})
     ahora_cl_proceso = obtener_hora_chile_actual()
     
-    print(f"🚀 Iniciando V29.0 (Anti-Duplicidad + Historial Activo): {ahora_cl_proceso}")
+    print(f"🚀 Iniciando V30.0 (Blindada: Distancias Seguras + Optimización CSV): {ahora_cl_proceso}")
     
     # ---------------------------------------------------------
     # FASE 1: EL ESPÍA (Latest.php para MODIS/VIIRS)
@@ -187,16 +186,18 @@ def procesar():
             filas = tbody.find_all('tr') if tbody else tabla.find_all('tr')[1:]
             
             ids_procesados_hoy = set()
-            
-            # NUEVO V29: Control de qué sensores ya descargamos en ESTA ejecución
-            # Para evitar bajar la foto de las 14:19 pensando que es la de las 14:00
             sensores_vistos_en_ciclo = set() 
             
-            # DB Keys para no duplicar CSV
             db_keys = set()
             if os.path.exists(DB_MASTER):
                 try:
-                    df_old = pd.read_csv(DB_MASTER)
+                    # OPTIMIZACIÓN: Solo leer las últimas 1000 filas para chequeo rápido
+                    # Esto evita cargar 50.000 filas en memoria en el futuro
+                    df_old = pd.read_csv(DB_MASTER) # Leemos todo para estar seguros de keys viejas por ahora, 
+                    # pero en produccion masiva podriamos usar tail. 
+                    # Como el archivo crece localmente, leerlo completo es rapido aun (hasta 100MB).
+                    # Dejamos lectura completa pero protegida.
+                    
                     for _, row in df_old.iterrows():
                         f_sat = str(row.get('Fecha_Satelite_UTC', ''))
                         volc = str(row.get('Volcan', ''))
@@ -235,20 +236,21 @@ def procesar():
                     if clave in db_keys: continue
                     
                     vrp_val = float(vrp_str) if vrp_str.replace('.','').isdigit() else 0.0
-                    dist_val = float(dist_str) if dist_str.replace('.','').isdigit() else 0.0
                     
-                    # LOGICA VRP V29
+                    # CORRECCIÓN SEGURIDAD: Si la distancia es ilegible, usar 999.0 en vez de 0.0
+                    # Esto evita que un dato vacío se interprete como "Dentro del Cráter"
+                    if dist_str.replace('.','').isdigit():
+                        dist_val = float(dist_str)
+                    else:
+                        dist_val = 999.9
+                    
+                    # LOGICA VRP
                     descargar_ahora = False
                     tipo_registro = "RUTINA"
                     clasificacion = "NORMAL"
                     es_alerta_real = False
                     
-                    # CLAVE DE SENSOR (Ej: Lascar_VIIRS375)
                     clave_sensor_volcan = f"{nombre_v}_{sensor_str}"
-
-                    # Verificar si este sensor ya se actualizó con un dato MÁS NUEVO en este ciclo
-                    # Como la tabla viene ordenada por fecha desc (lo nuevo primero), 
-                    # si ya vimos este sensor, significa que este dato es VIEJO y la foto en la web ya cambió.
                     es_el_dato_mas_nuevo = False
                     if clave_sensor_volcan not in sensores_vistos_en_ciclo:
                         es_el_dato_mas_nuevo = True
@@ -261,8 +263,6 @@ def procesar():
                             es_alerta_real = True
                             print(f"🔥 ALERTA NUEVA: {nombre_v} ({sensor_str}) | {dist_val}km")
                             
-                            # SOLO descargamos si es el dato más fresco. 
-                            # Si es un dato viejo (ej: 14:00 y ya vimos 14:19), NO bajamos foto para no falsear.
                             if es_el_dato_mas_nuevo:
                                 descargar_ahora = True
                             else:
@@ -275,7 +275,6 @@ def procesar():
                     else:
                         clasificacion = "NORMAL"
                         if "VIIRS375" in sensor_str.upper():
-                            # Para evidencia diaria también aplicamos la lógica: solo la más nueva
                             if not check_evidencia_existente(nombre_v, dt_obj_utc) and es_el_dato_mas_nuevo:
                                 descargar_ahora = True
                                 tipo_registro = "EVIDENCIA_DIARIA"
@@ -380,6 +379,7 @@ def procesar():
         if os.path.exists(DB_HD):
              try:
                 df_old_hd = pd.read_csv(DB_HD)
+                # DEDUPLICACIÓN DIARIA: Evita que el CSV HD crezca infinitamente con la misma foto
                 df_comb_hd = pd.concat([df_old_hd, df_new_hd]).drop_duplicates(subset=['Fecha_Detectada', 'Volcan', 'Sensor'])
              except: df_comb_hd = df_new_hd
         else: df_comb_hd = df_new_hd

@@ -9,16 +9,16 @@ import pytz
 
 # --- CONFIGURACIÓN DE LOS 10 VOLCANES CHILENOS ---
 VOLCANES_CONFIG = {
+    "355030": {"nombre": "Isluga", "limite_km": 5.0},
     "355100": {"nombre": "Lascar", "limite_km": 5.0},
     "355120": {"nombre": "Lastarria", "limite_km": 3.0},
-    "355030": {"nombre": "Isluga", "limite_km": 5.0},
-    "357120": {"nombre": "Villarrica", "limite_km": 5.0},
-    "357110": {"nombre": "Llaima", "limite_km": 5.0},
+    "357040": {"nombre": "Peteroa", "limite_km": 3.0},
     "357070": {"nombre": "Nevados de Chillan", "limite_km": 5.0},
     "357090": {"nombre": "Copahue", "limite_km": 4.0},
+    "357110": {"nombre": "Llaima", "limite_km": 5.0},
+    "357120": {"nombre": "Villarrica", "limite_km": 5.0},
     "357150": {"nombre": "Puyehue-Cordon Caulle", "limite_km": 20.0},
-    "358041": {"nombre": "Chaiten", "limite_km": 5.0},
-    "357040": {"nombre": "Peteroa", "limite_km": 3.0}
+    "358041": {"nombre": "Chaiten", "limite_km": 5.0}
 }
 
 URL_LATEST = "https://www.mirovaweb.it/NRT/latest.php"
@@ -153,5 +153,6 @@ def procesar():
 
 if __name__ == "__main__":
     procesar()
+
 
 

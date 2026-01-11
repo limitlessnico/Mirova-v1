@@ -182,3 +182,16 @@
 
 [2026-01-11 16:08:49] 🚀 INICIO CICLO V36.0 (CAMBIO COLUMNA): 2026-01-11 16:08:49.207741-03:00
 [2026-01-11 16:09:10] 💾 Columnas migradas. Total master: 77
+[2026-01-11 16:16:21] 🚀 INICIO CICLO V36.2 (LIMPIEZA Y REUBICACIÓN): 2026-01-11 16:16:21.164903-03:00
+[2026-01-11 16:16:21] 🗑️ Borrado archivo fuera de lugar: registro_Peteroa.csv
+[2026-01-11 16:16:21] 🗑️ Borrado archivo fuera de lugar: registro_Puyehue-Cordon_Caulle.csv
+[2026-01-11 16:16:21] 🗑️ Borrado archivo fuera de lugar: registro_Lastarria.csv
+[2026-01-11 16:16:21] 🗑️ Borrado archivo fuera de lugar: registro_Isluga.csv
+[2026-01-11 16:16:21] 🗑️ Borrado archivo fuera de lugar: registro_Copahue.csv
+[2026-01-11 16:16:21] 🗑️ Borrado archivo fuera de lugar: registro_Chaiten.csv
+[2026-01-11 16:16:21] 🗑️ Borrado archivo fuera de lugar: registro_hd_msi_oli.csv
+[2026-01-11 16:16:21] 🗑️ Borrado archivo fuera de lugar: registro_Llaima.csv
+[2026-01-11 16:16:21] 🗑️ Borrado archivo fuera de lugar: registro_Lascar.csv
+[2026-01-11 16:16:21] 🗑️ Borrado archivo fuera de lugar: registro_Nevados_de_Chillan.csv
+[2026-01-11 16:16:21] 🗑️ Borrado archivo fuera de lugar: registro_Villarrica.csv
+[2026-01-11 16:16:36] 💾 Sincronización completa y limpieza realizada.

@@ -33,10 +33,30 @@ def obtener_hora_chile():
 def limpiar_todo():
     """ MODO PRUEBAS: Borra todo para verificar el nuevo formato limpio. """
     print("🧹 LIMPIEZA DE PRUEBAS ACTIVADA...")
-    if os.path.exists("registro_vrp.csv"): try: os.remove("registro_vrp.csv"); except: pass
-    if os.path.exists(DB_FILE): try: os.remove(DB_FILE); except: pass
-    if os.path.exists("imagenes"): try: shutil.rmtree("imagenes"); except: pass
-    if os.path.exists(CARPETA_PRINCIPAL): try: shutil.rmtree(CARPETA_PRINCIPAL); except: pass
+    
+    if os.path.exists("registro_vrp.csv"):
+        try: 
+            os.remove("registro_vrp.csv")
+        except: 
+            pass
+            
+    if os.path.exists(DB_FILE):
+        try: 
+            os.remove(DB_FILE)
+        except: 
+            pass
+            
+    if os.path.exists("imagenes"):
+        try: 
+            shutil.rmtree("imagenes")
+        except: 
+            pass
+            
+    if os.path.exists(CARPETA_PRINCIPAL):
+        try: 
+            shutil.rmtree(CARPETA_PRINCIPAL)
+        except: 
+            pass
 
 def procesar_imagen_ocr(imagen_pil):
     gray = imagen_pil.convert('L')
@@ -46,6 +66,7 @@ def procesar_imagen_ocr(imagen_pil):
 
 def validar_y_corregir_fecha(fecha_ocr, fecha_sistema):
     """ Evita fechas del futuro. """
+    # Comparamos solo la fecha (date) sin hora
     if fecha_ocr.date() > (fecha_sistema.date() + timedelta(days=1)):
         print(f"   ⚠️ CORRECCIÓN: Fecha futura ({fecha_ocr.date()}). Ajustando a hoy.")
         fecha_corregida = fecha_ocr.replace(year=fecha_sistema.year, 
@@ -109,7 +130,7 @@ def procesar():
     fecha_exec_simple = ahora_cl.strftime("%Y-%m-%d")
     hora_exec_simple = ahora_cl.strftime("%H:%M:%S")
     
-    print(f"🕒 Iniciando V11.0 (Nuevas Columnas): {fecha_revision_full}")
+    print(f"🕒 Iniciando V11.1 (Sintaxis Corregida): {fecha_revision_full}")
     registros_nuevos = []
     
     # Contador para el ID
@@ -197,19 +218,19 @@ def procesar():
                     
                     with open(ruta_archivo, 'wb') as f: f.write(contenido_imagen)
 
-                # --- AGREGAR REGISTRO CON NUEVAS COLUMNAS ---
+                # --- AGREGAR REGISTRO ---
                 registros_nuevos.append({
-                    "ID": contador_id,               # 1. Correlativo
-                    "Unix_Time": unix_time,          # 2. Formato Unix
-                    "Fecha_Completa": fecha_completa_str, # 3. Renombrado
+                    "ID": contador_id,
+                    "Unix_Time": unix_time,
+                    "Fecha_Completa": fecha_completa_str,
                     "Volcan": nombre_v,
                     "Sensor": s_label,
                     "VRP_MW": vrp,
-                    "Fecha_Revision_Completa": fecha_revision_full, # 4. Fusionado
+                    "Fecha_Revision_Completa": fecha_revision_full,
                     "Ruta_Fotos": ruta_foto_csv
                 })
                 
-                # Aumentamos el contador para la siguiente fila
+                # Aumentamos el contador
                 contador_id += 1
 
             except Exception as e:
@@ -217,7 +238,6 @@ def procesar():
 
     # --- GUARDAR CSV FINAL ---
     if registros_nuevos:
-        # Definimos el orden exacto de las columnas
         cols = [
             "ID", 
             "Unix_Time", 
@@ -233,7 +253,7 @@ def procesar():
         df_nuevo = df_nuevo.reindex(columns=cols)
         
         df_nuevo.to_csv(DB_FILE, index=False)
-        print(f"💾 CSV V11.0 Generado: {DB_FILE}")
+        print(f"💾 CSV V11.1 Generado: {DB_FILE}")
 
 if __name__ == "__main__":
     procesar()

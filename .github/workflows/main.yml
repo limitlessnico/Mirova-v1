@@ -5,7 +5,7 @@ on:
     # Ejecutar cada 15 minutos para no perder ningún dato
     - cron: '*/15 * * * *' 
   
-  workflow_dispatch: # Botón para ejecutar manualmente
+  workflow_dispatch: # Botón para ejecutar manualmente en GitHub
 
 jobs:
   build:
@@ -18,7 +18,7 @@ jobs:
       - name: Checkout del repositorio
         uses: actions/checkout@v4
         with:
-          # Necesario para que el rebase funcione correctamente
+          # Necesario para que el rebase y la estrategia de resolución funcionen
           fetch-depth: 0 
 
       - name: Configurar Python
@@ -29,7 +29,6 @@ jobs:
       - name: Instalar dependencias Python
         run: |
           python -m pip install --upgrade pip
-          # Instalamos las librerías base + matplotlib para los gráficos
           pip install requests beautifulsoup4 pandas pytz matplotlib
 
       - name: Ejecutar Scraper
@@ -43,18 +42,21 @@ jobs:
           git config --global user.name "VolcanoBot"
           git config --global user.email "bot@volcano.com"
           
-          # Agregamos todos los cambios (CSV, imágenes y gráficos)
+          # 1. Agregamos todos los cambios generados (CSV, imágenes y gráficos)
           git add -A
           
-          # Verificamos si hay cambios antes de hacer commit
+          # 2. Verificamos si hay cambios reales para commitear
           if ! git diff --quiet --staged; then
             git commit -m "Auto: Sincronización de datos y gráficos (Mirova-OVDAS)"
             
-            # --- SOLUCIÓN AL ERROR DE RECHAZO ---
-            # Trae tus cambios manuales (como los IDs corregidos) y pone los del bot encima
-            git pull --rebase origin main
+            # --- ESTRATEGIA ANTICONFLICTOS ---
+            # Traemos cambios remotos. El parámetro '-X ours' es CRÍTICO:
+            # En conflictos de archivos binarios (PNG) o JSON, Git preferirá
+            # la versión generada por el bot en esta ejecución.
+            git pull origin main --rebase -X ours
             
-            git push
+            # 3. Intentar subir los cambios
+            git push origin main || (git pull origin main --rebase -X ours && git push origin main)
           else
             echo "No se detectaron cambios nuevos. Saltando commit."
           fi

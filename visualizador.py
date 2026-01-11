@@ -69,9 +69,9 @@ def generar_grafico_volcan(df_volcan, nombre_volcan, dias, sufijo_archivo, color
                          xytext=(10, 10), textcoords='offset points', fontsize=9, fontweight='bold',
                          bbox=dict(boxstyle="round", fc="white", ec=color_tema, alpha=0.9))
         else:
-            plt.text(0.5, 0.5, 'SIN ALERTAS DETECTADAS', ha='center', va='center', transform=ax.transAxes, color='gray')
+            plt.text(0.5, 0.5, 'SIN ANOMALÍAS TÉRMICAS', ha='center', va='center', transform=ax.transAxes, color='gray')
     else:
-        plt.text(0.5, 0.5, 'MONITOREO NOMINAL', ha='center', va='center', transform=ax.transAxes, color='gray', fontweight='bold')
+        plt.text(0.5, 0.5, 'SIN ANOMALÍAS TÉRMICAS', ha='center', va='center', transform=ax.transAxes, color='gray', fontweight='bold')
 
     # --- MEJORA DE CUADRÍCULA (GRID) ---
     # Marcadores mayores cada 5 días

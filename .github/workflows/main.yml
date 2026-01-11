@@ -1,4 +1,5 @@
 name: Monitor Volcanico VRP 
+
 on:
   schedule:
     # Ejecutar cada 15 minutos para no perder ningún dato
@@ -16,28 +17,44 @@ jobs:
     steps:
       - name: Checkout del repositorio
         uses: actions/checkout@v4
+        with:
+          # Necesario para que el rebase funcione correctamente
+          fetch-depth: 0 
 
       - name: Configurar Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.9'
 
-      # 🚀 PASO ELIMINADO: Ya no instalamos Tesseract (Ahorra 1-2 minutos)
-
       - name: Instalar dependencias Python
         run: |
           python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          # Ya no instalamos pytesseract ni pillow, solo lo necesario para datos
-          pip install requests beautifulsoup4 pandas pytz
+          # Instalamos las librerías base + matplotlib para los gráficos
+          pip install requests beautifulsoup4 pandas pytz matplotlib
 
-      - name: Ejecutar Scraper V19
+      - name: Ejecutar Scraper
         run: python scraper.py
+
+      - name: Ejecutar Visualizador (Gráficos)
+        run: python visualizador.py
 
       - name: Guardar cambios en GitHub
         run: |
           git config --global user.name "VolcanoBot"
           git config --global user.email "bot@volcano.com"
+          
+          # Agregamos todos los cambios (CSV, imágenes y gráficos)
           git add -A
-          # Solo hace commit si hay cambios reales (nuevos datos/fotos)
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto: Nuevos datos satelitales detectados" && git push)
+          
+          # Verificamos si hay cambios antes de hacer commit
+          if ! git diff --quiet --staged; then
+            git commit -m "Auto: Sincronización de datos y gráficos (Mirova-OVDAS)"
+            
+            # --- SOLUCIÓN AL ERROR DE RECHAZO ---
+            # Trae tus cambios manuales (como los IDs corregidos) y pone los del bot encima
+            git pull --rebase origin main
+            
+            git push
+          else
+            echo "No se detectaron cambios nuevos. Saltando commit."
+          fi

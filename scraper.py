@@ -22,13 +22,10 @@ except ImportError:
 VOLCANES = {"355100": "Lascar", "357120": "Villarrica", "357110": "Llaima"}
 BASE_URL = "https://www.mirovaweb.it"
 
-# Carpetas Nuevas
 CARPETA_PRINCIPAL = "monitoreo_satelital"
 NOMBRE_CARPETA_IMAGENES = "imagenes_satelitales"
 RUTA_IMAGENES_BASE = os.path.join(CARPETA_PRINCIPAL, NOMBRE_CARPETA_IMAGENES)
 DB_FILE = os.path.join(CARPETA_PRINCIPAL, "registro_vrp_consolidado.csv")
-
-# Carpeta Antigua a eliminar
 CARPETA_OBSOLETA = "monitoreo_datos"
 
 def obtener_hora_chile():
@@ -38,22 +35,13 @@ def obtener_hora_chile():
     except: return datetime.now(pytz.utc)
 
 def limpiar_basura():
-    """ 
-    1. Borra la carpeta obsoleta 'monitoreo_datos' si existe.
-    2. (Modo Pruebas) Borra la carpeta actual para iniciar limpio.
-    """
-    # 1. Eliminar carpeta antigua (solicitud usuario)
+    """ Mantenimiento de carpetas """
     if os.path.exists(CARPETA_OBSOLETA):
-        try:
-            shutil.rmtree(CARPETA_OBSOLETA)
-            print(f"🗑️ Carpeta obsoleta '{CARPETA_OBSOLETA}' eliminada con éxito.")
-        except Exception as e:
-            print(f"⚠️ No se pudo borrar carpeta antigua: {e}")
-
-    # 2. Limpieza de pruebas de la carpeta actual
-    print(f"🧹 LIMPIEZA DE PRUEBAS: Borrando {CARPETA_PRINCIPAL}...")
+        try: shutil.rmtree(CARPETA_OBSOLETA); print("🗑️ Carpeta vieja eliminada.")
+        except: pass
+    # MODO PRUEBAS: Limpia la carpeta actual para reiniciar el CSV
     if os.path.exists(CARPETA_PRINCIPAL):
-        try: shutil.rmtree(CARPETA_PRINCIPAL)
+        try: shutil.rmtree(CARPETA_PRINCIPAL); print("🧹 Limpieza de pruebas ejecutada.")
         except: pass
 
 def procesar_imagen_ocr(imagen_pil):
@@ -93,17 +81,12 @@ def leer_fecha_de_imagen_bytes(contenido_imagen, fecha_referencia_cl):
     except: return None
 
 def obtener_etiqueta_sensor(codigo):
-    # --- CAMBIO DE NOMBRES SOLICITADO ---
-    mapa = {
-        "MOD": "MODIS", 
-        "VIR": "VIIRS",       # Antes VIIRS-750m
-        "VIR375": "VIIRS375", # Antes VIIRS-375m
-        "MIR": "MIR-Combined"
-    }
+    mapa = {"MOD": "MODIS", "VIR": "VIIRS", "VIR375": "VIIRS375", "MIR": "MIR-Combined"}
     return mapa.get(codigo, codigo)
 
 def buscar_distancia_en_html(soup_text):
     try:
+        # Busca "Dist = 5.2 km" o "Dist: 5.2"
         patron = r"Dist\s*[=:]\s*([\d\.]+)"
         match = re.search(patron, soup_text, re.IGNORECASE)
         if match: return float(match.group(1))
@@ -114,15 +97,13 @@ def descargar_y_guardar(session, url, ruta_guardado):
     try:
         r = session.get(url, timeout=10)
         if r.status_code == 200:
-            with open(ruta_guardado, 'wb') as f:
-                f.write(r.content)
+            with open(ruta_guardado, 'wb') as f: f.write(r.content)
             return True
     except: pass
     return False
 
 def procesar():
-    # Ejecuta la limpieza (Borra carpeta vieja y limpia la nueva para pruebas)
-    limpiar_basura()
+    limpiar_basura() # Limpieza activada
 
     if not os.path.exists(CARPETA_PRINCIPAL): 
         os.makedirs(CARPETA_PRINCIPAL, exist_ok=True)
@@ -135,13 +116,13 @@ def procesar():
     fecha_exec_simple = ahora_cl.strftime("%Y-%m-%d")
     hora_exec_simple = ahora_cl.strftime("%H:%M:%S")
     
-    print(f"🕒 Iniciando V15.0 (Limpieza y Nombres Cortos): {fecha_proceso_str}")
+    print(f"🕒 Iniciando Monitor Volcanico VRP (V16.0): {fecha_proceso_str}")
     registros_nuevos = []
     contador_id = 0
 
     for vid, nombre_v in VOLCANES.items():
         for modo in ["MOD", "VIR", "VIR375", "MIR"]:
-            s_label = obtener_etiqueta_sensor(modo) # Ahora devuelve VIIRS o VIIRS375
+            s_label = obtener_etiqueta_sensor(modo)
             url_sitio = f"{BASE_URL}/NRT/volcanoDetails_{modo}.php?volcano_id={vid}"
             
             try:
@@ -194,8 +175,6 @@ def procesar():
                     fecha_carpeta = fecha_exec_simple
                     hora_archivo = f"{hora_exec_simple}_Sys"
 
-                print(f"   👁️ {nombre_v} {s_label} -> {fecha_satelite_str} [{origen}]")
-
                 # 3. Guardar Imágenes
                 ruta_carpeta_volcan = os.path.join(RUTA_IMAGENES_BASE, nombre_v)
                 ruta_carpeta_dia = os.path.join(ruta_carpeta_volcan, fecha_carpeta)
@@ -203,7 +182,6 @@ def procesar():
                 
                 if "✅" in origen: prefijo = hora_archivo.replace(":", "-") + "_"
                 else: prefijo = hora_exec_simple.replace(":", "-") + "_Sys_"
-
                 ruta_foto_principal = "No encontrada"
 
                 for tipo, url in urls_imagenes.items():
@@ -218,7 +196,7 @@ def procesar():
                         else:
                             descargar_y_guardar(session, url, ruta_final)
 
-                # 4. Datos VRP/Dist
+                # 4. Datos VRP y Distancia
                 vrp_valor = 0.0
                 distancia_km = 0.0
                 for b in soup.find_all('b'):
@@ -232,9 +210,20 @@ def procesar():
                 if vrp_valor > 0:
                     distancia_km = buscar_distancia_en_html(soup.get_text())
 
-                es_volcanico = False
-                if vrp_valor > 0 and distancia_km <= 5.0: es_volcanico = True
+                # --- 5. CLASIFICACIÓN DE ALERTA ---
+                # Definimos el estado basado en VRP y Distancia
+                clasificacion = "NORMAL" # Por defecto
                 
+                if vrp_valor > 0:
+                    if distancia_km <= 5.0:
+                        clasificacion = "ALERTA VOLCANICA"
+                    else:
+                        clasificacion = "FALSO POSITIVO"
+                
+                # Feedback en consola
+                print(f"   👁️ {nombre_v} {s_label} -> VRP:{vrp_valor} | Dist:{distancia_km}km | [{clasificacion}]")
+
+                # Agregar al registro con la nueva columna CLASIFICACION
                 registros_nuevos.append({
                     "ID": contador_id,
                     "timestamp": unix_time,
@@ -243,7 +232,7 @@ def procesar():
                     "Sensor": s_label,
                     "VRP_MW": vrp_valor,
                     "Distancia_km": distancia_km,
-                    "Es_Volcanico": es_volcanico,
+                    "Clasificacion": clasificacion, # NUEVA COLUMNA
                     "Fecha_Proceso": fecha_proceso_str,
                     "Ruta_Fotos": ruta_foto_principal
                 })
@@ -254,7 +243,7 @@ def procesar():
 
     # --- GUARDAR CSVS ---
     if registros_nuevos:
-        cols = ["ID", "timestamp", "Fecha_Satelite", "Volcan", "Sensor", "VRP_MW", "Distancia_km", "Es_Volcanico", "Fecha_Proceso", "Ruta_Fotos"]
+        cols = ["ID", "timestamp", "Fecha_Satelite", "Volcan", "Sensor", "VRP_MW", "Distancia_km", "Clasificacion", "Fecha_Proceso", "Ruta_Fotos"]
         df_completo = pd.DataFrame(registros_nuevos)
         df_completo = df_completo.reindex(columns=cols)
         

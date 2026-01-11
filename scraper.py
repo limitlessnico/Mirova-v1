@@ -77,9 +77,11 @@ def procesar():
     session = requests.Session()
     ahora_cl = obtener_hora_chile_actual()
     hoy_str = ahora_cl.strftime("%Y-%m-%d")
-    fecha_proceso_str = ahora_cl.strftime("%Y-%m-%d %H:%M:%S")
     
-    log_bitacora(f"🚀 INICIO CICLO V44.0 (ACTUALIZACIÓN NULO IN-SITU): {ahora_cl}")
+    # Esta fecha SOLO se usará para los datos nuevos obtenidos en este ciclo
+    fecha_proceso_actual = ahora_cl.strftime("%Y-%m-%d %H:%M:%S")
+    
+    log_bitacora(f"🚀 INICIO CICLO V45.0 (AUDITORÍA DE PROCESO CORREGIDA): {ahora_cl}")
 
     try:
         df_master = pd.read_csv(DB_MASTER) if os.path.exists(DB_MASTER) else pd.DataFrame()
@@ -129,32 +131,38 @@ def procesar():
                 "Distancia_km": dist_val, "Tipo_Registro": tipo_reg,
                 "Clasificacion Mirova": obtener_nivel_mirova(vrp_val, es_alerta),
                 "Ruta Foto": ruta_foto,
-                "Fecha_Proceso_GitHub": fecha_proceso_str
+                "Fecha_Proceso_GitHub": fecha_proceso_actual # Se asigna solo a los nuevos
             })
 
         if nuevos_datos:
             df_new = pd.DataFrame(nuevos_datos)
             df_master = pd.concat([df_master, df_new]).drop_duplicates(subset=["Fecha_Satelite_UTC", "Volcan", "Sensor"], keep='last')
             
-            # --- ACTUALIZACIÓN DE VALORES EN COLUMNAS EXISTENTES ---
-            def actualizar_existentes(row):
+            # --- ACTUALIZACIÓN DE DATOS EXISTENTES SIN TOCAR FECHA_PROCESO SI YA EXISTE ---
+            def actualizar_metadatos(row):
                 cfg = next((c for i, c in VOLCANES_CONFIG.items() if c["nombre"] == row['Volcan']), None)
                 d_lim = cfg["limite_km"] if cfg else 5.0
                 es_al = (row['VRP_MW'] > 0 and row['Distancia_km'] <= d_lim)
                 
-                # Sobrescribir valor en la columna actual
+                # Actualizar clasificación in-situ
                 row['Clasificacion Mirova'] = obtener_nivel_mirova(row['VRP_MW'], es_al)
+                
+                # Respetar Fecha_Proceso_GitHub: si es nula o vacía, dejarla así (para registros históricos reconstruidos)
+                if 'Fecha_Proceso_GitHub' not in row or pd.isna(row['Fecha_Proceso_GitHub']):
+                    row['Fecha_Proceso_GitHub'] = "" 
+                
                 return row
 
-            df_master = df_master.apply(actualizar_existentes, axis=1)
+            df_master = df_master.apply(actualizar_metadatos, axis=1)
             
-            # Asegurar que no hay duplicados de columnas (por si acaso hubiera basura previa)
+            # Asegurar orden y limpieza de columnas
             df_master = df_master.loc[:, ~df_master.columns.duplicated()]
+            cols_orden = ["timestamp", "Fecha_Satelite_UTC", "Fecha_Captura_Chile", "Volcan", "Sensor", "VRP_MW", "Distancia_km", "Tipo_Registro", "Clasificacion Mirova", "Ruta Foto", "Fecha_Proceso_GitHub"]
+            df_master = df_master[[c for c in cols_orden if c in df_master.columns]]
             
-            # Guardar Consolidado
             df_master.to_csv(DB_MASTER, index=False)
             
-            # --- RECONSTRUCCIÓN DE TABLAS LIMPIAS ---
+            # --- RECONSTRUCCIÓN DE TABLAS ---
             df_pos = df_master[df_master['Tipo_Registro'] == "ALERTA_TERMICA"].copy()
             df_out = df_pos.drop(columns=['Tipo_Registro'])
             df_out.to_csv(DB_POSITIVOS, index=False)
@@ -163,10 +171,10 @@ def procesar():
                 v_nombre = cfg["nombre"]
                 ruta_v = os.path.join(RUTA_IMAGENES_BASE, v_nombre)
                 os.makedirs(ruta_v, exist_ok=True)
-                df_v = df_out[df_out['Volcan'] == v_nombre]
-                df_v.to_csv(os.path.join(ruta_v, f"registro_{v_nombre.replace(' ', '_')}.csv"), index=False)
+                df_ind = df_out[df_out['Volcan'] == v_nombre]
+                df_ind.to_csv(os.path.join(ruta_v, f"registro_{v_nombre.replace(' ', '_')}.csv"), index=False)
             
-            log_bitacora(f"💾 Consolidado actualizado con etiquetas 'NULO'.")
+            log_bitacora(f"💾 Consolidado actualizado. Auditoría GitHub aplicada solo a datos nuevos.")
 
     except Exception as e:
         log_bitacora(f"❌ ERROR: {e}")

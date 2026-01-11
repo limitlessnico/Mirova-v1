@@ -1,4 +1,4 @@
-# 🌋 VolcanoBot - Monitor de Volcanes (Cliente MIROVA Chile)
+# 🌋 VolcanoBot - Monitor de Volcanes disponibles en MIROVA
 
 **VolcanoBot** es un sistema de vigilancia automatizada que monitorea la actividad volcánica en Chile utilizando los datos procesados por la plataforma **MIROVA** (Middle InfraRed Observation of Volcanic Activity), desarrollada por la Universidad de Turín.
 

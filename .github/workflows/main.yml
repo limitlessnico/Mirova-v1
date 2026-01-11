@@ -1,5 +1,4 @@
-name: Monitor Volcanico VRP (Data Table Mode)
-
+name: Monitor Volcanico VRP 
 on:
   schedule:
     # Ejecutar cada 15 minutos para no perder ningún dato

@@ -172,3 +172,7 @@
 [2026-01-11 15:45:16] 💾 CSVs actualizados. Registros procesados: 30
 [2026-01-11 15:45:16] ✅ CICLO FINALIZADO EXITOSAMENTE.
 
+[2026-01-11 15:55:18] 🚀 INICIO CICLO V35.5 (RECLASIFICACIÓN): 2026-01-11 15:55:18.682838-03:00
+[2026-01-11 15:55:39] 💾 CSVs sincronizados y reclasificados. Total master: 77
+[2026-01-11 15:55:39] ✅ CICLO FINALIZADO EXITOSAMENTE.
+

@@ -1,15 +1,17 @@
-name: Monitor Volcanico Pro (Con OCR)
+name: Monitor Volcanico Pro (Modo Ráfaga)
 
 on:
   schedule:
-    - cron: '0 */3 * * *' # Se ejecuta cada 3 horas
+    # --- CAMBIO CRÍTICO: Ejecutar cada 15 minutos ---
+    # Esto asegura capturar las actualizaciones de 19 minutos
+    - cron: '*/15 * * * *' 
+  
   workflow_dispatch: # Botón manual
 
 jobs:
   build:
     runs-on: ubuntu-latest
     
-    # PERMISOS: Críticos para guardar archivos
     permissions:
       contents: write
 
@@ -22,19 +24,15 @@ jobs:
         with:
           python-version: '3.9'
 
-      # --- NUEVO PASO OBLIGATORIO: INSTALAR TESSERACT (CEREBRO VISUAL) ---
       - name: Instalar Tesseract OCR (Sistema Linux)
         run: |
           sudo apt-get update
           sudo apt-get install -y tesseract-ocr libtesseract-dev
 
-      # --- ACTUALIZADO: Instalar librerías de Python ---
       - name: Instalar dependencias Python
         run: |
           python -m pip install --upgrade pip
-          # Instalamos requirements si existe
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          # FORZAMOS la instalación de las librerías de visión por si no están en el txt
           pip install requests beautifulsoup4 pandas pytz pytesseract pillow
 
       - name: Ejecutar Scraper
@@ -44,9 +42,6 @@ jobs:
         run: |
           git config --global user.name "VolcanoBot"
           git config --global user.email "bot@volcano.com"
-          
-          # Agregamos todo (incluyendo fotos nuevas)
           git add -A
-          
-          # Commit seguro: Solo hace commit si hay cambios reales
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto: Actualización con OCR y Datos" && git push)
+          # Commit seguro: Solo guarda si hay cambios reales
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto: Actualización Ráfaga (15 min)" && git push)

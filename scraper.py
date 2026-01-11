@@ -25,6 +25,8 @@ URL_LATEST = "https://www.mirovaweb.it/NRT/latest.php"
 BASE_URL = "https://www.mirovaweb.it"
 CARPETA_PRINCIPAL = "monitoreo_satelital"
 RUTA_IMAGENES_BASE = os.path.join(CARPETA_PRINCIPAL, "imagenes_satelitales")
+
+# ARCHIVOS QUE NO SE DEBEN BORRAR
 DB_MASTER = os.path.join(CARPETA_PRINCIPAL, "registro_vrp_consolidado.csv") 
 DB_POSITIVOS = os.path.join(CARPETA_PRINCIPAL, "registro_vrp_positivos.csv")
 ARCHIVO_BITACORA = os.path.join(CARPETA_PRINCIPAL, "bitacora_robot.txt")
@@ -39,6 +41,7 @@ def convertir_utc_a_chile(dt_obj_utc):
 def log_bitacora(mensaje):
     ahora = obtener_hora_chile_actual().strftime("%Y-%m-%d %H:%M:%S")
     linea = f"[{ahora}] {mensaje}\n"
+    print(linea.strip())
     with open(ARCHIVO_BITACORA, "a", encoding="utf-8") as f:
         f.write(linea)
 
@@ -77,9 +80,21 @@ def procesar():
     if not os.path.exists(CARPETA_PRINCIPAL): os.makedirs(CARPETA_PRINCIPAL)
     session = requests.Session()
     ahora_cl = obtener_hora_chile_actual()
-    log_bitacora(f"🚀 INICIO CICLO V36.0 (CAMBIO COLUMNA): {ahora_cl}")
+    log_bitacora(f"🚀 INICIO CICLO V36.2 (LIMPIEZA Y REUBICACIÓN): {ahora_cl}")
 
     try:
+        # --- 1. LIMPIEZA DE ARCHIVOS SUELTOS ERRÓNEOS ---
+        for archivo in os.listdir(CARPETA_PRINCIPAL):
+            if archivo.startswith("registro_") and archivo.endswith(".csv"):
+                ruta_full = os.path.join(CARPETA_PRINCIPAL, archivo)
+                # No borrar los consolidados
+                if ruta_full not in [DB_MASTER, DB_POSITIVOS]:
+                    try:
+                        os.remove(ruta_full)
+                        log_bitacora(f"🗑️ Borrado archivo fuera de lugar: {archivo}")
+                    except: pass
+
+        # --- 2. SCRAPING Y PROCESAMIENTO ---
         res = session.get(URL_LATEST, timeout=30)
         soup = BeautifulSoup(res.text, 'html.parser')
         tabla = soup.find('table', {'id': 'example'}) or soup.find('table')
@@ -101,7 +116,6 @@ def procesar():
             sensor_str = cols[5].text.strip()
             es_alerta_distancia = (vrp_val > 0 and dist_val <= config["limite_km"])
 
-            # Usamos el nuevo nombre de columna directamente aquí
             dato = {
                 "timestamp": int(dt_utc.timestamp()),
                 "Fecha_Satelite_UTC": dt_utc.strftime("%Y-%m-%d %H:%M:%S"),
@@ -117,20 +131,18 @@ def procesar():
             if es_alerta_distancia or (vrp_val == 0 and "375" in sensor_str):
                 descargar_set_completo(session, id_v, nombre_v, dt_utc)
 
+        # --- 3. GUARDADO Y MIGRACIÓN DE COLUMNAS ---
         if nuevos_datos:
             df_new = pd.DataFrame(nuevos_datos)
             
             if os.path.exists(DB_MASTER):
                 df_old = pd.read_csv(DB_MASTER)
-                # MIGRACIÓN: Si existe la columna vieja, renombrarla para no perder datos
                 if 'Clasificacion' in df_old.columns:
                     df_old = df_old.rename(columns={'Clasificacion': 'Clasificacion Mirova'})
-                
                 df_master = pd.concat([df_old, df_new]).drop_duplicates(subset=["Fecha_Satelite_UTC", "Volcan", "Sensor"])
             else:
                 df_master = df_new
 
-            # Asegurar que TODO el histórico use la nueva clasificación y nombre
             def reclasificar(row):
                 for _, cfg in VOLCANES_CONFIG.items():
                     if cfg["nombre"] == row['Volcan']:
@@ -141,18 +153,29 @@ def procesar():
             df_master['Clasificacion Mirova'] = df_master.apply(reclasificar, axis=1)
             df_master.to_csv(DB_MASTER, index=False)
             
-            # Guardar Positivos con el nuevo nombre
             niveles = ["Muy Bajo", "Bajo", "Moderado", "Alto"]
             df_pos = df_master[df_master['Clasificacion Mirova'].isin(niveles)]
             df_pos.to_csv(DB_POSITIVOS, index=False)
 
-            # Generar/Actualizar CSVs individuales por volcán
+            # --- 4. ACTUALIZACIÓN DE CSV INDIVIDUALES EN CARPETAS CORRECTAS ---
             for v_nombre in df_master['Volcan'].unique():
-                ruta_v = os.path.join(CARPETA_PRINCIPAL, f"registro_{v_nombre.replace(' ', '_')}.csv")
-                df_v = df_master[df_master['Volcan'] == v_nombre]
-                df_v.to_csv(ruta_v, index=False)
+                ruta_carpeta_volcan = os.path.join(RUTA_IMAGENES_BASE, v_nombre)
+                # Si la carpeta existe (debería existir por el scraper de imágenes)
+                if os.path.exists(ruta_carpeta_volcan):
+                    nombre_csv = f"registro_{v_nombre.replace(' ', '_')}.csv"
+                    ruta_csv_final = os.path.join(ruta_carpeta_volcan, nombre_csv)
+                    
+                    df_v = df_master[df_master['Volcan'] == v_nombre].copy()
+                    
+                    if os.path.exists(ruta_csv_final):
+                        df_old_v = pd.read_csv(ruta_csv_final)
+                        if 'Clasificacion' in df_old_v.columns:
+                            df_old_v = df_old_v.rename(columns={'Clasificacion': 'Clasificacion Mirova'})
+                        df_v = pd.concat([df_old_v, df_v]).drop_duplicates(subset=["Fecha_Satelite_UTC", "Sensor"])
 
-            log_bitacora(f"💾 Columnas migradas. Total master: {len(df_master)}")
+                    df_v.to_csv(ruta_csv_final, index=False)
+            
+            log_bitacora(f"💾 Sincronización completa y limpieza realizada.")
 
     except Exception as e:
         log_bitacora(f"❌ ERROR: {e}")

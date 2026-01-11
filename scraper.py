@@ -10,7 +10,7 @@ import pytz
 # --- CONFIGURACIÓN DE LOS 10 VOLCANES CHILENOS ---
 VOLCANES_CONFIG = {
     "355100": {"nombre": "Lascar", "limite_km": 5.0},
-    "355160": {"nombre": "Lastarria", "limite_km": 3.0},
+    "355120": {"nombre": "Lastarria", "limite_km": 3.0},
     "354030": {"nombre": "Isluga", "limite_km": 5.0},
     "357120": {"nombre": "Villarrica", "limite_km": 5.0},
     "357110": {"nombre": "Llaima", "limite_km": 5.0},
@@ -153,3 +153,4 @@ def procesar():
 
 if __name__ == "__main__":
     procesar()
+

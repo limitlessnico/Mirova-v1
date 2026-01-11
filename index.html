@@ -6,23 +6,42 @@
     <title>🌋 VolcanoBot Dashboard</title>
     <style>
         body { background-color: #121212; color: #e0e0e0; font-family: sans-serif; margin: 0; padding: 20px; }
-        h1 { text-align: center; color: #ff5733; }
+        h1 { text-align: center; color: #ff5733; margin-top: 40px; }
         .last-update { text-align: center; color: #888; font-size: 0.9em; margin-bottom: 20px; }
         .grid-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; justify-items: center; }
         .card { background-color: #1e1e1e; border-radius: 10px; padding: 10px; width: 100%; max-width: 600px; text-align: center; border: 1px solid #333; }
         .card h2 { margin: 10px 0; font-size: 1.2em; color: #00bcd4; }
         img { width: 100%; border-radius: 5px; }
+
+        /* Estilos del Botón de Pantalla Completa */
+        #btnFullscreen {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 15px;
+            background-color: #ff5733;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            z-index: 1000;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        #btnFullscreen:hover { background-color: #e64a19; }
     </style>
 </head>
 <body>
+
+    <button id="btnFullscreen">📺 Pantalla Completa</button>
+
     <h1>🌋 Centro de Monitoreo VolcanoBot</h1>
     <div class="last-update" id="reloj">Cargando...</div>
     <div class="grid-container" id="galeria"></div>
 
 <script>
-    // --- TUS DATOS ---
-    const usuario = "MendozaVolcanic";   // <--- Verifica esto
-    const repo = "Mirova-v1";            // <--- Verifica esto
+    const usuario = "MendozaVolcanic"; 
+    const repo = "Mirova-v1"; 
     const rama = "main"; 
 
     const volcanes = [
@@ -33,10 +52,21 @@
 
     const baseUrl = `https://raw.githubusercontent.com/${usuario}/${repo}/${rama}/monitoreo_satelital/graficos_tendencia`;
 
+    // Función para activar Pantalla Completa
+    document.getElementById('btnFullscreen').addEventListener('click', () => {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(err => {
+                alert(`Error al intentar modo pantalla completa: ${err.message}`);
+            });
+        } else {
+            document.exitFullscreen();
+        }
+    });
+
     function actualizarTablero() {
         const contenedor = document.getElementById('galeria');
         contenedor.innerHTML = ''; 
-        const timestamp = new Date().getTime(); // Evita caché
+        const timestamp = new Date().getTime(); 
 
         volcanes.forEach(volcan => {
             const card = document.createElement('div');
@@ -54,10 +84,11 @@
             card.appendChild(img);
             contenedor.appendChild(card);
         });
-        document.getElementById('reloj').innerText = `Actualizado: ${new Date().toLocaleTimeString()}`;
+        document.getElementById('reloj').innerText = `Actualizado: ${new Date().toLocaleTimeString()} (Chile)`;
     }
+
     actualizarTablero();
-    setInterval(actualizarTablero, 600000); // 10 minutos
+    setInterval(actualizarTablero, 600000); // Auto-refresco cada 10 minutos
 </script>
 </body>
 </html>

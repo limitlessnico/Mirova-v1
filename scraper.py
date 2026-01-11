@@ -8,7 +8,7 @@ import shutil
 from urllib.parse import urlparse
 import pytz
 
-# --- CONFIGURACIÓN DE LOS 8 VOLCANES CHILENOS ---
+# --- CONFIGURACIÓN DE LOS VOLCANES CHILENOS ACTIVOS ---
 VOLCANES_CONFIG = {
     "355100": {"nombre": "Lascar", "limite_km": 5.0},
     "355101": {"nombre": "Lastarria", "limite_km": 3.0},
@@ -61,22 +61,20 @@ def convertir_utc_a_chile(dt_obj_utc):
 
 def modo_nuclear_borrar_todo():
     """ 
-    ☢️ MODO NUCLEAR: Borra todo de forma segura.
+    ☢️ MODO NUCLEAR: Borra todo de forma segura para reiniciar el sistema.
     """
-    print("☢️  MODO NUCLEAR ACTIVADO: Limpiando historial...")
+    print("☢️  MODO NUCLEAR ACTIVADO: Borrando todo el historial...")
     
     if os.path.exists(CARPETA_OBSOLETA):
         try: 
             shutil.rmtree(CARPETA_OBSOLETA)
-        except: 
-            pass
+        except: pass
 
     if os.path.exists(CARPETA_PRINCIPAL):
         try: 
             shutil.rmtree(CARPETA_PRINCIPAL)
-            print("✅ Historial eliminado.") 
-        except: 
-            pass
+            print("✅ Historial eliminado con éxito.") 
+        except: pass
 
 def mapear_url_sensor(nombre_sensor_web):
     s = nombre_sensor_web.upper().strip()
@@ -136,7 +134,7 @@ def descargar_fotos_vrp(session, id_volcan, nombre_volcan, sensor_web, fecha_utc
 # --- DESCARGA ESPECIAL (MSI/OLI - PATRULLERO) ---
 def patrullar_hd(session, id_volcan, nombre_volcan, sensor_hd):
     """
-    Entra a la pestaña MSI u OLI y busca la imagen compuesta (Latest 6 Images).
+    Busca la imagen compuesta (Latest/Last6) en las pestañas MSI u OLI.
     """
     url_detalle = f"{BASE_URL}/NRT/volcanoDetails_{sensor_hd}.php?volcano_id={id_volcan}"
     
@@ -146,13 +144,12 @@ def patrullar_hd(session, id_volcan, nombre_volcan, sensor_hd):
         
         target_img_url = None
         
-        # Buscamos la imagen que contiene "Last6" o "Latest" en su nombre
         tags = soup.find_all('img')
         for tag in tags:
             src = tag.get('src')
             if not src: continue
             low = src.lower()
-            # Patrón detectado en tus capturas: "Last6Images"
+            # Patrón detectado: "Last6Images" o "Latest"
             if "last6images" in low or "latest" in low:
                 if src.startswith('http'): target_img_url = src
                 else: target_img_url = f"{BASE_URL}/{src.replace('../', '').lstrip('/')}"
@@ -160,13 +157,10 @@ def patrullar_hd(session, id_volcan, nombre_volcan, sensor_hd):
         
         if target_img_url:
             # Guardamos en carpeta especial HD
-            ahora = datetime.now()
-            # Usamos fecha actual porque la imagen se actualiza en el servidor pero mantiene el nombre a veces
-            # O agregamos un hash para diferenciar
+            # Usamos nombre fijo por sensor para que Git gestione el historial
             ruta_carpeta = os.path.join(RUTA_IMAGENES_BASE, nombre_volcan, "HD_SENSORS", sensor_hd)
             os.makedirs(ruta_carpeta, exist_ok=True)
             
-            # Nombre fijo: 'MSI_Composite.png'. Git detectará si los píxeles cambiaron.
             nombre_archivo = f"{sensor_hd}_Latest_Composite.png"
             ruta_final = os.path.join(ruta_carpeta, nombre_archivo)
             
@@ -187,7 +181,7 @@ def check_evidencia_existente(nombre_volcan, fecha_utc_dt):
     return False
 
 def procesar():
-    # 1. MODO NUCLEAR (Activo para limpiar errores previos)
+    # 1. EJECUTAR LIMPIEZA NUCLEAR
     modo_nuclear_borrar_todo()
 
     if not os.path.exists(CARPETA_PRINCIPAL): os.makedirs(CARPETA_PRINCIPAL, exist_ok=True)
@@ -196,7 +190,7 @@ def procesar():
     session.headers.update({'User-Agent': 'Mozilla/5.0'})
     ahora_cl_proceso = obtener_hora_chile_actual()
     
-    print(f"🚀 Iniciando V27.1 (Fix Sintaxis + Soporte MSI/OLI): {ahora_cl_proceso}")
+    print(f"🚀 Iniciando V27.1 (Reinicio Total + Soporte MSI/OLI): {ahora_cl_proceso}")
     
     # ---------------------------------------------------------
     # FASE 1: EL ESPÍA (Latest.php para MODIS/VIIRS)
@@ -359,7 +353,7 @@ def procesar():
     else:
         pd.DataFrame(columns=COLUMNAS_REPORTE).to_csv(DB_POSITIVOS, index=False)
 
-    # 3. HD REPORT (Nuevo)
+    # 3. HD REPORT
     if registros_hd:
         df_hd = pd.DataFrame(registros_hd).reindex(columns=COLUMNAS_HD)
         df_hd.to_csv(DB_HD, index=False)

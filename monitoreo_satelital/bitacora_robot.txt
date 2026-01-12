@@ -245,3 +245,5 @@
 [2026-01-11 20:52:59] 💾 Ciclo V48.0 completado.
 [2026-01-11 21:32:13] 🚀 INICIO CICLO V49.0 (SANEAMIENTO FORZADO): 2026-01-11 21:32:13.867045-03:00
 [2026-01-11 21:32:15] 💾 Consolidado y tablas saneadas exitosamente.
+[2026-01-11 21:36:19] 🚀 INICIO CICLO V50.0 (LIMPIEZA RADICAL): 2026-01-11 21:36:19.994713-03:00
+[2026-01-11 21:36:21] 💾 Limpieza total aplicada. Revisa las filas 2-60 ahora.

@@ -621,3 +621,6 @@
 [2026-01-12 09:38:59] 🛠 Escaneando HTML para Nevados de Chillan...
 [2026-01-12 09:38:59] ❌ No se halló link en HTML para Nevados de Chillan Latest
 [2026-01-12 09:38:59] 💾 CICLO V83.0 FINALIZADO.
+[2026-01-12 10:05:09] 🚀 INICIO CICLO V88.0: 2026-01-12 10:05:09.210020-03:00
+[2026-01-12 10:05:24] 💾 CSVs sincronizados correctamente.
+[2026-01-12 10:05:24] ✅ CICLO FINALIZADO.

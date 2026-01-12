@@ -37,11 +37,12 @@ def log_bitacora(mensaje):
         f.write(f"[{ahora}] {mensaje}\n")
 
 def obtener_nivel_mirova(vrp, es_alerta):
-    if vrp <= 0: return "NULO"
+    v = float(vrp)
+    if v <= 0: return "NULO"
     if not es_alerta: return "FALSO POSITIVO"
-    if vrp < 1: return "Muy Bajo"
-    if vrp < 10: return "Bajo"
-    if vrp < 100: return "Moderado"
+    if v < 1: return "Muy Bajo"
+    if v < 10: return "Bajo"
+    if v < 100: return "Moderado"
     return "Alto"
 
 def descargar_set_completo(session, id_v, nombre_v, dt_utc):
@@ -68,16 +69,15 @@ def procesar():
     os.makedirs(CARPETA_PRINCIPAL, exist_ok=True)
     session = requests.Session()
     ahora_cl = obtener_hora_chile()
-    hoy_str = ahora_cl.strftime("%Y-%m-%d")
     fecha_proceso_actual = ahora_cl.strftime("%Y-%m-%d %H:%M:%S")
     
-    log_bitacora(f"🚀 INICIO CICLO V50.0 (LIMPIEZA RADICAL): {ahora_cl}")
+    log_bitacora(f"🚀 INICIO CICLO V53.0 (SANEAMIENTO AUTO-CORRECTOR): {ahora_cl}")
 
     try:
         # 1. Cargar el Master
         df_master = pd.read_csv(DB_MASTER) if os.path.exists(DB_MASTER) else pd.DataFrame()
 
-        # 2. Obtener nuevos datos
+        # 2. Obtener nuevos datos de Mirova
         res = session.get("https://www.mirovaweb.it/NRT/latest.php", timeout=30)
         soup = BeautifulSoup(res.text, 'html.parser')
         filas = soup.find('tbody').find_all('tr')
@@ -96,78 +96,83 @@ def procesar():
             sensor = cols[5].text.strip()
             es_alerta = (vrp > 0 and dist <= conf["limite_km"])
 
-            tipo = "RUTINA"; ruta = "No descargada"
-            if es_alerta:
-                tipo = "ALERTA_TERMICA"
-                descargar_set_completo(session, id_v, conf["nombre"], dt_utc)
-                s_l = "VIIRS750" if "375" not in sensor else "VIIRS375"
-                ruta = f"imagenes_satelitales/{conf['nombre']}/{dt_utc.strftime('%Y-%m-%d')}/{dt_utc.strftime('%H-%M-%S')}_{conf['nombre']}_{s_l}_VRP.png"
-            else:
-                ya_hay_foto = False
-                if not df_master.empty:
-                    df_h = df_master[(df_master['Volcan'] == conf['nombre']) & (df_master['Fecha_Satelite_UTC'].str.contains(hoy_str))]
-                    ya_hay_foto = not df_h[df_h['Ruta Foto'] != "No descargada"].empty
-                if not ya_hay_foto:
-                    tipo = "EVIDENCIA_DIARIA"
-                    descargar_set_completo(session, id_v, conf["nombre"], dt_utc)
-                    s_l = "VIIRS750" if "375" not in sensor else "VIIRS375"
-                    ruta = f"imagenes_satelitales/{conf['nombre']}/{dt_utc.strftime('%Y-%m-%d')}/{dt_utc.strftime('%H-%M-%S')}_{conf['nombre']}_{s_l}_VRP.png"
-
+            # Nota: El Tipo_Registro se asignará correctamente en el bloque de saneamiento final
             nuevos_datos.append({
                 "timestamp": int(dt_utc.timestamp()),
                 "Fecha_Satelite_UTC": dt_utc.strftime("%Y-%m-%d %H:%M:%S"),
                 "Fecha_Captura_Chile": dt_utc.replace(tzinfo=pytz.utc).astimezone(pytz.timezone('America/Santiago')).strftime("%Y-%m-%d %H:%M:%S"),
                 "Volcan": conf["nombre"], "Sensor": sensor, "VRP_MW": vrp, "Distancia_km": dist,
-                "Tipo_Registro": tipo, "Clasificacion Mirova": obtener_nivel_mirova(vrp, es_alerta),
-                "Ruta Foto": ruta, "Fecha_Proceso_GitHub": fecha_proceso_actual
+                "Tipo_Registro": "TEMPORAL", # Se define abajo
+                "Clasificacion Mirova": obtener_nivel_mirova(vrp, es_alerta),
+                "Ruta Foto": "Pendiente",
+                "Fecha_Proceso_GitHub": fecha_proceso_actual
             })
 
-        # 3. UNIFICACIÓN Y SANEAMIENTO AGRESIVO
+        # 3. UNIFICACIÓN Y SANEAMIENTO RETROACTIVO
         if nuevos_datos or not df_master.empty:
             if nuevos_datos:
                 df_new = pd.DataFrame(nuevos_datos)
                 df_master = pd.concat([df_master, df_new]).drop_duplicates(subset=["Fecha_Satelite_UTC", "Volcan", "Sensor"], keep='last')
             
-            # --- FUNCIÓN DE LIMPIEZA TOTAL ---
-            def sanear_total(row):
-                # Determinar si es una alerta real según configuración
-                cfg = next((c for i, c in VOLCANES_CONFIG.items() if c["nombre"] == row['Volcan']), None)
-                d_lim = cfg["limite_km"] if cfg else 5.0
-                es_real = (row['VRP_MW'] > 0 and row['Distancia_km'] <= d_lim)
-                
-                # Forzar Clasificación
-                row['Clasificacion Mirova'] = obtener_nivel_mirova(row['VRP_MW'], es_real)
-                
-                # FORZAR LIMPIEZA DE RUTINA (Solución a filas 2-60)
-                # Si el VRP es 0, NO puede ser ALERTA_TERMICA
-                if row['VRP_MW'] <= 0:
-                    if row['Tipo_Registro'] == "ALERTA_TERMICA":
-                        row['Tipo_Registro'] = "RUTINA"
-                    
-                    # Si no es Evidencia Diaria legítima (con ruta de imagen real), lo pasamos a RUTINA
-                    if row['Tipo_Registro'] == "EVIDENCIA_DIARIA" and "No descargada" in str(row['Ruta Foto']):
-                         row['Tipo_Registro'] = "RUTINA"
-                    
-                    # Si es RUTINA, NO puede tener ruta de foto
-                    if row['Tipo_Registro'] == "RUTINA":
-                        row['Ruta Foto'] = "No descargada"
-                
-                # Limpiar auditoría de GitHub en datos viejos (más de 1 hora)
-                if int(time.time()) - int(row['timestamp']) > 3600:
-                    if row['Fecha_Proceso_GitHub'] == fecha_proceso_actual:
-                        row['Fecha_Proceso_GitHub'] = ""
-                
-                return row
+            # Asegurar tipos de datos
+            df_master['VRP_MW'] = pd.to_numeric(df_master['VRP_MW'])
+            df_master['Distancia_km'] = pd.to_numeric(df_master['Distancia_km'])
+            df_master['date_only'] = df_master['Fecha_Satelite_UTC'].str.split(' ').str[0]
 
-            df_master = df_master.apply(sanear_total, axis=1)
+            def sanear_grupo(group):
+                volcan = group.name[0]
+                limit = VOLCANES_CONFIG[volcan]["limite_km"]
+                group = group.sort_values('timestamp')
+                
+                # Identificar Alertas Reales
+                is_alerta = (group['VRP_MW'] > 0) & (group['Distancia_km'] <= limit)
+                group.loc[is_alerta, 'Tipo_Registro'] = 'ALERTA_TERMICA'
+                
+                has_alerta_en_dia = is_alerta.any()
+                
+                # Lógica: Si hay alerta, no hay evidencia de VRP 0 necesaria.
+                if has_alerta_en_dia:
+                    group.loc[~is_alerta, 'Tipo_Registro'] = 'RUTINA'
+                    group.loc[~is_alerta, 'Ruta Foto'] = 'No descargada'
+                else:
+                    # Si no hay alertas, el primero es evidencia, el resto rutina
+                    first_idx = group.index[0]
+                    group.loc[first_idx, 'Tipo_Registro'] = 'EVIDENCIA_DIARIA'
+                    if len(group) > 1:
+                        group.loc[group.index[1:], 'Tipo_Registro'] = 'RUTINA'
+                        group.loc[group.index[1:], 'Ruta Foto'] = 'No descargada'
 
-            # Reordenar y Guardar
+                # Construir Rutas para los que SÍ descargan
+                for idx, row in group.iterrows():
+                    if row['Tipo_Registro'] in ['ALERTA_TERMICA', 'EVIDENCIA_DIARIA']:
+                        if row['Ruta Foto'] == "No descargada" or row['Ruta Foto'] == "Pendiente":
+                            dt = datetime.strptime(row['Fecha_Satelite_UTC'], "%Y-%m-%d %H:%M:%S")
+                            s_l = "VIIRS750" if "375" not in str(row['Sensor']) else "VIIRS375"
+                            group.at[idx, 'Ruta Foto'] = f"imagenes_satelitales/{row['Volcan']}/{dt.strftime('%Y-%m-%d')}/{dt.strftime('%H-%M-%S')}_{row['Volcan']}_{s_l}_VRP.png"
+                    
+                    # Limpiar auditoría errónea antigua
+                    bulk_dates = ['2026-01-11 18:52:38', '2026-01-11 18:59:53', '2026-01-11 19:44:25']
+                    if row['Fecha_Proceso_GitHub'] in bulk_dates:
+                        group.at[idx, 'Fecha_Proceso_GitHub'] = ""
+                
+                return group
+
+            df_master = df_master.groupby(['Volcan', 'date_only'], group_keys=False).apply(sanear_grupo)
+
+            # 4. EJECUTAR DESCARGAS REALES (Solo para los nuevos que quedaron como Alerta o Evidencia)
+            for idx, row in df_master[df_master['Fecha_Proceso_GitHub'] == fecha_proceso_actual].iterrows():
+                if row['Tipo_Registro'] in ['ALERTA_TERMICA', 'EVIDENCIA_DIARIA']:
+                    id_volcan = next(k for k, v in VOLCANES_CONFIG.items() if v["nombre"] == row['Volcan'])
+                    dt_obj = datetime.strptime(row['Fecha_Satelite_UTC'], "%Y-%m-%d %H:%M:%S")
+                    descargar_set_completo(session, id_volcan, row['Volcan'], dt_obj)
+
+            # Guardar Master Limpio
             cols_final = ["timestamp", "Fecha_Satelite_UTC", "Fecha_Captura_Chile", "Volcan", "Sensor", "VRP_MW", "Distancia_km", "Tipo_Registro", "Clasificacion Mirova", "Ruta Foto", "Fecha_Proceso_GitHub"]
-            df_master = df_master[[c for c in cols_final if c in df_master.columns]].drop_duplicates()
+            df_master = df_master[cols_final].sort_values('timestamp', ascending=False)
             df_master.to_csv(DB_MASTER, index=False)
             
-            # 4. Reconstrucción de tablas derivadas
-            df_pos = df_master[df_master['Tipo_Registro'] == "ALERTA_TERMICA"].drop(columns=['Tipo_Registro'], errors='ignore')
+            # 5. Reconstruir tablas de Positivos e Individuales
+            df_pos = df_master[df_master['Tipo_Registro'] == "ALERTA_TERMICA"].drop(columns=['Tipo_Registro'])
             df_pos.to_csv(DB_POSITIVOS, index=False)
             
             for v_nom in df_master['Volcan'].unique():
@@ -176,7 +181,7 @@ def procesar():
                 os.makedirs(os.path.dirname(csv_p), exist_ok=True)
                 df_v.to_csv(csv_p, index=False)
             
-            log_bitacora(f"💾 Limpieza total aplicada. Revisa las filas 2-60 ahora.")
+            log_bitacora(f"💾 Sistema saneado y CSVs reconstruidos.")
 
     except Exception as e:
         log_bitacora(f"❌ ERROR: {e}")

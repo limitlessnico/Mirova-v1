@@ -4,7 +4,6 @@ import os
 import pandas as pd
 from datetime import datetime
 import time
-import shutil
 import pytz
 
 # --- CONFIGURACIÓN DE VOLCANES ---
@@ -52,19 +51,14 @@ def descargar_imagenes_quirurgica(session, id_v, nombre_v, dt_utc, sensor_tabla,
     h_a = dt_utc.strftime("%H-%M-%S")
     ruta_dia = os.path.join(RUTA_IMAGENES_BASE, nombre_v, f_c)
     os.makedirs(ruta_dia, exist_ok=True)
-
-    if modo == "COMPLETO":
-        sensores_objetivo = [sensor_tabla] 
-        productos = ["logVRP", "VRP", "Latest", "Dist"]
-    else: 
-        sensores_objetivo = ["VIIRS375"]
-        productos = ["Latest"]
-
-    for s in sensores_objetivo:
-        for p in productos:
-            url = f"https://www.mirovaweb.it/NRT/get_latest_image.php?volcano_id={id_v}&sensor={s}&type={p}"
+    sensores = [sensor_tabla] if modo == "COMPLETO" else ["VIIRS375"]
+    tipos = ["logVRP", "VRP", "Latest", "Dist"] if modo == "COMPLETO" else ["Latest"]
+    
+    for s in sensores:
+        for t in tipos:
+            url = f"https://www.mirovaweb.it/NRT/get_latest_image.php?volcano_id={id_v}&sensor={s}&type={t}"
             s_label = "VIIRS750" if s == "VIIRS" else s
-            nombre_img = f"{h_a}_{nombre_v}_{s_label}_{p}.png"
+            nombre_img = f"{h_a}_{nombre_v}_{s_label}_{t}.png"
             path_img = os.path.join(ruta_dia, nombre_img)
             if not os.path.exists(path_img):
                 try:
@@ -77,108 +71,125 @@ def procesar():
     os.makedirs(CARPETA_PRINCIPAL, exist_ok=True)
     session = requests.Session()
     ahora_cl = obtener_hora_chile()
-    fecha_proceso_actual = ahora_cl.strftime("%Y-%m-%d %H:%M:%S")
+    fecha_hoy_str = ahora_cl.strftime("%Y-%m-%d %H:%M:%S")
     
-    log_bitacora(f"🚀 INICIO CICLO V58.0 (ORDEN CRONOLÓGICO FIX): {ahora_cl}")
+    log_bitacora(f"🚀 INICIO CICLO V60.0 (MEMORIA Y TRAZABILIDAD): {ahora_cl}")
 
     try:
-        df_master = pd.read_csv(DB_MASTER) if os.path.exists(DB_MASTER) else pd.DataFrame()
-        
-        # 1. Scraping
+        # 1. Cargar Historial existente
+        if os.path.exists(DB_MASTER):
+            df_master = pd.read_csv(DB_MASTER)
+            # Asegurar que existan las columnas de auditoría
+            if 'Ultima_Actualizacion' not in df_master.columns: df_master['Ultima_Actualizacion'] = df_master['Fecha_Proceso_GitHub']
+            if 'Editado' not in df_master.columns: df_master['Editado'] = "NO"
+        else:
+            df_master = pd.DataFrame()
+
+        # 2. Scraping de datos actuales en la web
         res = session.get("https://www.mirovaweb.it/NRT/latest.php", timeout=30)
         soup = BeautifulSoup(res.text, 'html.parser')
         filas = soup.find('tbody').find_all('tr')
-        nuevos_datos = []
-
+        
+        datos_en_web = []
         for fila in filas:
             cols = fila.find_all('td')
             if len(cols) < 6: continue
             id_v = cols[1].text.strip()
             if id_v not in VOLCANES_CONFIG: continue
+            
             conf = VOLCANES_CONFIG[id_v]
             dt_utc = datetime.strptime(cols[0].text.strip(), "%d-%b-%Y %H:%M:%S")
-            vrp, dist, sensor = float(cols[3].text.strip()), float(cols[4].text.strip()), cols[5].text.strip()
+            timestamp = int(dt_utc.timestamp())
+            vrp_nuevo = float(cols[3].text.strip())
+            dist_nuevo = float(cols[4].text.strip())
+            sensor = cols[5].text.strip()
 
-            nuevos_datos.append({
-                "timestamp": int(dt_utc.timestamp()),
-                "Fecha_Satelite_UTC": dt_utc.strftime("%Y-%m-%d %H:%M:%S"),
-                "Fecha_Captura_Chile": dt_utc.replace(tzinfo=pytz.utc).astimezone(pytz.timezone('America/Santiago')).strftime("%Y-%m-%d %H:%M:%S"),
-                "Volcan": conf["nombre"], "Sensor": sensor, "VRP_MW": vrp, "Distancia_km": dist,
-                "Tipo_Registro": "PENDIENTE", "Clasificacion Mirova": "PENDIENTE",
-                "Ruta Foto": "PENDIENTE", "Fecha_Proceso_GitHub": fecha_proceso_actual
-            })
+            # Lógica de actualización: ¿Ya existe el registro?
+            mask = (df_master['timestamp'] == timestamp) & (df_master['Volcan'] == conf["nombre"]) & (df_master['Sensor'] == sensor) if not df_master.empty else pd.Series([False])
 
-        if nuevos_datos or not df_master.empty:
-            if nuevos_datos:
-                df_new = pd.DataFrame(nuevos_datos)
-                df_master = pd.concat([df_master, df_new]).drop_duplicates(subset=["Fecha_Satelite_UTC", "Volcan", "Sensor"], keep='last')
-            
-            # --- ORDENAMIENTO CRUCIAL (Ahora se aplica al objeto en memoria) ---
-            df_master = df_master.sort_values('timestamp', ascending=False)
-            
+            if not df_master.empty and mask.any():
+                idx = df_master.index[mask][0]
+                # Si los valores científicos cambiaron, actualizamos y marcamos edición
+                if float(df_master.at[idx, 'VRP_MW']) != vrp_nuevo or float(df_master.at[idx, 'Distancia_km']) != dist_nuevo:
+                    df_master.at[idx, 'VRP_MW'] = vrp_nuevo
+                    df_master.at[idx, 'Distancia_km'] = dist_nuevo
+                    df_master.at[idx, 'Editado'] = "SI"
+                
+                # Actualizar siempre la fecha de revisión
+                df_master.at[idx, 'Ultima_Actualizacion'] = fecha_hoy_str
+            else:
+                # Es un registro nuevo para el robot
+                nueva_fila = {
+                    "timestamp": timestamp,
+                    "Fecha_Satelite_UTC": dt_utc.strftime("%Y-%m-%d %H:%M:%S"),
+                    "Fecha_Captura_Chile": dt_utc.replace(tzinfo=pytz.utc).astimezone(pytz.timezone('America/Santiago')).strftime("%Y-%m-%d %H:%M:%S"),
+                    "Volcan": conf["nombre"], "Sensor": sensor, "VRP_MW": vrp_nuevo, "Distancia_km": dist_nuevo,
+                    "Tipo_Registro": "PENDIENTE", "Clasificacion Mirova": "PENDIENTE", "Ruta Foto": "PENDIENTE",
+                    "Fecha_Proceso_GitHub": fecha_hoy_str, "Ultima_Actualizacion": fecha_hoy_str, "Editado": "NO"
+                }
+                df_master = pd.concat([df_master, pd.DataFrame([nueva_fila])], ignore_index=True)
+
+        # 3. SANEAMIENTO Y CLASIFICACIÓN
+        if not df_master.empty:
             df_master['date_only'] = df_master['Fecha_Satelite_UTC'].str.split(' ').str[0]
-
+            
             def saneamiento_func(group):
                 volcan = group.name[0]
-                limit = VOLCANES_CONFIG[next(k for k, v in VOLCANES_CONFIG.items() if v["nombre"] == volcan)]["limite_km"]
-                group = group.sort_values('timestamp') # Orden interno para detectar primera evidencia
+                limit = next(v["limite_km"] for k, v in VOLCANES_CONFIG.items() if v["nombre"] == volcan)
+                group = group.sort_values('timestamp')
                 
-                group['Clasificacion Mirova'] = group.apply(lambda r: obtener_nivel_mirova(r['VRP_MW'], r['Distancia_km'], volcan), axis=1)
+                # Reglas de Tipo de Registro
                 is_alerta = (group['VRP_MW'] > 0) & (group['Distancia_km'] <= limit)
                 group.loc[is_alerta, 'Tipo_Registro'] = 'ALERTA_TERMICA'
                 
                 if is_alerta.any():
                     group.loc[~is_alerta, 'Tipo_Registro'] = 'RUTINA'
-                    group.loc[~is_alerta, 'Ruta Foto'] = 'No descargada'
                 else:
                     first_idx = group.index[0]
                     group.loc[first_idx, 'Tipo_Registro'] = 'EVIDENCIA_DIARIA'
-                    if len(group) > 1:
-                        group.loc[group.index[1:], 'Tipo_Registro'] = 'RUTINA'
-                        group.loc[group.index[1:], 'Ruta Foto'] = 'No descargada'
+                    if len(group) > 1: group.loc[group.index[1:], 'Tipo_Registro'] = 'RUTINA'
 
-                ts_actual = int(time.time())
                 for idx, row in group.iterrows():
-                    if row['Tipo_Registro'] in ['ALERTA_TERMICA', 'EVIDENCIA_DIARIA']:
-                        if row['Ruta Foto'] in ["No descargada", "PENDIENTE", "Pendiente"]:
-                            dt = datetime.strptime(row['Fecha_Satelite_UTC'], "%Y-%m-%d %H:%M:%S")
-                            s_original = str(row['Sensor'])
-                            s_label = "VIIRS750" if s_original == "VIIRS" else s_original
-                            if row['Tipo_Registro'] == 'EVIDENCIA_DIARIA':
-                                group.at[idx, 'Ruta Foto'] = f"imagenes_satelitales/{volcan}/{dt.strftime('%Y-%m-%d')}/{dt.strftime('%H-%M-%S')}_{volcan}_VIIRS375_Latest.png"
-                            else:
-                                group.at[idx, 'Ruta Foto'] = f"imagenes_satelitales/{volcan}/{dt.strftime('%Y-%m-%d')}/{dt.strftime('%H-%M-%S')}_{volcan}_{s_label}_VRP.png"
-                    if (ts_actual - int(row['timestamp'])) > 43200:
-                        if row['Fecha_Proceso_GitHub'] == fecha_proceso_actual:
-                            group.at[idx, 'Fecha_Proceso_GitHub'] = ""
+                    # Clasificación Mirova
+                    cat = obtener_nivel_mirova(row['VRP_MW'], row['Distancia_km'], volcan)
+                    group.at[idx, 'Clasificacion Mirova'] = cat
+
+                    # Rutas de Imágenes
+                    if row['Tipo_Registro'] == 'RUTINA': 
+                        group.at[idx, 'Ruta Foto'] = "No descargada"
+                    elif row['Ruta Foto'] in ["No descargada", "PENDIENTE", "Pendiente"]:
+                        dt = datetime.strptime(row['Fecha_Satelite_UTC'], "%Y-%m-%d %H:%M:%S")
+                        s_lab = "VIIRS750" if str(row['Sensor']) == "VIIRS" else str(row['Sensor'])
+                        if row['Tipo_Registro'] == 'EVIDENCIA_DIARIA':
+                            group.at[idx, 'Ruta Foto'] = f"imagenes_satelitales/{volcan}/{dt.strftime('%Y-%m-%d')}/{dt.strftime('%H-%M-%S')}_{volcan}_VIIRS375_Latest.png"
+                        else:
+                            group.at[idx, 'Ruta Foto'] = f"imagenes_satelitales/{volcan}/{dt.strftime('%Y-%m-%d')}/{dt.strftime('%H-%M-%S')}_{volcan}_{s_lab}_VRP.png"
                 return group
 
             df_master = df_master.groupby(['Volcan', 'date_only'], group_keys=False).apply(saneamiento_func)
             
-            # Re-ordenar Master Descendente para el guardado
-            df_master = df_master.sort_values('timestamp', ascending=False)
+            # 4. DESCARGAS (Solo para registros detectados o revisados en este ciclo)
+            # Nota: descargamos si Ultima_Actualizacion coincide con este ciclo para asegurar data fresca
+            for idx, row in df_master[df_master['Ultima_Actualizacion'] == fecha_hoy_str].iterrows():
+                if row['Tipo_Registro'] in ['ALERTA_TERMICA', 'EVIDENCIA_DIARIA']:
+                    id_v = next(k for k, v in VOLCANES_CONFIG.items() if v["nombre"] == row['Volcan'])
+                    dt_obj = datetime.strptime(row['Fecha_Satelite_UTC'], "%Y-%m-%d %H:%M:%S")
+                    modo = "COMPLETO" if row['Tipo_Registro'] == 'ALERTA_TERMICA' else "MINIMO"
+                    descargar_imagenes_quirurgica(session, id_v, row['Volcan'], dt_obj, row['Sensor'], modo)
 
-            # --- DESCARGAS ---
-            for idx, row in df_master[df_master['Fecha_Proceso_GitHub'] == fecha_proceso_actual].iterrows():
-                id_v = next(k for k, v in VOLCANES_CONFIG.items() if v["nombre"] == row['Volcan'])
-                dt_obj = datetime.strptime(row['Fecha_Satelite_UTC'], "%Y-%m-%d %H:%M:%S")
-                if row['Tipo_Registro'] == 'ALERTA_TERMICA':
-                    descargar_imagenes_quirurgica(session, id_v, row['Volcan'], dt_obj, row['Sensor'], modo="COMPLETO")
-                elif row['Tipo_Registro'] == 'EVIDENCIA_DIARIA':
-                    descargar_imagenes_quirurgica(session, id_v, row['Volcan'], dt_obj, row['Sensor'], modo="MINIMO")
-
-            # Guardado Consolidado
-            cols = ["timestamp", "Fecha_Satelite_UTC", "Fecha_Captura_Chile", "Volcan", "Sensor", "VRP_MW", "Distancia_km", "Tipo_Registro", "Clasificacion Mirova", "Ruta Foto", "Fecha_Proceso_GitHub"]
-            df_master[cols].to_csv(DB_MASTER, index=False)
+            # 5. GUARDADO FINAL ORDENADO
+            cols = ["timestamp", "Fecha_Satelite_UTC", "Fecha_Captura_Chile", "Volcan", "Sensor", "VRP_MW", "Distancia_km", "Tipo_Registro", "Clasificacion Mirova", "Ruta Foto", "Fecha_Proceso_GitHub", "Ultima_Actualizacion", "Editado"]
+            df_master = df_master[cols].sort_values('timestamp', ascending=False)
+            df_master.to_csv(DB_MASTER, index=False)
             
-            # Tablas Derivadas (Ahora heredarán el orden descendente)
+            # Tablas derivadas
             df_pos = df_master[df_master['Tipo_Registro'] == "ALERTA_TERMICA"].drop(columns=['Tipo_Registro', 'date_only'], errors='ignore')
             df_pos.to_csv(DB_POSITIVOS, index=False)
             for v_nom in df_master['Volcan'].unique():
                 csv_v = os.path.join(RUTA_IMAGENES_BASE, v_nom, f"registro_{v_nom.replace(' ', '_')}.csv")
                 df_pos[df_pos['Volcan'] == v_nom].to_csv(csv_v, index=False)
 
-            log_bitacora(f"💾 Ciclo V58.0 completado. Todo ordenado cronológicamente.")
+            log_bitacora("💾 Ciclo V60.0 finalizado con éxito.")
 
     except Exception as e:
         log_bitacora(f"❌ ERROR: {e}")

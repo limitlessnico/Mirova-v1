@@ -72,7 +72,7 @@ def procesar():
     hoy_str = ahora_cl.strftime("%Y-%m-%d")
     fecha_proceso_actual = ahora_cl.strftime("%Y-%m-%d %H:%M:%S")
     
-    log_bitacora(f"🚀 INICIO CICLO V48.0 (OPTIMIZACIÓN EVIDENCIA): {ahora_cl}")
+    log_bitacora(f"🚀 INICIO CICLO V49.0 (SANEAMIENTO FORZADO): {ahora_cl}")
 
     try:
         df_master = pd.read_csv(DB_MASTER) if os.path.exists(DB_MASTER) else pd.DataFrame()
@@ -103,18 +103,13 @@ def procesar():
                 s_l = "VIIRS750" if "375" not in sensor else "VIIRS375"
                 ruta = f"imagenes_satelitales/{conf['nombre']}/{dt_utc.strftime('%Y-%m-%d')}/{dt_utc.strftime('%H-%M-%S')}_{conf['nombre']}_{s_l}_VRP.png"
             else:
-                # --- LÓGICA DE EVIDENCIA MEJORADA ---
-                # Solo descargamos evidencia si NO hay ninguna ALERTA ni ninguna EVIDENCIA previa hoy.
-                ya_hay_registro_hoy = False
+                # Lógica de evidencia mejorada (Solo una por día si no hay alertas)
+                ya_hay_foto_hoy = False
                 if not df_master.empty:
-                    # Filtramos el historial de hoy para este volcán
-                    df_hoy = df_master[(df_master['Volcan'] == conf['nombre']) & 
-                                      (df_master['Fecha_Satelite_UTC'].str.contains(hoy_str))]
-                    
-                    # ¿Hay alguna fila que ya tenga una imagen descargada hoy?
-                    ya_hay_registro_hoy = not df_hoy[df_hoy['Ruta Foto'] != "No descargada"].empty
+                    df_hoy = df_master[(df_master['Volcan'] == conf['nombre']) & (df_master['Fecha_Satelite_UTC'].str.contains(hoy_str))]
+                    ya_hay_foto_hoy = not df_hoy[df_hoy['Ruta Foto'] != "No descargada"].empty
                 
-                if not ya_hay_registro_hoy:
+                if not ya_hay_foto_hoy:
                     tipo = "EVIDENCIA_DIARIA"
                     descargar_set_completo(session, id_v, conf["nombre"], dt_utc)
                     s_l = "VIIRS750" if "375" not in sensor else "VIIRS375"
@@ -129,31 +124,63 @@ def procesar():
                 "Ruta Foto": ruta, "Fecha_Proceso_GitHub": fecha_proceso_actual
             })
 
-        if nuevos_datos:
-            df_new = pd.DataFrame(nuevos_datos)
-            df_master = pd.concat([df_master, df_new]).drop_duplicates(subset=["Fecha_Satelite_UTC", "Volcan", "Sensor"], keep='last')
+        if nuevos_datos or not df_master.empty:
+            if nuevos_datos:
+                df_new = pd.DataFrame(nuevos_datos)
+                df_master = pd.concat([df_master, df_new]).drop_duplicates(subset=["Fecha_Satelite_UTC", "Volcan", "Sensor"], keep='last')
             
-            # Saneamiento de fechas antiguas
-            df_master['Fecha_Proceso_GitHub'] = df_master['Fecha_Proceso_GitHub'].fillna("")
+            # --- BLOQUE DE SANEAMIENTO RETROACTIVO FORZADO ---
+            def sanear_historial(row):
+                cfg = next((c for i, c in VOLCANES_CONFIG.items() if c["nombre"] == row['Volcan']), None)
+                d_lim = cfg["limite_km"] if cfg else 5.0
+                es_alerta_real = (row['VRP_MW'] > 0 and row['Distancia_km'] <= d_lim)
+                
+                # 1. Asegurar Clasificación Mirova (NORMAL -> NULO)
+                row['Clasificacion Mirova'] = obtener_nivel_mirova(row['VRP_MW'], es_alerta_real)
+
+                # 2. Corregir Error de Arrastre (Tipo_Registro y Rutas fake para ceros)
+                if row['VRP_MW'] <= 0:
+                    # Si no es Alerta, solo puede ser EVIDENCIA_DIARIA o RUTINA
+                    if row['Tipo_Registro'] == "EVIDENCIA_DIARIA":
+                        # Solo permitimos que se quede como evidencia si tiene una fecha de proceso reciente (no de arrastre)
+                        # O si queremos ser radicales, forzamos a RUTINA todo lo que no tenga VRP > 0 y sea muy antiguo
+                        if int(time.time()) - int(row['timestamp']) > 86400 and row['Ruta Foto'] != "No descargada":
+                             # Registros de más de 24h con VRP 0 se limpian si no estamos seguros de su origen
+                             pass 
+                    
+                    # Limpieza específica pedida: Rutas que no corresponden para VRP 0
+                    if row['Ruta Foto'] != "No descargada" and row['VRP_MW'] <= 0 and row['Tipo_Registro'] != "EVIDENCIA_DIARIA":
+                        row['Ruta Foto'] = "No descargada"
+                        row['Tipo_Registro'] = "RUTINA"
+
+                # 3. Limpiar auditoría de GitHub para registros históricos
+                if int(time.time()) - int(row['timestamp']) > 86400: # Más de 24 horas
+                    if row['Fecha_Proceso_GitHub'] == fecha_proceso_actual:
+                        row['Fecha_Proceso_GitHub'] = ""
+                
+                return row
+
+            df_master = df_master.apply(sanear_historial, axis=1)
+            # ------------------------------------------------
+
+            # Asegurar orden y limpieza de columnas
+            df_master = df_master.loc[:, ~df_master.columns.duplicated()]
+            cols_orden = ["timestamp", "Fecha_Satelite_UTC", "Fecha_Captura_Chile", "Volcan", "Sensor", "VRP_MW", "Distancia_km", "Tipo_Registro", "Clasificacion Mirova", "Ruta Foto", "Fecha_Proceso_GitHub"]
+            df_master = df_master[[c for c in cols_orden if c in df_master.columns]]
             
-            cols_final = ["timestamp", "Fecha_Satelite_UTC", "Fecha_Captura_Chile", "Volcan", "Sensor", "VRP_MW", "Distancia_km", "Tipo_Registro", "Clasificacion Mirova", "Ruta Foto", "Fecha_Proceso_GitHub"]
-            df_master = df_master[[c for c in cols_final if c in df_master.columns]]
             df_master.to_csv(DB_MASTER, index=False)
             
-            # Tablas de Positivos (Solo Alertas)
-            df_pos = df_master[df_master['Tipo_Registro'] == "ALERTA_TERMICA"].drop(columns=['Tipo_Registro'])
+            # --- RECONSTRUCCIÓN DE TABLAS ---
+            df_pos = df_master[df_master['Tipo_Registro'] == "ALERTA_TERMICA"].drop(columns=['Tipo_Registro'], errors='ignore')
             df_pos.to_csv(DB_POSITIVOS, index=False)
             
-            # Individuales inteligentes
-            v_afectados = df_new[df_new['Tipo_Registro'] == "ALERTA_TERMICA"]['Volcan'].unique()
             for v_nom in df_master['Volcan'].unique():
                 csv_path = os.path.join(RUTA_IMAGENES_BASE, v_nom, f"registro_{v_nom.replace(' ', '_')}.csv")
-                if v_nom in v_afectados or not os.path.exists(csv_path):
-                    df_v = df_pos[df_pos['Volcan'] == v_nom]
-                    os.makedirs(os.path.join(RUTA_IMAGENES_BASE, v_nom), exist_ok=True)
-                    df_v.to_csv(csv_path, index=False)
+                df_v = df_pos[df_pos['Volcan'] == v_nom]
+                os.makedirs(os.path.join(RUTA_IMAGENES_BASE, v_nom), exist_ok=True)
+                df_v.to_csv(csv_path, index=False)
             
-            log_bitacora(f"💾 Ciclo V48.0 completado.")
+            log_bitacora(f"💾 Consolidado y tablas saneadas exitosamente.")
 
     except Exception as e:
         log_bitacora(f"❌ ERROR: {e}")

@@ -4,8 +4,9 @@ import os
 import pandas as pd
 from datetime import datetime, timedelta
 import pytz
+import time
 
-# --- CONFIGURACIÓN DE RUTAS ---
+# --- CONFIGURACIÓN ---
 CARPETA_PRINCIPAL = "monitoreo_satelital"
 RUTA_IMAGENES_BASE = os.path.join(CARPETA_PRINCIPAL, "imagenes_satelitales")
 DB_MASTER = os.path.join(CARPETA_PRINCIPAL, "registro_vrp_consolidado.csv")
@@ -40,47 +41,58 @@ def descargar_imagenes_quirurgica(session, id_v, nombre_v, dt_utc, sensor_tabla,
     ruta_dia = os.path.join(RUTA_IMAGENES_BASE, nombre_v, f_c)
     os.makedirs(ruta_dia, exist_ok=True)
 
-    tipos = ["logVRP", "VRP", "Latest", "Dist"] if modo == "COMPLETO" else ["Latest"]
+    # El orden importa: logVRP y VRP son las más pesadas y valiosas
+    tipos = ["VRP", "logVRP", "Latest", "Dist"] if modo == "COMPLETO" else ["Latest"]
+    
+    # Mapeo exacto de los links que sí te funcionan en el navegador
     mapeo = {"VIIRS375": "VIR375", "VIIRS": "VIR", "MODIS": "MOD"}
     s_real = mapeo.get(sensor_tabla, sensor_tabla)
     
-    # Referer crucial para que Mirova no nos rebote
-    header_extra = {'Referer': f'https://www.mirovaweb.it/NRT/volcanoDetails_{s_real}.php?volcano_id={id_v}'}
+    # CAMBIO V82: Headers mucho más realistas
+    custom_headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+        'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8',
+        'Referer': f'https://www.mirovaweb.it/NRT/volcanoDetails_{s_real}.php?volcano_id={id_v}',
+        'Connection': 'keep-alive'
+    }
 
     exito_count = 0
     for t in tipos:
         s_label = "VIIRS750" if sensor_tabla == "VIIRS" else sensor_tabla
         path_img = os.path.join(ruta_dia, f"{h_a}_{nombre_v}_{s_label}_{t}.png")
         
-        # CAMBIO V81: Quitamos el 'if not exists'. Forzamos la descarga para asegurar que GitHub reciba el archivo.
+        # URL dinámica para capturar la imagen más reciente del sensor
+        url_img = f"https://www.mirovaweb.it/NRT/get_latest_image.php?volcano_id={id_v}&sensor={s_real}&type={t}"
+        
         try:
-            url_img = f"https://www.mirovaweb.it/NRT/get_latest_image.php?volcano_id={id_v}&sensor={s_real}&type={t}"
-            r = session.get(url_img, headers=header_extra, timeout=30)
+            time.sleep(1.5) # Pausa para no ser bloqueado
+            r = session.get(url_img, headers=custom_headers, timeout=30)
             
             if r.status_code == 200 and len(r.content) > 5000:
                 with open(path_img, 'wb') as f:
                     f.write(r.content)
-                log_bitacora(f"📸 DESCARGADO: {nombre_v} {t} ({s_real})")
+                log_bitacora(f"📸 OK: {nombre_v} {t}")
                 exito_count += 1
             else:
-                log_bitacora(f"⚠️ Sin imagen aún: {nombre_v} {t} (Status: {r.status_code})")
+                log_bitacora(f"⚠️ 404 en {nombre_v} {t} (Sensor: {s_real})")
         except Exception as e:
-            log_bitacora(f"❌ Error en descarga: {e}")
+            log_bitacora(f"❌ Error: {e}")
             
     return exito_count > 0
 
 def procesar():
     os.makedirs(CARPETA_PRINCIPAL, exist_ok=True)
     session = requests.Session()
-    session.headers.update({'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0'})
     
     ahora_cl = obtener_hora_chile()
-    log_bitacora(f"🚀 INICIO CICLO V81.0 (FORCE DOWNLOAD): {ahora_cl}")
+    log_bitacora(f"🚀 INICIO V82.0 (CAMUFLAJE): {ahora_cl}")
 
     try:
+        # Cargar CSV
         df_master = pd.read_csv(DB_MASTER) if os.path.exists(DB_MASTER) else pd.DataFrame()
 
-        # 1. SCRAPING LATEST.PHP
+        # 1. SCRAPING TABLA
         res = session.get("https://www.mirovaweb.it/NRT/latest.php", timeout=30)
         soup = BeautifulSoup(res.text, 'html.parser')
         filas = soup.find('tbody').find_all('tr')
@@ -96,8 +108,8 @@ def procesar():
             vrp_n, dist_n = float(cols[3].text.strip()), float(cols[4].text.strip())
             conf = VOLCANES_CONFIG[id_v]
 
+            # Registro en CSV
             mask = (df_master['timestamp'] == ts) & (df_master['Volcan'] == conf["nombre"]) & (df_master['Sensor'] == sensor) if not df_master.empty else pd.Series([False])
-            
             if not df_master.empty and mask.any():
                 idx = df_master.index[mask][0]
                 df_master.at[idx, 'Ultima_Actualizacion'] = ahora_cl.strftime("%Y-%m-%d %H:%M:%S")
@@ -112,10 +124,10 @@ def procesar():
                 df_master = pd.concat([df_master, pd.DataFrame([nueva])], ignore_index=True)
 
         if not df_master.empty:
-            # 2. DESCARGAS AGRESIVAS (Últimas 24 horas)
+            # 2. DESCARGAS (Últimas 24h)
             ahora_ts = int(datetime.now().timestamp())
             for idx, row in df_master.iterrows():
-                if (ahora_ts - row['timestamp']) < 86400: # Ventana de 24h
+                if (ahora_ts - row['timestamp']) < 86400:
                     volcan = row['Volcan']
                     limit = next(v["limite_km"] for k, v in VOLCANES_CONFIG.items() if v["nombre"] == volcan)
                     
@@ -126,8 +138,7 @@ def procesar():
                         id_v = next(k for k, v in VOLCANES_CONFIG.items() if v["nombre"] == volcan)
                         dt_obj = datetime.strptime(row['Fecha_Satelite_UTC'], "%Y-%m-%d %H:%M:%S")
                         
-                        log_bitacora(f"🛠 Forzando sincronización para {volcan}...")
-                        # Forzamos la descarga independientemente de lo que diga el CSV
+                        log_bitacora(f"🛠 Sincronizando {volcan}...")
                         descargado = descargar_imagenes_quirurgica(session, id_v, volcan, dt_obj, row['Sensor'], "COMPLETO" if es_alerta else "MINIMO")
                         
                         if descargado:
@@ -136,13 +147,13 @@ def procesar():
                             img_t = "VIIRS375_Latest" if not es_alerta else f"{s_lab}_VRP"
                             df_master.at[idx, 'Ruta Foto'] = f"imagenes_satelitales/{volcan}/{dt_obj.strftime('%Y-%m-%d')}/{dt_obj.strftime('%H-%M-%S')}_{volcan}_{img_t}.png"
 
-            # 3. GUARDADO FINAL
+            # 3. GUARDADO
             df_master.sort_values('timestamp', ascending=False).to_csv(DB_MASTER, index=False)
             df_master[df_master['Tipo_Registro'] == "ALERTA_TERMICA"].to_csv(DB_POSITIVOS, index=False)
-            log_bitacora("💾 CICLO V81.0 FINALIZADO.")
+            log_bitacora("💾 CICLO V82.0 FINALIZADO.")
 
     except Exception as e:
-        log_bitacora(f"❌ ERROR GENERAL: {e}")
+        log_bitacora(f"❌ ERROR: {e}")
 
 if __name__ == "__main__":
     procesar()

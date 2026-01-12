@@ -247,3 +247,5 @@
 [2026-01-11 21:32:15] 💾 Consolidado y tablas saneadas exitosamente.
 [2026-01-11 21:36:19] 🚀 INICIO CICLO V50.0 (LIMPIEZA RADICAL): 2026-01-11 21:36:19.994713-03:00
 [2026-01-11 21:36:21] 💾 Limpieza total aplicada. Revisa las filas 2-60 ahora.
+[2026-01-11 21:43:12] 🚀 INICIO CICLO V53.0 (SANEAMIENTO AUTO-CORRECTOR): 2026-01-11 21:43:12.052595-03:00
+[2026-01-11 21:43:12] ❌ ERROR: 'Chaiten'

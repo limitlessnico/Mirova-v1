@@ -6,10 +6,10 @@ from datetime import datetime
 import pytz
 import time
 
-# --- CONFIGURACIÓN DE VOLCANES (Límites Estrictos OVDAS) ---
+# --- CONFIGURACIÓN ---
 VOLCANES_CONFIG = {
     "355100": {"nombre": "Lascar", "limite_km": 5.0},
-    "355120": {"nombre": "Lastarria", "limite_km": 3.0}, # Límite estricto 3km
+    "355120": {"nombre": "Lastarria", "limite_km": 3.0},
     "355030": {"nombre": "Isluga", "limite_km": 5.0},
     "357120": {"nombre": "Villarrica", "limite_km": 5.0},
     "357110": {"nombre": "Llaima", "limite_km": 5.0},
@@ -34,40 +34,37 @@ def log_debug(mensaje, tipo="INFO"):
     with open(ARCHIVO_BITACORA, "a", encoding="utf-8") as f:
         f.write(linea + "\n")
 
-def descargar_v101(session, nombre_v, dt_utc, sensor_tabla, es_alerta_real):
+def descargar_v104(session, nombre_v, dt_utc, sensor_tabla, es_alerta_real):
     f_c = dt_utc.strftime("%Y-%m-%d")
     h_a = dt_utc.strftime("%H-%M-%S")
     ruta_dia = os.path.join(RUTA_IMAGENES_BASE, nombre_v, f_c)
     os.makedirs(ruta_dia, exist_ok=True)
 
-    # Tipos según clasificación
+    # MAPEO DE SENSORES PARA URL (Basado en tus links)
+    # sensor_tabla puede ser 'VIIRS375', 'VIIRS' o 'MODIS'
+    s_url = "VIIRS750" if sensor_tabla == "VIIRS" else sensor_tabla
+    
+    nombre_url = nombre_v.replace(" ", "_").replace("-", "_")
     tipos = ["VRP", "logVRP", "Latest", "Dist"] if es_alerta_real else ["Latest"]
     ruta_relativa = "No descargada"
 
     for t in tipos:
-        # El sensor VIIRS de 750m en la URL se llama 'VIIRS'
-        sensor_url = sensor_tabla 
-        
-        # Ajuste para el nombre del archivo 'Latest' que en el link tiene '10NTI' al final
+        # Latest requiere el sufijo 10NTI en el servidor
         t_url = f"{t}10NTI" if t == "Latest" else t
         
-        # Construcción de la URL de OUTPUTweb (tus links)
-        url = f"https://www.mirovaweb.it/OUTPUTweb/MIROVA/{sensor_url}/VOLCANOES/{nombre_v}/{nombre_v}_{sensor_url}_{t_url}.png"
+        # Construcción de URL según tus ejemplos
+        url = f"https://www.mirovaweb.it/OUTPUTweb/MIROVA/{s_url}/VOLCANOES/{nombre_url}/{nombre_url}_{s_url}_{t_url}.png"
         
-        # Nombre local para guardar
-        s_label = "VIIRS750" if sensor_tabla == "VIIRS" else sensor_tabla
-        filename = f"{h_a}_{nombre_v}_{s_label}_{t}.png"
+        filename = f"{h_a}_{nombre_v}_{s_url}_{t}.png"
         path_f = os.path.join(ruta_dia, filename)
         
         try:
             r = session.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=20)
             if r.status_code == 200 and len(r.content) > 5000:
                 with open(path_f, 'wb') as f: f.write(r.content)
-                log_debug(f"Imagen OUTPUTweb OK: {filename}", "EXITO")
+                log_debug(f"Descargado: {filename}", "EXITO")
                 if t in ["VRP", "Latest"]: ruta_relativa = f"imagenes_satelitales/{nombre_v}/{f_c}/{filename}"
-            else:
-                log_debug(f"No disponible en OUTPUTweb: {nombre_v} {t} (Status: {r.status_code})", "ADVERTENCIA")
-            time.sleep(1)
+            time.sleep(0.5)
         except: continue
             
     return ruta_relativa
@@ -76,7 +73,7 @@ def procesar():
     os.makedirs(CARPETA_PRINCIPAL, exist_ok=True)
     session = requests.Session()
     ahora_cl = datetime.now(pytz.timezone('America/Santiago')).strftime("%Y-%m-%d %H:%M:%S")
-    log_debug("INICIO CICLO V101.0 (OUTPUTweb DIRECTO)", "INFO")
+    log_debug("INICIO CICLO V104.0 (FIX VIIRS750 URL)", "INFO")
 
     try:
         df_master = pd.read_csv(DB_MASTER)
@@ -97,23 +94,16 @@ def procesar():
             dt_utc = datetime.strptime(cols[0].text.strip(), "%d-%b-%Y %H:%M:%S")
             vrp, dist, sensor = float(cols[3].text.strip()), float(cols[4].text.strip()), cols[5].text.strip()
 
-            # --- LÓGICA LASTARRIA 3.0 KM ---
+            # Clasificación Lastarria (3km)
             es_alerta_real = (vrp > 0 and dist <= conf["limite_km"])
-            
-            if vrp == 0:
-                clasif, tipo = "NULO", ("EVIDENCIA_DIARIA" if sensor == "VIIRS375" else "RUTINA")
-            else:
-                if es_alerta_real:
-                    clasif, tipo = "Bajo", "ALERTA_TERMICA"
-                else:
-                    clasif, tipo = "FALSO POSITIVO", "RUTINA"
-                    log_debug(f"Lastarria/Chillan fuera de límite ({dist}km)", "INFO")
+            clasif = "Bajo" if es_alerta_real else ("FALSO POSITIVO" if vrp > 0 else "NULO")
+            tipo = "ALERTA_TERMICA" if es_alerta_real else ("EVIDENCIA_DIARIA" if sensor == "VIIRS375" else "RUTINA")
 
-            # Descarga Directa
+            # Descarga
             ruta_foto = "No descargada"
             if (int(time.time()) - int(dt_utc.timestamp())) < 86400:
                 if es_alerta_real or sensor == "VIIRS375":
-                    ruta_foto = descargar_v101(session, conf["nombre"], dt_utc, sensor, es_alerta_real)
+                    ruta_foto = descargar_v104(session, conf["nombre"], dt_utc, sensor, es_alerta_real)
 
             row = {col: "" for col in columnas}
             row.update({
@@ -132,7 +122,7 @@ def procesar():
         
         df_final.to_csv(DB_MASTER, index=False)
         df_final[df_final['Tipo_Registro'] == "ALERTA_TERMICA"].to_csv(DB_POSITIVOS, index=False)
-        log_debug("Sincronización V101 Exitosa.", "EXITO")
+        log_debug("Sincronización V104 Exitosa.", "EXITO")
 
     except Exception as e:
         log_debug(f"ERROR: {str(e)}", "ERROR")

@@ -872,3 +872,15 @@
 [2026-01-12 14:46:13] 🔵 Limpieza: Borrado archivo suelto registro_Nevados_de_Chillan.csv
 [2026-01-12 14:46:13] 🔵 Limpieza: Borrado archivo suelto registro_Villarrica.csv
 [2026-01-12 14:46:13] ✅ Sincronización, Auditoría y Limpieza completada.
+[2026-01-12 14:50:01] 🔵 INICIO CICLO V106.0 (ACCESIBILIDAD CSV Y LIMPIEZA)
+[2026-01-12 14:50:02] 🔵 Limpieza: Borrado CSV antiguo de la carpeta de Lascar
+[2026-01-12 14:50:02] 🔵 Limpieza: Borrado CSV antiguo de la carpeta de Lastarria
+[2026-01-12 14:50:02] 🔵 Limpieza: Borrado CSV antiguo de la carpeta de Isluga
+[2026-01-12 14:50:02] 🔵 Limpieza: Borrado CSV antiguo de la carpeta de Villarrica
+[2026-01-12 14:50:02] 🔵 Limpieza: Borrado CSV antiguo de la carpeta de Llaima
+[2026-01-12 14:50:02] 🔵 Limpieza: Borrado CSV antiguo de la carpeta de Nevados de Chillan
+[2026-01-12 14:50:02] 🔵 Limpieza: Borrado CSV antiguo de la carpeta de Copahue
+[2026-01-12 14:50:02] 🔵 Limpieza: Borrado CSV antiguo de la carpeta de Puyehue-Cordon Caulle
+[2026-01-12 14:50:02] 🔵 Limpieza: Borrado CSV antiguo de la carpeta de Chaiten
+[2026-01-12 14:50:02] 🔵 Limpieza: Borrado CSV antiguo de la carpeta de Peteroa
+[2026-01-12 14:50:02] ✅ Sincronización y Reubicación de archivos completada.

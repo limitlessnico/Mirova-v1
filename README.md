@@ -3,7 +3,14 @@
 **Mirova-OVDAS VRP Monitor** es una plataforma de **automatización y visualización científica** diseñada para el seguimiento de la Potencia Radiada Volcánica (VRP) en los principales centros eruptivos de Chile. El sistema actúa como un nodo de respaldo y análisis que captura, procesa y grafica la información pública de la plataforma **MIROVA** (Universidad de Turín).
 
 ⚠️ **Aclaración:** Este software es una herramienta independiente de soporte técnico. No reemplaza los canales oficiales de alerta temprana de instituciones estatales.
+ ---
 
+## 🙏 Acknowledgements
+We gratefully acknowledge **NASA LANCE** for access to MODIS and VIIRS Near Real Time products.  
+Sentinel-2 and Landsat 8 data are accessed through the **Copernicus Open Access Hub**.  
+Toda la información térmica es procesada y obtenida a través de la infraestructura de la plataforma **MIROVA** (Middle InfraRed Observation of Volcanic Activity), un sistema colaborativo de la Universidad de Turín y la Universidad de Florencia.
+
+---
 ---
 
 ## 📡 Dashboard e Interfaz de Auditoría

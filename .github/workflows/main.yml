@@ -1,15 +1,14 @@
-- name: Ejecutar Scraper
-        run: python scraper.py
+name: Generador de Graficos
 
-      # ELIMINAMOS EL PASO DE VISUALIZADOR DE AQUÍ
+on:
+  schedule:
+    # Se ejecuta al minuto 5 de cada hora (Ej: 10:05, 11:05...)
+    # Esto le da tiempo al scraper de terminar su corrida del minuto 00
+    - cron: '5 * * * *' 
+  
+  workflow_dispatch: # Para que puedas forzar el dibujo cuando quieras
 
-      - name: Guardar cambios en GitHub
-        run: |
-          git config --global user.name "VolcanoBot"
-          git config --global user.email "bot@volcano.com"
-          git add -A
-          if ! git diff --quiet --staged; then
-            git commit -m "Auto: Sincronización de datos e imágenes"
-            git pull origin main --rebase -X ours
-            git push origin main
-          fi
+jobs:
+  pintar_y_publicar:
+    runs-on: ubuntu-latest
+    # Eliminamos la condición 'if' del workflow_run anterior

@@ -322,3 +322,29 @@
 [2026-01-12 08:30:30] 📁 CARPETA CREADA: monitoreo_satelital/imagenes_satelitales/Villarrica/2026-01-12
 [2026-01-12 08:30:30] ❌ ERROR SERVIDOR MIROVA (404) para: 04-48-01_Villarrica_VIIRS375_Latest.png
 [2026-01-12 08:30:30] 💾 CICLO V65.0 FINALIZADO.
+[2026-01-12 08:32:00] 🚀 INICIO CICLO V65.0 (DEBUG EXTREMO): 2026-01-12 08:32:00.942299-03:00
+[2026-01-12 08:32:01] 📁 CARPETA CREADA: monitoreo_satelital/imagenes_satelitales/Chaiten/2026-01-12
+[2026-01-12 08:32:01] ❌ ERROR SERVIDOR MIROVA (404) para: 04-48-01_Chaiten_VIIRS375_Latest.png
+[2026-01-12 08:32:01] 📁 CARPETA CREADA: monitoreo_satelital/imagenes_satelitales/Copahue/2026-01-12
+[2026-01-12 08:32:02] ❌ ERROR SERVIDOR MIROVA (404) para: 04-48-01_Copahue_VIIRS375_Latest.png
+[2026-01-12 08:32:02] 📁 CARPETA CREADA: monitoreo_satelital/imagenes_satelitales/Isluga/2026-01-12
+[2026-01-12 08:32:02] ❌ ERROR SERVIDOR MIROVA (404) para: 06-24-01_Isluga_VIIRS375_Latest.png
+[2026-01-12 08:32:02] 📁 CARPETA CREADA: monitoreo_satelital/imagenes_satelitales/Lascar/2026-01-12
+[2026-01-12 08:32:02] ❌ ERROR SERVIDOR MIROVA (404) para: 06-24-01_Lascar_VIIRS375_logVRP.png
+[2026-01-12 08:32:03] ❌ ERROR SERVIDOR MIROVA (404) para: 06-24-01_Lascar_VIIRS375_VRP.png
+[2026-01-12 08:32:03] ❌ ERROR SERVIDOR MIROVA (404) para: 06-24-01_Lascar_VIIRS375_Latest.png
+[2026-01-12 08:32:04] ❌ ERROR SERVIDOR MIROVA (404) para: 06-24-01_Lascar_VIIRS375_Dist.png
+[2026-01-12 08:32:04] 📁 CARPETA CREADA: monitoreo_satelital/imagenes_satelitales/Llaima/2026-01-12
+[2026-01-12 08:32:04] ❌ ERROR SERVIDOR MIROVA (404) para: 04-48-01_Llaima_VIIRS375_Latest.png
+[2026-01-12 08:32:04] 📁 CARPETA CREADA: monitoreo_satelital/imagenes_satelitales/Nevados de Chillan/2026-01-12
+[2026-01-12 08:32:04] ❌ ERROR SERVIDOR MIROVA (404) para: 04-48-01_Nevados de Chillan_VIIRS375_Latest.png
+[2026-01-12 08:32:04] 📁 CARPETA CREADA: monitoreo_satelital/imagenes_satelitales/Peteroa/2026-01-12
+[2026-01-12 08:32:05] ❌ ERROR SERVIDOR MIROVA (404) para: 04-48-01_Peteroa_VIIRS375_Latest.png
+[2026-01-12 08:32:05] 📁 CARPETA CREADA: monitoreo_satelital/imagenes_satelitales/Puyehue-Cordon Caulle/2026-01-12
+[2026-01-12 08:32:05] ❌ ERROR SERVIDOR MIROVA (404) para: 06-30-01_Puyehue-Cordon Caulle_VIIRS375_logVRP.png
+[2026-01-12 08:32:05] ❌ ERROR SERVIDOR MIROVA (404) para: 06-30-01_Puyehue-Cordon Caulle_VIIRS375_VRP.png
+[2026-01-12 08:32:06] ❌ ERROR SERVIDOR MIROVA (404) para: 06-30-01_Puyehue-Cordon Caulle_VIIRS375_Latest.png
+[2026-01-12 08:32:06] ❌ ERROR SERVIDOR MIROVA (404) para: 06-30-01_Puyehue-Cordon Caulle_VIIRS375_Dist.png
+[2026-01-12 08:32:06] 📁 CARPETA CREADA: monitoreo_satelital/imagenes_satelitales/Villarrica/2026-01-12
+[2026-01-12 08:32:06] ❌ ERROR SERVIDOR MIROVA (404) para: 04-48-01_Villarrica_VIIRS375_Latest.png
+[2026-01-12 08:32:06] 💾 CICLO V65.0 FINALIZADO.

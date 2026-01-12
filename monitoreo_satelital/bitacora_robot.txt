@@ -860,3 +860,15 @@
 [2026-01-12 14:30:29] ✅ Sincronización Exitosa.
 [2026-01-12 14:45:26] 🔵 INICIO CICLO V105.1 (CORRECCIÓN SINTAXIS Y AUDITORÍA)
 [2026-01-12 14:45:27] ✅ Sincronización Exitosa.
+[2026-01-12 14:46:12] 🔵 INICIO CICLO V105.3 (LIMPIEZA RUTAS Y FIX AUDITORIA)
+[2026-01-12 14:46:13] 🔵 Limpieza: Borrado archivo suelto registro_Peteroa.csv
+[2026-01-12 14:46:13] 🔵 Limpieza: Borrado archivo suelto registro_Puyehue-Cordon_Caulle.csv
+[2026-01-12 14:46:13] 🔵 Limpieza: Borrado archivo suelto registro_Lastarria.csv
+[2026-01-12 14:46:13] 🔵 Limpieza: Borrado archivo suelto registro_Isluga.csv
+[2026-01-12 14:46:13] 🔵 Limpieza: Borrado archivo suelto registro_Copahue.csv
+[2026-01-12 14:46:13] 🔵 Limpieza: Borrado archivo suelto registro_Chaiten.csv
+[2026-01-12 14:46:13] 🔵 Limpieza: Borrado archivo suelto registro_Llaima.csv
+[2026-01-12 14:46:13] 🔵 Limpieza: Borrado archivo suelto registro_Lascar.csv
+[2026-01-12 14:46:13] 🔵 Limpieza: Borrado archivo suelto registro_Nevados_de_Chillan.csv
+[2026-01-12 14:46:13] 🔵 Limpieza: Borrado archivo suelto registro_Villarrica.csv
+[2026-01-12 14:46:13] ✅ Sincronización, Auditoría y Limpieza completada.

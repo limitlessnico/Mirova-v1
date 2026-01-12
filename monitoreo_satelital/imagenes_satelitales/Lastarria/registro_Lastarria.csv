@@ -1,2 +1,2 @@
-timestamp,Fecha_Satelite_UTC,Fecha_Captura_Chile,Volcan,Sensor,VRP_MW,Distancia_km,Tipo_Registro,Clasificacion Mirova,Ruta Foto,Fecha_Proceso_GitHub
-1768112640,2026-01-11 06:24:00,2026-01-11 03:24:00,Lastarria,VIIRS375,0.15,1.55,ALERTA_TERMICA,Bajo,imagenes_satelitales/Lastarria/2026-01-11/06-24-00_Lastarria_VIIRS375_VRP.png,
+timestamp,Fecha_Satelite_UTC,Fecha_Captura_Chile,Volcan,Sensor,VRP_MW,Distancia_km,Tipo_Registro,Clasificacion Mirova,Ruta Foto,Fecha_Proceso_GitHub,Ultima_Actualizacion,Editado
+1768112640,2026-01-11 06:24:00,2026-01-11 03:24:00,Lastarria,VIIRS375,0.15,1.55,ALERTA_TERMICA,Bajo,imagenes_satelitales/Lastarria/2026-01-11/06-24-00_Lastarria_VIIRS375_VRP.png,,,NO

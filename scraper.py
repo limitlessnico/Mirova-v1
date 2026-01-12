@@ -67,16 +67,14 @@ def procesar():
     os.makedirs(CARPETA_PRINCIPAL, exist_ok=True)
     session = requests.Session()
     ahora_cl = datetime.now(pytz.timezone('America/Santiago')).strftime("%Y-%m-%d %H:%M:%S")
-    log_debug("INICIO CICLO V105.3 (LIMPIEZA RUTAS Y FIX AUDITORIA)", "INFO")
+    log_debug("INICIO CICLO V106.0 (ACCESIBILIDAD CSV Y LIMPIEZA)", "INFO")
 
     try:
-        # 1. Cargar base de datos maestra
         if os.path.exists(DB_MASTER):
             df_master = pd.read_csv(DB_MASTER)
         else:
             df_master = pd.DataFrame(columns=COLUMNAS_ESTANDAR)
 
-        # 2. Scraping Mirova
         res = session.get("https://www.mirovaweb.it/NRT/latest.php", timeout=30)
         soup = BeautifulSoup(res.text, 'html.parser')
         filas = soup.find('tbody').find_all('tr')
@@ -101,7 +99,6 @@ def procesar():
             tipo = "ALERTA_TERMICA" if es_alerta_real else ("EVIDENCIA_DIARIA" if sensor == "VIIRS375" else "RUTINA")
 
             if not registro_previo.empty:
-                # FIX: Si Fecha_Proceso_GitHub está vacío en el CSV previo, lo llenamos ahora
                 f_original = registro_previo.iloc[0]['Fecha_Proceso_GitHub']
                 f_proceso = f_original if pd.notna(f_original) and str(f_original).strip() != "" else ahora_cl
                 u_actualiz = ahora_cl
@@ -126,27 +123,26 @@ def procesar():
         df_final = pd.concat([df_master, df_nuevos]).drop_duplicates(subset=['timestamp', 'Volcan', 'Sensor'], keep='last')
         df_final = df_final[COLUMNAS_ESTANDAR].sort_values('timestamp', ascending=False)
         
+        # Guardar Maestros en monitoreo_satelital/
         df_final.to_csv(DB_MASTER, index=False)
         df_final[df_final['Tipo_Registro'] == "ALERTA_TERMICA"].to_csv(DB_POSITIVOS, index=False)
         
-        # 3. Guardar Individuales FILTRADOS en carpetas correctas
+        # 3. Guardar Individuales POSITIVOS en la raíz de monitoreo_satelital/
         for id_v, config in VOLCANES_CONFIG.items():
             nombre_v = config["nombre"]
-            carpeta_v = os.path.join(RUTA_IMAGENES_BASE, nombre_v)
-            os.makedirs(carpeta_v, exist_ok=True)
-            archivo_v = os.path.join(carpeta_v, f"registro_{nombre_v.replace(' ', '_')}.csv")
+            archivo_v = os.path.join(CARPETA_PRINCIPAL, f"registro_{nombre_v.replace(' ', '_')}.csv")
             
-            # Filtro: Solo Alertas Térmicas Reales (VRP > 0 y dentro del límite)
+            # Solo alertas positivas reales
             df_v = df_final[(df_final['Volcan'] == nombre_v) & (df_final['Tipo_Registro'] == "ALERTA_TERMICA")]
             df_v.to_csv(archivo_v, index=False)
 
-        # 4. LIMPIEZA: Borrar CSVs sueltos en monitoreo_satelital/ que no sean los maestros
-        for f in os.listdir(CARPETA_PRINCIPAL):
-            if f.endswith(".csv") and "registro_vrp_" not in f:
-                os.remove(os.path.join(CARPETA_PRINCIPAL, f))
-                log_debug(f"Limpieza: Borrado archivo suelto {f}", "INFO")
+            # --- LIMPIEZA: Borrar archivo viejo dentro de la carpeta del volcán ---
+            ruta_vieja = os.path.join(RUTA_IMAGENES_BASE, nombre_v, f"registro_{nombre_v.replace(' ', '_')}.csv")
+            if os.path.exists(ruta_vieja):
+                os.remove(ruta_vieja)
+                log_debug(f"Limpieza: Borrado CSV antiguo de la carpeta de {nombre_v}", "INFO")
 
-        log_debug("Sincronización, Auditoría y Limpieza completada.", "EXITO")
+        log_debug("Sincronización y Reubicación de archivos completada.", "EXITO")
     except Exception as e:
         log_debug(f"ERROR: {str(e)}", "ERROR")
 

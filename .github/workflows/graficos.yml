@@ -43,4 +43,4 @@ jobs:
           git add monitoreo_satelital/estado_sistema.json
           
           # Commit y push solo si hay cambios reales
-          git diff --quiet && git diff --staged --quiet || (git commit -m "📊 Auto: Gráficos y Auditoría actualizados" && git push)
+          git diff --quiet && git diff --staged --quiet || (git commit -m "📊 Auto: Actualización de gráficos de tendencia" && git push origin main)

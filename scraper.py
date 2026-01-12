@@ -5,7 +5,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 import pytz
 
-# --- CONFIGURACIÓN DE VOLCANES ---
+# --- CONFIGURACIÓN ---
 VOLCANES_CONFIG = {
     "355030": {"nombre": "Isluga", "limite_km": 5.0},
     "355100": {"nombre": "Lascar", "limite_km": 5.0},
@@ -22,7 +22,6 @@ VOLCANES_CONFIG = {
 CARPETA_PRINCIPAL = "monitoreo_satelital"
 RUTA_IMAGENES_BASE = os.path.join(CARPETA_PRINCIPAL, "imagenes_satelitales")
 DB_MASTER = os.path.join(CARPETA_PRINCIPAL, "registro_vrp_consolidado.csv")
-DB_POSITIVOS = os.path.join(CARPETA_PRINCIPAL, "registro_vrp_positivos.csv")
 ARCHIVO_BITACORA = os.path.join(CARPETA_PRINCIPAL, "bitacora_robot.txt")
 
 def obtener_hora_chile():
@@ -42,30 +41,28 @@ def descargar_imagenes_quirurgica(session, id_v, nombre_v, dt_utc, sensor_tabla,
 
     tipos = ["logVRP", "VRP", "Latest", "Dist"] if modo == "COMPLETO" else ["Latest"]
     
-    # DICCIONARIO DE COMPATIBILIDAD DESCUBIERTO
-    intentos_sensor = [sensor_tabla]
-    if "VIIRS375" in sensor_tabla: intentos_sensor = ["VIR375", "VIIRS375"]
-    elif "VIIRS" in sensor_tabla: intentos_sensor = ["VIR", "VIIRS750", "VIIRS"]
-    elif "MODIS" in sensor_tabla: intentos_sensor = ["MOD", "TERRA", "AQUA"]
+    # Mapeo exacto basado en tus links exitosos
+    mapeo = {
+        "VIIRS375": ["VIR375", "VIIRS375"],
+        "VIIRS": ["VIR", "VIIRS750"],
+        "MODIS": ["MOD", "TERRA", "AQUA"]
+    }
+    intentos = mapeo.get(sensor_tabla, [sensor_tabla])
 
     for t in tipos:
         s_label = "VIIRS750" if sensor_tabla == "VIIRS" else sensor_tabla
         path_img = os.path.join(ruta_dia, f"{h_a}_{nombre_v}_{s_label}_{t}.png")
         
-        # REGLA DE ORO: Si no existe el archivo físico, lo buscamos.
         if not os.path.exists(path_img):
-            encontrado = False
-            for s_try in intentos_sensor:
+            for s_try in intentos:
+                # La URL que TÚ ves en el navegador y que SABEMOS que funciona
                 url = f"https://www.mirovaweb.it/NRT/get_latest_image.php?volcano_id={id_v}&sensor={s_try}&type={t}"
                 try:
                     r = session.get(url, timeout=25)
                     if r.status_code == 200 and len(r.content) > 5000:
                         with open(path_img, 'wb') as f: f.write(r.content)
-                        log_bitacora(f"✅ ¡RESUCITADO! Descargada: {nombre_v} {t} ({s_try})")
-                        encontrado = True
+                        log_bitacora(f"🎯 ¡CAPTURADA! {nombre_v} {t} (usando {s_try})")
                         break
-                    elif r.status_code == 404 and s_try == intentos_sensor[-1]:
-                        log_bitacora(f"⏳ Mirova aún sin imagen para {nombre_v} {t} (404)")
                 except: continue
 
 def procesar():
@@ -74,14 +71,10 @@ def procesar():
     session.headers.update({'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0'})
     
     ahora_cl = obtener_hora_chile()
-    fecha_proceso_actual = ahora_cl.strftime("%Y-%m-%d %H:%M:%S")
-    log_bitacora(f"🚀 INICIO CICLO V73.0 (RESTAURADOR): {ahora_cl}")
+    log_bitacora(f"🚀 INICIO CICLO V75.0 (CAZADORA): {ahora_cl}")
 
     try:
-        # Cargar base de datos
         df_master = pd.read_csv(DB_MASTER) if os.path.exists(DB_MASTER) else pd.DataFrame()
-
-        # 1. SCRAPING
         res = session.get("https://www.mirovaweb.it/NRT/latest.php", timeout=30)
         soup = BeautifulSoup(res.text, 'html.parser')
         filas = soup.find('tbody').find_all('tr')
@@ -98,80 +91,45 @@ def procesar():
             vrp_n, dist_n, sensor = float(cols[3].text.strip()), float(cols[4].text.strip()), cols[5].text.strip()
 
             mask = (df_master['timestamp'] == ts) & (df_master['Volcan'] == conf["nombre"]) & (df_master['Sensor'] == sensor) if not df_master.empty else pd.Series([False])
-
             if not df_master.empty and mask.any():
                 idx = df_master.index[mask][0]
-                if float(df_master.at[idx, 'VRP_MW']) != vrp_n:
-                    df_master.at[idx, 'VRP_MW'], df_master.at[idx, 'Editado'] = vrp_n, "SI"
-                df_master.at[idx, 'Ultima_Actualizacion'] = fecha_proceso_actual
+                df_master.at[idx, 'Ultima_Actualizacion'] = ahora_cl.strftime("%Y-%m-%d %H:%M:%S")
             else:
                 nueva = {
                     "timestamp": ts, "Fecha_Satelite_UTC": dt_utc.strftime("%Y-%m-%d %H:%M:%S"),
                     "Fecha_Captura_Chile": dt_utc.replace(tzinfo=pytz.utc).astimezone(pytz.timezone('America/Santiago')).strftime("%Y-%m-%d %H:%M:%S"),
                     "Volcan": conf["nombre"], "Sensor": sensor, "VRP_MW": vrp_n, "Distancia_km": dist_n,
                     "Tipo_Registro": "PENDIENTE", "Clasificacion Mirova": "PENDIENTE", "Ruta Foto": "PENDIENTE",
-                    "Fecha_Proceso_GitHub": fecha_proceso_actual, "Ultima_Actualizacion": fecha_proceso_actual, "Editado": "NO"
+                    "Fecha_Proceso_GitHub": ahora_cl.strftime("%Y-%m-%d %H:%M:%S"), "Ultima_Actualizacion": ahora_cl.strftime("%Y-%m-%d %H:%M:%S"), "Editado": "NO"
                 }
                 df_master = pd.concat([df_master, pd.DataFrame([nueva])], ignore_index=True)
 
         if not df_master.empty:
             df_master['date_only'] = df_master['Fecha_Satelite_UTC'].str.split(' ').str[0]
+            df_master = df_master.groupby(['Volcan', 'date_only'], group_keys=False).apply(lambda x: x.sort_values('timestamp')) # Orden simple para procesar
             
-            def saneamiento_v73(group):
-                volcan_n, fecha_s = group.name[0], group.name[1]
-                limit = next(v["limite_km"] for k, v in VOLCANES_CONFIG.items() if v["nombre"] == volcan_n)
-                group = group.sort_values('timestamp')
-                
-                is_alerta = (group['VRP_MW'] > 0) & (group['Distancia_km'] <= limit)
-                group.loc[is_alerta, 'Tipo_Registro'] = 'ALERTA_TERMICA'
-                
-                if is_alerta.any(): group.loc[~is_alerta, 'Tipo_Registro'] = 'RUTINA'
+            # --- LÓGICA DE CLASIFICACIÓN (Simplificada para no fallar) ---
+            for idx, row in df_master.iterrows():
+                volcan = row['Volcan']
+                limit = next(v["limite_km"] for k, v in VOLCANES_CONFIG.items() if v["nombre"] == volcan)
+                if row['VRP_MW'] > 0 and row['Distancia_km'] <= limit:
+                    df_master.at[idx, 'Tipo_Registro'] = 'ALERTA_TERMICA'
+                elif row['Sensor'] == 'VIIRS375' and row['Tipo_Registro'] == 'PENDIENTE':
+                    df_master.at[idx, 'Tipo_Registro'] = 'EVIDENCIA_DIARIA'
                 else:
-                    ayer = (datetime.strptime(fecha_s, "%Y-%m-%d") - timedelta(days=1)).strftime("%Y-%m-%d")
-                    hubo_ayer = ((df_master['Volcan'] == volcan_n) & (df_master['date_only'] == ayer) & (df_master['Tipo_Registro'] == 'ALERTA_TERMICA')).any()
-                    if hubo_ayer: group['Tipo_Registro'] = 'RUTINA'
-                    else:
-                        v375 = (group['Sensor'] == 'VIIRS375')
-                        if v375.any():
-                            idx_e = group[v375].index[0]
-                            group.at[idx_e, 'Tipo_Registro'] = 'EVIDENCIA_DIARIA'
-                            group.loc[group.index != idx_e, 'Tipo_Registro'] = 'RUTINA'
-                        else: group['Tipo_Registro'] = 'RUTINA'
+                    df_master.at[idx, 'Tipo_Registro'] = 'RUTINA'
 
-                for idx, row in group.iterrows():
-                    v, d = row['VRP_MW'], row['Distancia_km']
-                    group.at[idx, 'Clasificacion Mirova'] = "NULO" if v <= 0 else "FALSO POSITIVO" if d > limit else "Bajo"
-                    if group.at[idx, 'Tipo_Registro'] == 'RUTINA':
-                        group.at[idx, 'Ruta Foto'] = "No descargada"
-                    else:
-                        dt = datetime.strptime(row['Fecha_Satelite_UTC'], "%Y-%m-%d %H:%M:%S")
-                        s_lab = "VIIRS750" if str(row['Sensor']) == "VIIRS" else str(row['Sensor'])
-                        img_t = "VIIRS375_Latest" if group.at[idx, 'Tipo_Registro'] == 'EVIDENCIA_DIARIA' else f"{s_lab}_VRP"
-                        group.at[idx, 'Ruta Foto'] = f"imagenes_satelitales/{volcan_n}/{dt.strftime('%Y-%m-%d')}/{dt.strftime('%H-%M-%S')}_{volcan_n}_{img_t}.png"
-                return group
-
-            df_master = df_master.groupby(['Volcan', 'date_only'], group_keys=False).apply(saneamiento_v73)
-            
-            # 3. DESCARGAS (Ventana ampliada a 24 horas para reparaciones)
+            # --- DESCARGAS (Cualquier alerta/evidencia de las últimas 24h) ---
             ahora_ts = int(datetime.now().timestamp())
             for idx, row in df_master.iterrows():
-                # Revisamos todo lo ocurrido en las últimas 24 horas (86400 segundos)
                 if (ahora_ts - row['timestamp']) < 86400:
                     if row['Tipo_Registro'] in ['ALERTA_TERMICA', 'EVIDENCIA_DIARIA']:
                         id_v = next(k for k, v in VOLCANES_CONFIG.items() if v["nombre"] == row['Volcan'])
                         dt_obj = datetime.strptime(row['Fecha_Satelite_UTC'], "%Y-%m-%d %H:%M:%S")
                         descargar_imagenes_quirurgica(session, id_v, row['Volcan'], dt_obj, row['Sensor'], "COMPLETO" if row['Tipo_Registro'] == 'ALERTA_TERMICA' else "MINIMO")
 
-            # 4. GUARDADO
-            cols = ["timestamp", "Fecha_Satelite_UTC", "Fecha_Captura_Chile", "Volcan", "Sensor", "VRP_MW", "Distancia_km", "Tipo_Registro", "Clasificacion Mirova", "Ruta Foto", "Fecha_Proceso_GitHub", "Ultima_Actualizacion", "Editado"]
-            df_master[cols].sort_values('timestamp', ascending=False).to_csv(DB_MASTER, index=False)
-            
-            df_pos = df_master[df_master['Tipo_Registro'] == "ALERTA_TERMICA"]
-            df_pos[cols[0:11]].to_csv(DB_POSITIVOS, index=False)
-            for v_nom in df_master['Volcan'].unique():
-                csv_v = os.path.join(RUTA_IMAGENES_BASE, v_nom, f"registro_{v_nom.replace(' ', '_')}.csv")
-                df_pos[df_pos['Volcan'] == v_nom][cols[0:11]].to_csv(csv_v, index=False)
-            log_bitacora("💾 CICLO V73.0 FINALIZADO.")
+            df_master.drop(columns=['date_only']).sort_values('timestamp', ascending=False).to_csv(DB_MASTER, index=False)
+            log_bitacora("💾 CICLO V75.0 FINALIZADO.")
     except Exception as e: log_bitacora(f"❌ ERROR: {e}")
 
 if __name__ == "__main__":

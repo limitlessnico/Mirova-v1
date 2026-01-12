@@ -1,8 +1,8 @@
 timestamp,Fecha_Satelite_UTC,Fecha_Captura_Chile,Volcan,Sensor,VRP_MW,Distancia_km,Clasificacion Mirova,Ruta Foto,Fecha_Proceso_GitHub,Ultima_Actualizacion,Editado
-1768107601,2026-01-11 05:00:01,2026-01-11 02:00:01,Lascar,VIIRS375,0.51,1.5,Muy Bajo,imagenes_satelitales/Lascar/2026-01-11/05-00-01_Lascar_VIIRS375_VRP.png,,,NO
 1768107601,2026-01-11 05:00:01,2026-01-11 02:00:01,Lascar,VIIRS,0.27,0.75,Muy Bajo,imagenes_satelitales/Lascar/2026-01-11/05-00-01_Lascar_VIIRS750_VRP.png,,,NO
+1768107601,2026-01-11 05:00:01,2026-01-11 02:00:01,Lascar,VIIRS375,0.51,1.5,Muy Bajo,imagenes_satelitales/Lascar/2026-01-11/05-00-01_Lascar_VIIRS375_VRP.png,,,NO
 1768112640,2026-01-11 06:24:00,2026-01-11 03:24:00,Lascar,VIIRS375,0.04,1.19,Muy Bajo,imagenes_satelitales/Lascar/2026-01-11/06-24-00_Lascar_VIIRS375_VRP.png,,,NO
-1768199041,2026-01-12 06:24:01,2026-01-12 03:24:01,Lascar,VIIRS375,0.62,5.0,Muy Bajo,imagenes_satelitales/Lascar/2026-01-12/06-24-01_Lascar_VIIRS375_VRP.png,2026-01-12 07:28:07,2026-01-12 07:28:07,NO
+1768199041,2026-01-12 06:24:01,2026-01-12 03:24:01,Lascar,VIIRS375,0.62,5.0,Muy Bajo,imagenes_satelitales/Lascar/2026-01-12/06-24-01_Lascar_VIIRS375_VRP.png,2026-01-12 07:28:07,2026-01-12 07:53:11,NO
 1768112640,2026-01-11 06:24:00,2026-01-11 03:24:00,Lastarria,VIIRS375,0.15,1.55,Muy Bajo,imagenes_satelitales/Lastarria/2026-01-11/06-24-00_Lastarria_VIIRS375_VRP.png,,,NO
 1768107961,2026-01-11 05:06:01,2026-01-11 02:06:01,Puyehue-Cordon Caulle,VIIRS375,0.25,8.19,Muy Bajo,imagenes_satelitales/Puyehue-Cordon Caulle/2026-01-11/05-06-01_Puyehue-Cordon Caulle_VIIRS375_VRP.png,,,NO
-1768199401,2026-01-12 06:30:01,2026-01-12 03:30:01,Puyehue-Cordon Caulle,VIIRS375,0.28,8.1,Muy Bajo,imagenes_satelitales/Puyehue-Cordon Caulle/2026-01-12/06-30-01_Puyehue-Cordon Caulle_VIIRS375_VRP.png,2026-01-12 07:28:07,2026-01-12 07:28:07,NO
+1768199401,2026-01-12 06:30:01,2026-01-12 03:30:01,Puyehue-Cordon Caulle,VIIRS375,0.28,8.1,Muy Bajo,imagenes_satelitales/Puyehue-Cordon Caulle/2026-01-12/06-30-01_Puyehue-Cordon Caulle_VIIRS375_VRP.png,2026-01-12 07:28:07,2026-01-12 07:53:11,NO

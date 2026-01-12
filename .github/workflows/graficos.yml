@@ -1,21 +1,49 @@
-- name: Guardar Gráficos y Estado en GitHub
+name: Generador de Graficos
+
+on:
+  workflow_run:
+    workflows: ["Monitor Volcanico VRP"]
+    types:
+      - completed
+
+jobs:
+  pintar_y_publicar:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configurar Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Instalar librerías de visualización
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas matplotlib pytz
+
+      - name: Ejecutar el Visualizador y Auditoria
+        run: python visualizador.py
+
+      - name: Guardar Gráficos y Estado en GitHub
         run: |
           git config --global user.name "VolcanoVisualizer"
           git config --global user.email "viz@volcano.com"
           
-          # 1. Agregamos los cambios
           git add monitoreo_satelital/graficos_tendencia/
           git add monitoreo_satelital/estado_sistema.json
           
-          # 2. Solo si hay cambios, intentamos fusionar y subir
           if ! git diff --quiet --staged; then
             git commit -m "📊 Auto: Actualización de gráficos de tendencia"
-            
-            # --- ESTRATEGIA DE RECONCILIACIÓN ---
-            # Trae lo que el Scraper subió mientras este proceso corría
             git pull origin main --rebase -X ours
-            
-            # Intenta subir, y si falla, reintenta una vez más
             git push origin main || (git pull origin main --rebase -X ours && git push origin main)
           else
             echo "Sin cambios en los gráficos. Saltando."

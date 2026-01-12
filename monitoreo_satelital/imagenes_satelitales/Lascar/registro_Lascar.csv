@@ -1,4 +1,4 @@
 timestamp,Fecha_Satelite_UTC,Fecha_Captura_Chile,Volcan,Sensor,VRP_MW,Distancia_km,Clasificacion Mirova,Ruta Foto,Fecha_Proceso_GitHub
-1768107601,2026-01-11 05:00:01,2026-01-11 02:00:01,Lascar,VIIRS,0.27,0.75,Muy Bajo,imagenes_satelitales/Lascar/2026-01-11/05-00-01_Lascar_VIIRS750_VRP.png,2026-01-11 18:52:38
-1768107601,2026-01-11 05:00:01,2026-01-11 02:00:01,Lascar,VIIRS375,0.51,1.5,Muy Bajo,imagenes_satelitales/Lascar/2026-01-11/05-00-01_Lascar_VIIRS375_VRP.png,2026-01-11 18:52:38
-1768112640,2026-01-11 06:24:00,2026-01-11 03:24:00,Lascar,VIIRS375,0.04,1.19,Muy Bajo,imagenes_satelitales/Lascar/2026-01-11/06-24-00_Lascar_VIIRS375_VRP.png,2026-01-11 18:52:38
+1768107601,2026-01-11 05:00:01,2026-01-11 02:00:01,Lascar,VIIRS,0.27,0.75,Muy Bajo,imagenes_satelitales/Lascar/2026-01-11/05-00-01_Lascar_VIIRS750_VRP.png,
+1768107601,2026-01-11 05:00:01,2026-01-11 02:00:01,Lascar,VIIRS375,0.51,1.5,Muy Bajo,imagenes_satelitales/Lascar/2026-01-11/05-00-01_Lascar_VIIRS375_VRP.png,
+1768112640,2026-01-11 06:24:00,2026-01-11 03:24:00,Lascar,VIIRS375,0.04,1.19,Muy Bajo,imagenes_satelitales/Lascar/2026-01-11/06-24-00_Lascar_VIIRS375_VRP.png,

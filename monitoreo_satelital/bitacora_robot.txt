@@ -249,3 +249,5 @@
 [2026-01-11 21:36:21] 💾 Limpieza total aplicada. Revisa las filas 2-60 ahora.
 [2026-01-11 21:43:12] 🚀 INICIO CICLO V53.0 (SANEAMIENTO AUTO-CORRECTOR): 2026-01-11 21:43:12.052595-03:00
 [2026-01-11 21:43:12] ❌ ERROR: 'Chaiten'
+[2026-01-11 22:00:34] 🚀 INICIO CICLO V54.0 (AUTO-SANEAMIENTO GLOBAL)
+[2026-01-11 22:00:35] 💾 Ciclo V54.0 Finalizado con éxito.

@@ -5,6 +5,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 import pytz
 import time
+import re
 
 # --- CONFIGURACIÓN ---
 CARPETA_PRINCIPAL = "monitoreo_satelital"
@@ -35,64 +36,59 @@ def log_bitacora(mensaje):
     with open(ARCHIVO_BITACORA, "a", encoding="utf-8") as f:
         f.write(f"[{ahora}] {mensaje}\n")
 
-def descargar_imagenes_quirurgica(session, id_v, nombre_v, dt_utc, sensor_tabla, modo="COMPLETO"):
+def descargar_v83_infiltrado(session, id_v, nombre_v, dt_utc, sensor_tabla, modo="COMPLETO"):
     f_c = dt_utc.strftime("%Y-%m-%d")
     h_a = dt_utc.strftime("%H-%M-%S")
     ruta_dia = os.path.join(RUTA_IMAGENES_BASE, nombre_v, f_c)
     os.makedirs(ruta_dia, exist_ok=True)
 
-    # El orden importa: logVRP y VRP son las más pesadas y valiosas
-    tipos = ["VRP", "logVRP", "Latest", "Dist"] if modo == "COMPLETO" else ["Latest"]
-    
-    # Mapeo exacto de los links que sí te funcionan en el navegador
     mapeo = {"VIIRS375": "VIR375", "VIIRS": "VIR", "MODIS": "MOD"}
     s_real = mapeo.get(sensor_tabla, sensor_tabla)
     
-    # CAMBIO V82: Headers mucho más realistas
-    custom_headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
-        'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8',
-        'Referer': f'https://www.mirovaweb.it/NRT/volcanoDetails_{s_real}.php?volcano_id={id_v}',
-        'Connection': 'keep-alive'
-    }
-
-    exito_count = 0
-    for t in tipos:
-        s_label = "VIIRS750" if sensor_tabla == "VIIRS" else sensor_tabla
-        path_img = os.path.join(ruta_dia, f"{h_a}_{nombre_v}_{s_label}_{t}.png")
+    # 1. ENTRAR A LA PÁGINA DE DETALLES PARA "VER" LOS LINKS
+    url_detalles = f"https://www.mirovaweb.it/NRT/volcanoDetails_{s_real}.php?volcano_id={id_v}"
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0'}
+    
+    try:
+        res_p = session.get(url_detalles, headers=headers, timeout=30)
+        # Buscamos las rutas de imágenes en el HTML (ej: get_latest_image.php?...)
+        links_encontrados = re.findall(r'get_latest_image\.php\?[^"\']+', res_p.text)
         
-        # URL dinámica para capturar la imagen más reciente del sensor
-        url_img = f"https://www.mirovaweb.it/NRT/get_latest_image.php?volcano_id={id_v}&sensor={s_real}&type={t}"
+        tipos = ["VRP", "logVRP", "Latest", "Dist"] if modo == "COMPLETO" else ["Latest"]
         
-        try:
-            time.sleep(1.5) # Pausa para no ser bloqueado
-            r = session.get(url_img, headers=custom_headers, timeout=30)
+        for t in tipos:
+            s_label = "VIIRS750" if sensor_tabla == "VIIRS" else sensor_tabla
+            path_img = os.path.join(ruta_dia, f"{h_a}_{nombre_v}_{s_label}_{t}.png")
             
-            if r.status_code == 200 and len(r.content) > 5000:
-                with open(path_img, 'wb') as f:
-                    f.write(r.content)
-                log_bitacora(f"📸 OK: {nombre_v} {t}")
-                exito_count += 1
+            # Buscamos el link que coincida con el tipo (VRP, Dist, etc)
+            link_final = None
+            for l in links_encontrados:
+                if f"type={t}" in l:
+                    link_final = "https://www.mirovaweb.it/NRT/" + l.replace('&amp;', '&')
+                    break
+            
+            if link_final:
+                time.sleep(2)
+                r_img = session.get(link_final, headers=headers, timeout=30)
+                if r_img.status_code == 200 and len(r_img.content) > 5000:
+                    with open(path_img, 'wb') as f:
+                        f.write(r_img.content)
+                    log_bitacora(f"📸 INFILTRADO OK: {nombre_v} {t}")
+                else:
+                    log_bitacora(f"⚠️ Link fallido para {nombre_v} {t}")
             else:
-                log_bitacora(f"⚠️ 404 en {nombre_v} {t} (Sensor: {s_real})")
-        except Exception as e:
-            log_bitacora(f"❌ Error: {e}")
-            
-    return exito_count > 0
+                log_bitacora(f"❌ No se halló link en HTML para {nombre_v} {t}")
+    except Exception as e:
+        log_bitacora(f"❌ Error infiltrado: {e}")
 
 def procesar():
     os.makedirs(CARPETA_PRINCIPAL, exist_ok=True)
     session = requests.Session()
-    
     ahora_cl = obtener_hora_chile()
-    log_bitacora(f"🚀 INICIO V82.0 (CAMUFLAJE): {ahora_cl}")
+    log_bitacora(f"🚀 INICIO V83.0 (INFILTRADO HTML): {ahora_cl}")
 
     try:
-        # Cargar CSV
         df_master = pd.read_csv(DB_MASTER) if os.path.exists(DB_MASTER) else pd.DataFrame()
-
-        # 1. SCRAPING TABLA
         res = session.get("https://www.mirovaweb.it/NRT/latest.php", timeout=30)
         soup = BeautifulSoup(res.text, 'html.parser')
         filas = soup.find('tbody').find_all('tr')
@@ -108,7 +104,6 @@ def procesar():
             vrp_n, dist_n = float(cols[3].text.strip()), float(cols[4].text.strip())
             conf = VOLCANES_CONFIG[id_v]
 
-            # Registro en CSV
             mask = (df_master['timestamp'] == ts) & (df_master['Volcan'] == conf["nombre"]) & (df_master['Sensor'] == sensor) if not df_master.empty else pd.Series([False])
             if not df_master.empty and mask.any():
                 idx = df_master.index[mask][0]
@@ -124,34 +119,29 @@ def procesar():
                 df_master = pd.concat([df_master, pd.DataFrame([nueva])], ignore_index=True)
 
         if not df_master.empty:
-            # 2. DESCARGAS (Últimas 24h)
             ahora_ts = int(datetime.now().timestamp())
             for idx, row in df_master.iterrows():
                 if (ahora_ts - row['timestamp']) < 86400:
                     volcan = row['Volcan']
                     limit = next(v["limite_km"] for k, v in VOLCANES_CONFIG.items() if v["nombre"] == volcan)
-                    
                     es_alerta = row['VRP_MW'] > 0 and row['Distancia_km'] <= limit
                     es_evidencia = row['Sensor'] == 'VIIRS375'
 
                     if es_alerta or es_evidencia:
                         id_v = next(k for k, v in VOLCANES_CONFIG.items() if v["nombre"] == volcan)
                         dt_obj = datetime.strptime(row['Fecha_Satelite_UTC'], "%Y-%m-%d %H:%M:%S")
+                        log_bitacora(f"🛠 Escaneando HTML para {volcan}...")
+                        descargar_v83_infiltrado(session, id_v, volcan, dt_obj, row['Sensor'], "COMPLETO" if es_alerta else "MINIMO")
                         
-                        log_bitacora(f"🛠 Sincronizando {volcan}...")
-                        descargado = descargar_imagenes_quirurgica(session, id_v, volcan, dt_obj, row['Sensor'], "COMPLETO" if es_alerta else "MINIMO")
-                        
-                        if descargado:
-                            df_master.at[idx, 'Tipo_Registro'] = 'ALERTA_TERMICA' if es_alerta else 'EVIDENCIA_DIARIA'
-                            s_lab = "VIIRS750" if row['Sensor'] == "VIIRS" else row['Sensor']
-                            img_t = "VIIRS375_Latest" if not es_alerta else f"{s_lab}_VRP"
-                            df_master.at[idx, 'Ruta Foto'] = f"imagenes_satelitales/{volcan}/{dt_obj.strftime('%Y-%m-%d')}/{dt_obj.strftime('%H-%M-%S')}_{volcan}_{img_t}.png"
+                        # Actualizar campos
+                        df_master.at[idx, 'Tipo_Registro'] = 'ALERTA_TERMICA' if es_alerta else 'EVIDENCIA_DIARIA'
+                        s_lab = "VIIRS750" if row['Sensor'] == "VIIRS" else row['Sensor']
+                        img_t = "VIIRS375_Latest" if not es_alerta else f"{s_lab}_VRP"
+                        df_master.at[idx, 'Ruta Foto'] = f"imagenes_satelitales/{volcan}/{dt_obj.strftime('%Y-%m-%d')}/{dt_obj.strftime('%H-%M-%S')}_{volcan}_{img_t}.png"
 
-            # 3. GUARDADO
             df_master.sort_values('timestamp', ascending=False).to_csv(DB_MASTER, index=False)
             df_master[df_master['Tipo_Registro'] == "ALERTA_TERMICA"].to_csv(DB_POSITIVOS, index=False)
-            log_bitacora("💾 CICLO V82.0 FINALIZADO.")
-
+            log_bitacora("💾 CICLO V83.0 FINALIZADO.")
     except Exception as e:
         log_bitacora(f"❌ ERROR: {e}")
 

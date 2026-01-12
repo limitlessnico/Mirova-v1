@@ -702,3 +702,23 @@
 [2026-01-12 10:40:03] ✅ Imagen OUTPUTweb OK: 06-24-01_Lascar_VIIRS375_Latest.png
 [2026-01-12 10:40:04] ✅ Imagen OUTPUTweb OK: 06-24-01_Lascar_VIIRS375_Dist.png
 [2026-01-12 10:40:05] ✅ Sincronización V101 Exitosa.
+[2026-01-12 10:43:34] 🔵 INICIO CICLO V101.0 (OUTPUTweb DIRECTO)
+[2026-01-12 10:43:36] ✅ Imagen OUTPUTweb OK: 06-30-01_Llaima_VIIRS375_Latest.png
+[2026-01-12 10:43:38] ✅ Imagen OUTPUTweb OK: 06-30-01_Copahue_VIIRS375_Latest.png
+[2026-01-12 10:43:39] 🔵 Lastarria/Chillan fuera de límite (17.08km)
+[2026-01-12 10:43:39] ⚠️ No disponible en OUTPUTweb: Nevados de Chillan Latest (Status: 404)
+[2026-01-12 10:43:40] ✅ Imagen OUTPUTweb OK: 06-30-01_Chaiten_VIIRS375_Latest.png
+[2026-01-12 10:43:42] ⚠️ No disponible en OUTPUTweb: Puyehue-Cordon Caulle VRP (Status: 404)
+[2026-01-12 10:43:43] ⚠️ No disponible en OUTPUTweb: Puyehue-Cordon Caulle logVRP (Status: 404)
+[2026-01-12 10:43:44] ⚠️ No disponible en OUTPUTweb: Puyehue-Cordon Caulle Latest (Status: 404)
+[2026-01-12 10:43:45] ⚠️ No disponible en OUTPUTweb: Puyehue-Cordon Caulle Dist (Status: 404)
+[2026-01-12 10:43:47] ✅ Imagen OUTPUTweb OK: 06-30-01_Villarrica_VIIRS375_Latest.png
+[2026-01-12 10:43:48] ⚠️ No disponible en OUTPUTweb: Peteroa Latest (Status: 404)
+[2026-01-12 10:43:49] 🔵 Lastarria/Chillan fuera de límite (5.03km)
+[2026-01-12 10:43:50] ✅ Imagen OUTPUTweb OK: 06-24-01_Lastarria_VIIRS375_Latest.png
+[2026-01-12 10:43:51] ✅ Imagen OUTPUTweb OK: 06-24-01_Isluga_VIIRS375_Latest.png
+[2026-01-12 10:43:53] ✅ Imagen OUTPUTweb OK: 06-24-01_Lascar_VIIRS375_VRP.png
+[2026-01-12 10:43:54] ✅ Imagen OUTPUTweb OK: 06-24-01_Lascar_VIIRS375_logVRP.png
+[2026-01-12 10:43:56] ✅ Imagen OUTPUTweb OK: 06-24-01_Lascar_VIIRS375_Latest.png
+[2026-01-12 10:43:57] ✅ Imagen OUTPUTweb OK: 06-24-01_Lascar_VIIRS375_Dist.png
+[2026-01-12 10:43:58] ✅ Sincronización V101 Exitosa.

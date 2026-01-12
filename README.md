@@ -11,7 +11,6 @@ Sentinel-2 and Landsat 8 data are accessed through the **Copernicus Open Access 
 Toda la información térmica es procesada y obtenida a través de la infraestructura de la plataforma **MIROVA** (Middle InfraRed Observation of Volcanic Activity), un sistema colaborativo de la Universidad de Turín y la Universidad de Florencia.
 
 ---
----
 
 ## 📡 Dashboard e Interfaz de Auditoría
 
@@ -63,10 +62,10 @@ Se aplica un filtro de precisión geográfica (**Geofencing**) para validar que 
 | --- | --- | --- | --- |
 | **Isluga** | 354030 | 5.0 | Tarapacá |
 | **Láscar** | 355100 | 5.0 | Antofagasta |
-| **Lastarria** | 355160 | 3.0 | Antofagasta |
+| **Lastarria** | 355120 | 3.0 | Antofagasta |
 | **Peteroa** | 357040 | 3.0 | Maule |
 | **N. de Chillán** | 357060 | 5.0 | Ñuble |
-| **Copahue** | 357080 | 4.0 | Biobío |
+| **Copahue** | 357090 | 4.0 | Biobío |
 | **Llaima** | 357110 | 5.0 | Araucanía |
 | **Villarrica** | 357120 | 5.0 | Araucanía |
 | **Puyehue-C. Caulle** | 357150 | 20.0 | Los Ríos |

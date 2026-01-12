@@ -682,3 +682,23 @@
 [2026-01-12 10:35:38] ⚠️ Fallo en Latest (Status: 404) URL: https://www.mirovaweb.it/NRT/get_latest_image.php?volcano_id=355100&sensor=VIIRS375&type=Latest
 [2026-01-12 10:35:39] ⚠️ Fallo en Dist (Status: 404) URL: https://www.mirovaweb.it/NRT/get_latest_image.php?volcano_id=355100&sensor=VIIRS375&type=Dist
 [2026-01-12 10:35:40] ✅ Sincronización V100 finalizada.
+[2026-01-12 10:39:40] 🔵 INICIO CICLO V101.0 (OUTPUTweb DIRECTO)
+[2026-01-12 10:39:42] ✅ Imagen OUTPUTweb OK: 06-30-01_Llaima_VIIRS375_Latest.png
+[2026-01-12 10:39:44] ✅ Imagen OUTPUTweb OK: 06-30-01_Copahue_VIIRS375_Latest.png
+[2026-01-12 10:39:45] 🔵 Lastarria/Chillan fuera de límite (17.08km)
+[2026-01-12 10:39:45] ⚠️ No disponible en OUTPUTweb: Nevados de Chillan Latest (Status: 404)
+[2026-01-12 10:39:47] ✅ Imagen OUTPUTweb OK: 06-30-01_Chaiten_VIIRS375_Latest.png
+[2026-01-12 10:39:48] ⚠️ No disponible en OUTPUTweb: Puyehue-Cordon Caulle VRP (Status: 404)
+[2026-01-12 10:39:49] ⚠️ No disponible en OUTPUTweb: Puyehue-Cordon Caulle logVRP (Status: 404)
+[2026-01-12 10:39:50] ⚠️ No disponible en OUTPUTweb: Puyehue-Cordon Caulle Latest (Status: 404)
+[2026-01-12 10:39:52] ⚠️ No disponible en OUTPUTweb: Puyehue-Cordon Caulle Dist (Status: 404)
+[2026-01-12 10:39:53] ✅ Imagen OUTPUTweb OK: 06-30-01_Villarrica_VIIRS375_Latest.png
+[2026-01-12 10:39:55] ⚠️ No disponible en OUTPUTweb: Peteroa Latest (Status: 404)
+[2026-01-12 10:39:56] 🔵 Lastarria/Chillan fuera de límite (5.03km)
+[2026-01-12 10:39:56] ✅ Imagen OUTPUTweb OK: 06-24-01_Lastarria_VIIRS375_Latest.png
+[2026-01-12 10:39:58] ✅ Imagen OUTPUTweb OK: 06-24-01_Isluga_VIIRS375_Latest.png
+[2026-01-12 10:39:59] ✅ Imagen OUTPUTweb OK: 06-24-01_Lascar_VIIRS375_VRP.png
+[2026-01-12 10:40:01] ✅ Imagen OUTPUTweb OK: 06-24-01_Lascar_VIIRS375_logVRP.png
+[2026-01-12 10:40:03] ✅ Imagen OUTPUTweb OK: 06-24-01_Lascar_VIIRS375_Latest.png
+[2026-01-12 10:40:04] ✅ Imagen OUTPUTweb OK: 06-24-01_Lascar_VIIRS375_Dist.png
+[2026-01-12 10:40:05] ✅ Sincronización V101 Exitosa.

@@ -22,6 +22,7 @@ VOLCANES_CONFIG = {
 CARPETA_PRINCIPAL = "monitoreo_satelital"
 RUTA_IMAGENES_BASE = os.path.join(CARPETA_PRINCIPAL, "imagenes_satelitales")
 DB_MASTER = os.path.join(CARPETA_PRINCIPAL, "registro_vrp_consolidado.csv")
+DB_POSITIVOS = os.path.join(CARPETA_PRINCIPAL, "registro_vrp_positivos.csv")
 ARCHIVO_BITACORA = os.path.join(CARPETA_PRINCIPAL, "bitacora_robot.txt")
 
 def obtener_hora_chile():
@@ -37,59 +38,45 @@ def descargar_imagenes_quirurgica(session, id_v, nombre_v, dt_utc, sensor_tabla,
     f_c = dt_utc.strftime("%Y-%m-%d")
     h_a = dt_utc.strftime("%H-%M-%S")
     ruta_dia = os.path.join(RUTA_IMAGENES_BASE, nombre_v, f_c)
+    os.makedirs(ruta_dia, exist_ok=True)
+
+    tipos = ["logVRP", "VRP", "Latest", "Dist"] if modo == "COMPLETO" else ["Latest"]
     
-    # 1. INTENTO DE CREACIÓN DE CARPETA CON REPORTE DE ERROR
-    try:
-        if not os.path.exists(ruta_dia):
-            os.makedirs(ruta_dia, exist_ok=True)
-            log_bitacora(f"📁 CARPETA CREADA: {ruta_dia}")
-    except Exception as e:
-        log_bitacora(f"❌ ERROR CRÍTICO AL CREAR CARPETA: {e}")
-        return
+    # DICCIONARIO DE COMPATIBILIDAD ACTUALIZADO V69
+    intentos_sensor = [sensor_tabla]
+    if sensor_tabla == "VIIRS375":
+        intentos_sensor = ["VIR375", "VIIRS375"]
+    elif sensor_tabla == "VIIRS":
+        intentos_sensor = ["VIR", "VIIRS750", "VIIRS"]
+    elif sensor_tabla == "MODIS":
+        intentos_sensor = ["MOD", "TERRA", "AQUA", "MODIS"]
 
-    # 2. SELECCIÓN DE PRODUCTOS
-    if modo == "COMPLETO":
-        tipos = ["logVRP", "VRP", "Latest", "Dist"]
-        s_label = "VIIRS750" if sensor_tabla == "VIIRS" else sensor_tabla
-    else:
-        if sensor_tabla != "VIIRS375": return
-        tipos = ["Latest"]
-        s_label = "VIIRS375"
-
-    # 3. BUCLE DE DESCARGA CON VALIDACIÓN DE CONTENIDO
     for t in tipos:
-        url = f"https://www.mirovaweb.it/NRT/get_latest_image.php?volcano_id={id_v}&sensor={sensor_tabla}&type={t}"
-        nombre_f = f"{h_a}_{nombre_v}_{s_label}_{t}.png"
-        path_img = os.path.join(ruta_dia, nombre_f)
+        # Estandarizamos el nombre del archivo en nuestro repo
+        s_label = "VIIRS750" if sensor_tabla == "VIIRS" else sensor_tabla
+        path_img = os.path.join(ruta_dia, f"{h_a}_{nombre_v}_{s_label}_{t}.png")
         
-        # Solo descargar si no existe o es corrupto (< 5KB)
-        if not os.path.exists(path_img) or os.path.getsize(path_img) < 5000:
-            try:
-                r = session.get(url, timeout=30, stream=True)
-                if r.status_code == 200:
-                    with open(path_img, 'wb') as f:
-                        for chunk in r.iter_content(chunk_size=8192):
-                            f.write(chunk)
-                    
-                    if os.path.exists(path_img) and os.path.getsize(path_img) > 5000:
-                        log_bitacora(f"✅ DESCARGA EXITOSA: {nombre_f}")
-                    else:
-                        log_bitacora(f"⚠️ ARCHIVO RECIBIDO VACÍO O PEQUEÑO: {nombre_f}")
-                else:
-                    log_bitacora(f"❌ ERROR SERVIDOR MIROVA ({r.status_code}) para: {nombre_f}")
-            except Exception as e:
-                log_bitacora(f"❌ ERROR DE CONEXIÓN EN {nombre_f}: {e}")
+        if not os.path.exists(path_img):
+            for s_try in intentos_sensor:
+                url = f"https://www.mirovaweb.it/NRT/get_latest_image.php?volcano_id={id_v}&sensor={s_try}&type={t}"
+                try:
+                    r = session.get(url, timeout=25)
+                    if r.status_code == 200 and len(r.content) > 5000:
+                        with open(path_img, 'wb') as f:
+                            f.write(r.content)
+                        log_bitacora(f"✅ LOGRADO ({s_try}): {nombre_v} {t}")
+                        break 
+                except:
+                    continue
 
 def procesar():
     os.makedirs(CARPETA_PRINCIPAL, exist_ok=True)
     session = requests.Session()
-    # Identidad de navegador real
-    session.headers.update({'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36'})
+    session.headers.update({'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0'})
     
     ahora_cl = obtener_hora_chile()
     fecha_proceso_actual = ahora_cl.strftime("%Y-%m-%d %H:%M:%S")
-    
-    log_bitacora(f"🚀 INICIO CICLO V65.0 (DEBUG EXTREMO): {ahora_cl}")
+    log_bitacora(f"🚀 INICIO CICLO V69.0 (SENSOR MASTER FINAL): {ahora_cl}")
 
     try:
         df_master = pd.read_csv(DB_MASTER) if os.path.exists(DB_MASTER) else pd.DataFrame()
@@ -127,11 +114,10 @@ def procesar():
                 }
                 df_master = pd.concat([df_master, pd.DataFrame([nueva])], ignore_index=True)
 
-        # 2. LÓGICA DE NEGOCIO
         if not df_master.empty:
             df_master['date_only'] = df_master['Fecha_Satelite_UTC'].str.split(' ').str[0]
             
-            def saneamiento_v65(group):
+            def saneamiento_v69(group):
                 volcan, fecha_str = group.name[0], group.name[1]
                 limit = next(v["limite_km"] for k, v in VOLCANES_CONFIG.items() if v["nombre"] == volcan)
                 group = group.sort_values('timestamp')
@@ -154,26 +140,23 @@ def procesar():
 
                 for idx, row in group.iterrows():
                     v, d = row['VRP_MW'], row['Distancia_km']
-                    if v <= 0: cat = "NULO"
-                    elif d > limit: cat = "FALSO POSITIVO"
-                    else: cat = "Muy Bajo" if v < 1 else "Bajo" if v < 10 else "Moderado" if v < 100 else "Alto"
-                    group.at[idx, 'Clasificacion Mirova'] = cat
-
+                    group.at[idx, 'Clasificacion Mirova'] = "NULO" if v <= 0 else "FALSO POSITIVO" if d > limit else "Bajo"
+                    
                     if group.at[idx, 'Tipo_Registro'] == 'RUTINA':
                         group.at[idx, 'Ruta Foto'] = "No descargada"
                     else:
                         dt = datetime.strptime(row['Fecha_Satelite_UTC'], "%Y-%m-%d %H:%M:%S")
                         s_lab = "VIIRS750" if str(row['Sensor']) == "VIIRS" else str(row['Sensor'])
-                        img_tipo = "VIIRS375_Latest" if group.at[idx, 'Tipo_Registro'] == 'EVIDENCIA_DIARIA' else f"{s_lab}_VRP"
-                        group.at[idx, 'Ruta Foto'] = f"imagenes_satelitales/{volcan}/{dt.strftime('%Y-%m-%d')}/{dt.strftime('%H-%M-%S')}_{volcan}_{img_tipo}.png"
+                        img_t = "VIIRS375_Latest" if group.at[idx, 'Tipo_Registro'] == 'EVIDENCIA_DIARIA' else f"{s_lab}_VRP"
+                        group.at[idx, 'Ruta Foto'] = f"imagenes_satelitales/{volcan}/{dt.strftime('%Y-%m-%d')}/{dt.strftime('%H-%M-%S')}_{volcan}_{img_t}.png"
                 return group
 
-            df_master = df_master.groupby(['Volcan', 'date_only'], group_keys=False).apply(saneamiento_v65)
+            df_master = df_master.groupby(['Volcan', 'date_only'], group_keys=False).apply(saneamiento_v69, include_groups=False)
             
-            # 3. DESCARGAS (Modo Rescate Forzado para el día de hoy)
+            # 3. DESCARGAS (Persistencia de 6 horas)
+            ahora_ts = int(datetime.now().timestamp())
             for idx, row in df_master.iterrows():
-                # Revisar todo lo de las últimas 24 horas
-                if (int(datetime.now().timestamp()) - row['timestamp']) < 86400:
+                if (ahora_ts - row['timestamp']) < 21600:
                     if row['Tipo_Registro'] in ['ALERTA_TERMICA', 'EVIDENCIA_DIARIA']:
                         id_v = next(k for k, v in VOLCANES_CONFIG.items() if v["nombre"] == row['Volcan'])
                         dt_obj = datetime.strptime(row['Fecha_Satelite_UTC'], "%Y-%m-%d %H:%M:%S")
@@ -182,8 +165,15 @@ def procesar():
             # 4. GUARDADO
             cols = ["timestamp", "Fecha_Satelite_UTC", "Fecha_Captura_Chile", "Volcan", "Sensor", "VRP_MW", "Distancia_km", "Tipo_Registro", "Clasificacion Mirova", "Ruta Foto", "Fecha_Proceso_GitHub", "Ultima_Actualizacion", "Editado"]
             df_master[cols].sort_values('timestamp', ascending=False).to_csv(DB_MASTER, index=False)
-            log_bitacora("💾 CICLO V65.0 FINALIZADO.")
-    except Exception as e: log_bitacora(f"❌ ERROR GENERAL: {e}")
+            
+            # Tablas derivadas
+            df_pos = df_master[df_master['Tipo_Registro'] == "ALERTA_TERMICA"]
+            df_pos[cols[0:11]].to_csv(DB_POSITIVOS, index=False)
+            for v_nom in df_master['Volcan'].unique():
+                csv_v = os.path.join(RUTA_IMAGENES_BASE, v_nom, f"registro_{v_nom.replace(' ', '_')}.csv")
+                df_pos[df_pos['Volcan'] == v_nom][cols[0:11]].to_csv(csv_v, index=False)
+            log_bitacora("💾 CICLO V69.0 FINALIZADO.")
+    except Exception as e: log_bitacora(f"❌ ERROR: {e}")
 
 if __name__ == "__main__":
     procesar()

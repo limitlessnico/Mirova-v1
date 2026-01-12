@@ -1,8 +1,8 @@
 name: Monitor Volcanico VRP 
 
 on:
-  schedule:
-    - cron: '*/15 * * * *' 
+  # Se elimina el schedule interno para evitar duplicados y retrasos.
+  # Ahora el control total lo tiene el cron-job externo a través de workflow_dispatch.
   workflow_dispatch: 
 
 jobs:

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mirova-OVDAS VRP Monitor</title>
     <style>
-        body { background-color: #0b0e14; color: #e0e0e0; font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; padding: 0; }
+        body { background-color: #0b0e14; color: #e0e0e0; font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; padding: 0; display: flex; flex-direction: column; min-height: 100vh; }
         
         #audit-bar { 
             background: #161b22; padding: 12px 25px; border-bottom: 1px solid #30363d; 
@@ -14,7 +14,7 @@
         }
         .status-badge { padding: 4px 12px; border-radius: 20px; font-weight: bold; border: 1px solid #30363d; background: #0d1117; }
         
-        .grid-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 25px; padding: 30px; justify-items: center; }
+        .grid-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 25px; padding: 30px; justify-items: center; flex: 1; }
         
         .card { 
             background-color: #161b22; border-radius: 12px; padding: 15px; 
@@ -38,6 +38,18 @@
             border-radius: 8px; cursor: pointer; font-weight: bold;
             z-index: 1000; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
         }
+
+        /* ESTILO PARA LOS CRÉDITOS */
+        .acknowledgements {
+            background-color: #0d1117;
+            color: #8b949e;
+            padding: 20px;
+            text-align: center;
+            font-size: 0.75em;
+            border-top: 1px solid #30363d;
+            line-height: 1.5;
+        }
+        .acknowledgements strong { color: #c9d1d9; }
     </style>
 </head>
 <body>
@@ -51,6 +63,11 @@
     <button id="btnFullscreen">📺 MODO KIOSCO</button>
 
     <div class="grid-container" id="galeria"></div>
+
+    <footer class="acknowledgements">
+        <strong>Acknowledgements:</strong> We gratefully acknowledge <strong>NASA LANCE</strong> for access to MODIS and VIIRS Near Real Time products. <br>
+        Sentinel-2 and Landsat 8 data are accessed through the <strong>Copernicus Open Access Hub</strong>.
+    </footer>
 
 <script>
     const datosVolcanes = [

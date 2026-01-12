@@ -722,3 +722,15 @@
 [2026-01-12 10:43:56] ✅ Imagen OUTPUTweb OK: 06-24-01_Lascar_VIIRS375_Latest.png
 [2026-01-12 10:43:57] ✅ Imagen OUTPUTweb OK: 06-24-01_Lascar_VIIRS375_Dist.png
 [2026-01-12 10:43:58] ✅ Sincronización V101 Exitosa.
+[2026-01-12 10:50:29] 🔵 INICIO CICLO V104.0 (FIX VIIRS750 URL)
+[2026-01-12 10:50:30] ✅ Descargado: 06-30-01_Chaiten_VIIRS375_Latest.png
+[2026-01-12 10:50:31] ✅ Descargado: 06-30-01_Copahue_VIIRS375_Latest.png
+[2026-01-12 10:50:32] ✅ Descargado: 06-30-01_Llaima_VIIRS375_Latest.png
+[2026-01-12 10:50:36] ✅ Descargado: 06-30-01_Villarrica_VIIRS375_Latest.png
+[2026-01-12 10:50:37] ✅ Descargado: 06-24-01_Lastarria_VIIRS375_Latest.png
+[2026-01-12 10:50:39] ✅ Descargado: 06-24-01_Isluga_VIIRS375_Latest.png
+[2026-01-12 10:50:39] ✅ Descargado: 06-24-01_Lascar_VIIRS375_VRP.png
+[2026-01-12 10:50:40] ✅ Descargado: 06-24-01_Lascar_VIIRS375_logVRP.png
+[2026-01-12 10:50:41] ✅ Descargado: 06-24-01_Lascar_VIIRS375_Latest.png
+[2026-01-12 10:50:41] ✅ Descargado: 06-24-01_Lascar_VIIRS375_Dist.png
+[2026-01-12 10:50:42] ✅ Sincronización V104 Exitosa.

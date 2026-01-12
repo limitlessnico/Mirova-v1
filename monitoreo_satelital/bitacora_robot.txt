@@ -884,3 +884,5 @@
 [2026-01-12 14:50:02] 🔵 Limpieza: Borrado CSV antiguo de la carpeta de Chaiten
 [2026-01-12 14:50:02] 🔵 Limpieza: Borrado CSV antiguo de la carpeta de Peteroa
 [2026-01-12 14:50:02] ✅ Sincronización y Reubicación de archivos completada.
+[2026-01-12 15:00:55] 🔵 INICIO CICLO V106.0 (ACCESIBILIDAD CSV Y LIMPIEZA)
+[2026-01-12 15:00:56] ✅ Sincronización y Reubicación de archivos completada.

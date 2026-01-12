@@ -358,3 +358,20 @@
 [2026-01-12 08:49:26] 💾 CICLO V71.0 FINALIZADO.
 [2026-01-12 08:54:50] 🚀 INICIO CICLO V71.0 (SINCRONIZACIÓN): 2026-01-12 08:54:50.741954-03:00
 [2026-01-12 08:54:54] 💾 CICLO V71.0 FINALIZADO.
+[2026-01-12 08:57:24] 🚀 INICIO CICLO V73.0 (RESTAURADOR): 2026-01-12 08:57:24.243223-03:00
+[2026-01-12 08:57:26] ⏳ Mirova aún sin imagen para Chaiten Latest (404)
+[2026-01-12 08:57:26] ⏳ Mirova aún sin imagen para Copahue Latest (404)
+[2026-01-12 08:57:27] ⏳ Mirova aún sin imagen para Isluga Latest (404)
+[2026-01-12 08:57:27] ⏳ Mirova aún sin imagen para Lascar logVRP (404)
+[2026-01-12 08:57:27] ⏳ Mirova aún sin imagen para Lascar VRP (404)
+[2026-01-12 08:57:28] ⏳ Mirova aún sin imagen para Lascar Latest (404)
+[2026-01-12 08:57:28] ⏳ Mirova aún sin imagen para Lascar Dist (404)
+[2026-01-12 08:57:28] ⏳ Mirova aún sin imagen para Llaima Latest (404)
+[2026-01-12 08:57:28] ⏳ Mirova aún sin imagen para Nevados de Chillan Latest (404)
+[2026-01-12 08:57:29] ⏳ Mirova aún sin imagen para Peteroa Latest (404)
+[2026-01-12 08:57:29] ⏳ Mirova aún sin imagen para Puyehue-Cordon Caulle logVRP (404)
+[2026-01-12 08:57:29] ⏳ Mirova aún sin imagen para Puyehue-Cordon Caulle VRP (404)
+[2026-01-12 08:57:30] ⏳ Mirova aún sin imagen para Puyehue-Cordon Caulle Latest (404)
+[2026-01-12 08:57:30] ⏳ Mirova aún sin imagen para Puyehue-Cordon Caulle Dist (404)
+[2026-01-12 08:57:30] ⏳ Mirova aún sin imagen para Villarrica Latest (404)
+[2026-01-12 08:57:30] 💾 CICLO V73.0 FINALIZADO.

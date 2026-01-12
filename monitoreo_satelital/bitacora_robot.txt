@@ -624,3 +624,33 @@
 [2026-01-12 10:05:09] 🚀 INICIO CICLO V88.0: 2026-01-12 10:05:09.210020-03:00
 [2026-01-12 10:05:24] 💾 CSVs sincronizados correctamente.
 [2026-01-12 10:05:24] ✅ CICLO FINALIZADO.
+[2026-01-12 10:30:03] 🔵 INICIO CICLO V99.0 (MODO DEBUG ACTIVADO)
+[2026-01-12 10:30:04] 🔵 Iniciando descarga para Copahue (VIIRS375)...
+[2026-01-12 10:30:04] ❌ Error HTTP 404 al solicitar https://www.mirovaweb.it/NRT/get_latest_image.php?volcano_id=357090&sensor=VIR375&type=Latest
+[2026-01-12 10:30:05] 🔵 Iniciando descarga para Villarrica (VIIRS375)...
+[2026-01-12 10:30:05] ❌ Error HTTP 404 al solicitar https://www.mirovaweb.it/NRT/get_latest_image.php?volcano_id=357120&sensor=VIR375&type=Latest
+[2026-01-12 10:30:06] 🔵 Iniciando descarga para Puyehue-Cordon Caulle (VIIRS375)...
+[2026-01-12 10:30:07] ❌ Error HTTP 404 al solicitar https://www.mirovaweb.it/NRT/get_latest_image.php?volcano_id=357150&sensor=VIR375&type=VRP
+[2026-01-12 10:30:08] ❌ Error HTTP 404 al solicitar https://www.mirovaweb.it/NRT/get_latest_image.php?volcano_id=357150&sensor=VIR375&type=logVRP
+[2026-01-12 10:30:09] ❌ Error HTTP 404 al solicitar https://www.mirovaweb.it/NRT/get_latest_image.php?volcano_id=357150&sensor=VIR375&type=Latest
+[2026-01-12 10:30:10] ❌ Error HTTP 404 al solicitar https://www.mirovaweb.it/NRT/get_latest_image.php?volcano_id=357150&sensor=VIR375&type=Dist
+[2026-01-12 10:30:12] 🔵 Iniciando descarga para Llaima (VIIRS375)...
+[2026-01-12 10:30:12] ❌ Error HTTP 404 al solicitar https://www.mirovaweb.it/NRT/get_latest_image.php?volcano_id=357110&sensor=VIR375&type=Latest
+[2026-01-12 10:30:13] 🔵 Iniciando descarga para Chaiten (VIIRS375)...
+[2026-01-12 10:30:13] ❌ Error HTTP 404 al solicitar https://www.mirovaweb.it/NRT/get_latest_image.php?volcano_id=358041&sensor=VIR375&type=Latest
+[2026-01-12 10:30:14] 🔵 Detectado FALSO POSITIVO en Nevados de Chillan: Distancia 17.08km > Límite 5.0km
+[2026-01-12 10:30:14] 🔵 Iniciando descarga para Nevados de Chillan (VIIRS375)...
+[2026-01-12 10:30:14] ❌ Error HTTP 404 al solicitar https://www.mirovaweb.it/NRT/get_latest_image.php?volcano_id=357070&sensor=VIR375&type=Latest
+[2026-01-12 10:30:16] 🔵 Iniciando descarga para Isluga (VIIRS375)...
+[2026-01-12 10:30:16] ❌ Error HTTP 404 al solicitar https://www.mirovaweb.it/NRT/get_latest_image.php?volcano_id=355030&sensor=VIR375&type=Latest
+[2026-01-12 10:30:17] 🔵 Detectado FALSO POSITIVO en Lastarria: Distancia 5.03km > Límite 3.0km
+[2026-01-12 10:30:17] 🔵 Iniciando descarga para Lastarria (VIIRS375)...
+[2026-01-12 10:30:17] ❌ Error HTTP 404 al solicitar https://www.mirovaweb.it/NRT/get_latest_image.php?volcano_id=355120&sensor=VIR375&type=Latest
+[2026-01-12 10:30:18] 🔵 Iniciando descarga para Lascar (VIIRS375)...
+[2026-01-12 10:30:18] ❌ Error HTTP 404 al solicitar https://www.mirovaweb.it/NRT/get_latest_image.php?volcano_id=355100&sensor=VIR375&type=VRP
+[2026-01-12 10:30:20] ❌ Error HTTP 404 al solicitar https://www.mirovaweb.it/NRT/get_latest_image.php?volcano_id=355100&sensor=VIR375&type=logVRP
+[2026-01-12 10:30:21] ❌ Error HTTP 404 al solicitar https://www.mirovaweb.it/NRT/get_latest_image.php?volcano_id=355100&sensor=VIR375&type=Latest
+[2026-01-12 10:30:22] ❌ Error HTTP 404 al solicitar https://www.mirovaweb.it/NRT/get_latest_image.php?volcano_id=355100&sensor=VIR375&type=Dist
+[2026-01-12 10:30:23] 🔵 Iniciando descarga para Peteroa (VIIRS375)...
+[2026-01-12 10:30:24] ❌ Error HTTP 404 al solicitar https://www.mirovaweb.it/NRT/get_latest_image.php?volcano_id=357040&sensor=VIR375&type=Latest
+[2026-01-12 10:30:25] ✅ Ciclo finalizado y bases de datos sincronizadas.

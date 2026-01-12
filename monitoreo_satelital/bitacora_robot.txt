@@ -294,3 +294,5 @@
 [2026-01-12 08:19:10] 💾 Ciclo V63.0 finalizado. Forzado de alertas aplicado.
 [2026-01-12 08:23:09] 🚀 INICIO CICLO V64.0 (FORZADO TOTAL): 2026-01-12 08:23:09.499700-03:00
 [2026-01-12 08:23:11] 💾 Ciclo V64.0 finalizado con éxito.
+[2026-01-12 08:26:30] 🚀 INICIO CICLO V64.0 (RESCATE DE IMÁGENES): 2026-01-12 08:26:30.804315-03:00
+[2026-01-12 08:26:34] 💾 Ciclo V64.0 finalizado. Rescate de imágenes activo.

@@ -1,0 +1,33 @@
+name: Despliegue Final Pages
+
+on:
+  workflow_run:
+    workflows: ["Generador de Graficos"]
+    types:
+      - completed
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  deploy:
+    # Solo se publica si el generador de gráficos terminó con éxito
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Configurar Pages
+        uses: actions/configure-pages@v4
+        
+      - name: Subir Artefacto
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.' # Publica todo el contenido del repositorio
+          
+      - name: Desplegar a GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

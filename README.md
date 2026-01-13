@@ -6,10 +6,15 @@
  ---
 
 ## 🙏 Acknowledgements
-We gratefully acknowledge **NASA LANCE** for access to MODIS and VIIRS Near Real Time products.  
-Sentinel-2 and Landsat 8 data are accessed through the **Copernicus Open Access Hub**.  
-Toda la información térmica es procesada y obtenida a través de la infraestructura de la plataforma **MIROVA** (Middle InfraRed Observation of Volcanic Activity), un sistema colaborativo de la Universidad de Turín y la Universidad de Florencia.
+Toda la información térmica utilizada en este proyecto es procesada y obtenida a través de la infraestructura de la plataforma **MIROVA** (Middle InfraRed Observation of Volcanic Activity).
 
+* **Desarrollo y Mantenimiento:** Departamento de Ciencias de la Tierra de la [Universidad de Turín](https://www.unito.it/) (Italia), en colaboración con la [Universidad de Florencia](https://www.unifi.it/).
+* **Investigador Principal:** Diego Coppola.
+* **Referencias Científicas:** * Coppola, D., et al. (2016). *Enhanced volcanic hot-spot detection using MODIS IR data: results from the MIROVA system*.
+    * Coppola, D., et al. (2020). *Thermal Remote Sensing for Global Volcano Monitoring: Experiences From the MIROVA System*.
+
+Para más información, visite el sitio oficial de [MIROVA](https://www.mirovaweb.it/).
+    *  We gratefully acknowledge **NASA LANCE** for access to MODIS and VIIRS Near Real Time products.  Sentinel-2 and Landsat 8 data are accessed through the **Copernicus Open Access Hub**.  
 ---
 
 ## 📡 Dashboard e Interfaz de Auditoría

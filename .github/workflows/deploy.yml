@@ -13,21 +13,34 @@ permissions:
 
 jobs:
   deploy:
-    # Solo se publica si el generador de gráficos terminó con éxito
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1 # Solo descarga la última versión, mucho más rápido
         
       - name: Configurar Pages
         uses: actions/configure-pages@v4
+
+      # Filtramos: Solo subimos index y la carpeta de monitoreo (CSV, JSON y Gráficos)
+      # Ignoramos la carpeta 'imagenes_satelitales' que es la que pesa GBs
+      - name: Preparar contenido web
+        run: |
+          mkdir public
+          cp index.html public/
+          cp -r monitoreo_satelital public/
+          # Eliminamos la subcarpeta de imágenes del paquete de subida para alivianar
+          rm -rf public/monitoreo_satelital/imagenes_satelitales
         
       - name: Subir Artefacto
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '.' # Publica todo el contenido del repositorio
+          path: './public' # Solo sube la carpeta optimizada
           
       - name: Desplegar a GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          timeout: 600000 # Mantenemos el margen por si hay cola

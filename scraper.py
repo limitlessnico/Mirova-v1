@@ -38,7 +38,6 @@ def log_debug(mensaje, tipo="INFO"):
     nueva_linea = f"[{ahora}] {prefijo} {mensaje}\n"
     print(nueva_linea.strip())
     
-    # Lógica para escribir AL PRINCIPIO del archivo (Prepend)
     contenido_previo = ""
     if os.path.exists(ARCHIVO_BITACORA):
         with open(ARCHIVO_BITACORA, "r", encoding="utf-8") as f:
@@ -74,7 +73,7 @@ def procesar():
     os.makedirs(CARPETA_PRINCIPAL, exist_ok=True)
     session = requests.Session()
     ahora_cl = datetime.now(pytz.timezone('America/Santiago')).strftime("%Y-%m-%d %H:%M:%S")
-    log_debug("INICIO CICLO V106.1 (BITÁCORA REVERSA)", "INFO")
+    log_debug("INICIO CICLO V106.2 (REGLA RESPALDO AMPLIADA)", "INFO")
 
     try:
         if os.path.exists(DB_MASTER):
@@ -101,8 +100,12 @@ def procesar():
             mask = (df_master['timestamp'] == ts) & (df_master['Volcan'] == volcan_nombre) & (df_master['Sensor'] == sensor)
             registro_previo = df_master[mask]
 
+            # Clasificación lógica
             es_alerta_real = (vrp > 0 and dist <= conf["limite_km"])
-            clasif = "Bajo" if es_alerta_real else ("FALSO POSITIVO" if vrp > 0 else "NULO")
+            es_falso_positivo = (vrp > 0 and dist > conf["limite_km"])
+            es_calma_total = (vrp == 0)
+
+            clasif = "Bajo" if es_alerta_real else ("FALSO POSITIVO" if es_falso_positivo else "NULO")
             tipo = "ALERTA_TERMICA" if es_alerta_real else ("EVIDENCIA_DIARIA" if sensor == "VIIRS375" else "RUTINA")
 
             if not registro_previo.empty:
@@ -115,8 +118,12 @@ def procesar():
             else:
                 f_proceso, u_actualiz, editado = ahora_cl, ahora_cl, "NO"
                 ruta_foto = "No descargada"
-                if (int(time.time()) - ts) < 86400 and (es_alerta_real or sensor == "VIIRS375"):
-                    ruta_foto = descargar_v104(session, volcan_nombre, dt_utc, sensor, es_alerta_real)
+                
+                # REGLA DE DESCARGA V106.2:
+                # Se descarga si es Alerta Real O si es Respaldo Diario (Sensor 375m en Calma o Falso Positivo)
+                if (int(time.time()) - ts) < 86400:
+                    if es_alerta_real or (sensor == "VIIRS375" and (es_calma_total or es_falso_positivo)):
+                        ruta_foto = descargar_v104(session, volcan_nombre, dt_utc, sensor, es_alerta_real)
 
             nuevos_datos_mirova.append({
                 "timestamp": ts, "Fecha_Satelite_UTC": dt_utc.strftime("%Y-%m-%d %H:%M:%S"),
@@ -136,16 +143,15 @@ def procesar():
         for id_v, config in VOLCANES_CONFIG.items():
             nombre_v = config["nombre"]
             archivo_v = os.path.join(CARPETA_PRINCIPAL, f"registro_{nombre_v.replace(' ', '_')}.csv")
-            
             df_v = df_final[(df_final['Volcan'] == nombre_v) & (df_final['Tipo_Registro'] == "ALERTA_TERMICA")]
             df_v.to_csv(archivo_v, index=False)
 
             ruta_vieja = os.path.join(RUTA_IMAGENES_BASE, nombre_v, f"registro_{nombre_v.replace(' ', '_')}.csv")
             if os.path.exists(ruta_vieja):
                 os.remove(ruta_vieja)
-                log_debug(f"Limpieza: Borrado CSV antiguo de la carpeta de {nombre_v}", "INFO")
+                log_debug(f"Limpieza: Borrado CSV antiguo de {nombre_v}", "INFO")
 
-        log_debug("Sincronización y Reubicación de archivos completada.", "EXITO")
+        log_debug("Sincronización y Reubicación completada.", "EXITO")
     except Exception as e:
         log_debug(f"ERROR: {str(e)}", "ERROR")
 

@@ -35,10 +35,17 @@ COLUMNAS_ESTANDAR = [
 def log_debug(mensaje, tipo="INFO"):
     ahora = datetime.now(pytz.timezone('America/Santiago')).strftime("%Y-%m-%d %H:%M:%S")
     prefijo = {"INFO": "🔵", "EXITO": "✅", "ERROR": "❌", "ADVERTENCIA": "⚠️"}.get(tipo, "⚪")
-    linea = f"[{ahora}] {prefijo} {mensaje}"
-    print(linea)
-    with open(ARCHIVO_BITACORA, "a", encoding="utf-8") as f:
-        f.write(linea + "\n")
+    nueva_linea = f"[{ahora}] {prefijo} {mensaje}\n"
+    print(nueva_linea.strip())
+    
+    # Lógica para escribir AL PRINCIPIO del archivo (Prepend)
+    contenido_previo = ""
+    if os.path.exists(ARCHIVO_BITACORA):
+        with open(ARCHIVO_BITACORA, "r", encoding="utf-8") as f:
+            contenido_previo = f.read()
+    
+    with open(ARCHIVO_BITACORA, "w", encoding="utf-8") as f:
+        f.write(nueva_linea + contenido_previo)
 
 def descargar_v104(session, nombre_v, dt_utc, sensor_tabla, es_alerta_real):
     f_c = dt_utc.strftime("%Y-%m-%d")
@@ -67,7 +74,7 @@ def procesar():
     os.makedirs(CARPETA_PRINCIPAL, exist_ok=True)
     session = requests.Session()
     ahora_cl = datetime.now(pytz.timezone('America/Santiago')).strftime("%Y-%m-%d %H:%M:%S")
-    log_debug("INICIO CICLO V106.0 (ACCESIBILIDAD CSV Y LIMPIEZA)", "INFO")
+    log_debug("INICIO CICLO V106.1 (BITÁCORA REVERSA)", "INFO")
 
     try:
         if os.path.exists(DB_MASTER):
@@ -123,20 +130,16 @@ def procesar():
         df_final = pd.concat([df_master, df_nuevos]).drop_duplicates(subset=['timestamp', 'Volcan', 'Sensor'], keep='last')
         df_final = df_final[COLUMNAS_ESTANDAR].sort_values('timestamp', ascending=False)
         
-        # Guardar Maestros en monitoreo_satelital/
         df_final.to_csv(DB_MASTER, index=False)
         df_final[df_final['Tipo_Registro'] == "ALERTA_TERMICA"].to_csv(DB_POSITIVOS, index=False)
         
-        # 3. Guardar Individuales POSITIVOS en la raíz de monitoreo_satelital/
         for id_v, config in VOLCANES_CONFIG.items():
             nombre_v = config["nombre"]
             archivo_v = os.path.join(CARPETA_PRINCIPAL, f"registro_{nombre_v.replace(' ', '_')}.csv")
             
-            # Solo alertas positivas reales
             df_v = df_final[(df_final['Volcan'] == nombre_v) & (df_final['Tipo_Registro'] == "ALERTA_TERMICA")]
             df_v.to_csv(archivo_v, index=False)
 
-            # --- LIMPIEZA: Borrar archivo viejo dentro de la carpeta del volcán ---
             ruta_vieja = os.path.join(RUTA_IMAGENES_BASE, nombre_v, f"registro_{nombre_v.replace(' ', '_')}.csv")
             if os.path.exists(ruta_vieja):
                 os.remove(ruta_vieja)

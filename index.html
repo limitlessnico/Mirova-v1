@@ -43,16 +43,17 @@
         .acknowledgements {
             background-color: #0d1117;
             color: #8b949e;
-            padding: 25px 40px;
+            padding: 35px 40px;
             text-align: center;
-            font-size: 0.78em;
+            font-size: 0.75em;
             border-top: 1px solid #30363d;
-            line-height: 1.6;
+            line-height: 1.8;
         }
         .acknowledgements strong { color: #c9d1d9; }
-        .acknowledgements a { color: #58a6ff; text-decoration: none; }
+        .acknowledgements a { color: #58a6ff; text-decoration: none; font-weight: bold; }
         .acknowledgements a:hover { text-decoration: underline; }
-        .credit-divider { border: 0; border-top: 1px solid #30363d; width: 40%; margin: 12px auto; }
+        .credit-divider { border: 0; border-top: 1px solid #30363d; width: 25%; margin: 20px auto; }
+        .institution-list { margin-top: 10px; color: #c9d1d9; font-weight: 500; }
     </style>
 </head>
 <body>
@@ -69,18 +70,26 @@
 
     <footer class="acknowledgements">
         <p>
-            Toda la información térmica es procesada y obtenida a través de la infraestructura de la plataforma 
-            <strong><a href="https://www.mirovaweb.it/" target="_blank">MIROVA</a> (Middle InfraRed Observation of Volcanic Activity)</strong>, 
-            un sistema colaborativo del <strong>Departamento de Ciencias de la Tierra de la Universidad de Turín</strong> 
-            y la <strong>Universidad de Florencia (Italia)</strong>.
+            Toda la información térmica y satelital es procesada a través de la infraestructura de 
+            <strong><a href="https://www.mirovaweb.it/" target="_blank">MIROVA</a> (Middle InfraRed Observation of Volcanic Activity)</strong>.
             <br>
-            <em>Referencias: Coppola et al. (2016; 2020).</em>
+            Un sistema desarrollado por el <strong>Departamento de Ciencias de la Tierra de la Universidad de Turín (UNITO)</strong>, Italia.
         </p>
+        
+        <div class="institution-list">
+            Colaboración Institucional: UNITO (Turín) | UNIFI (Florencia) | NASA LANCE | ESA Copernicus
+        </div>
+
         <hr class="credit-divider">
+        
         <p>
-            <strong>Acknowledgements:</strong> We gratefully acknowledge <strong>NASA LANCE</strong> for access to MODIS and VIIRS Near Real Time products. 
-            Sentinel-2 and Landsat 8 data are accessed through the <strong>Copernicus Open Access Hub</strong>.
+            <strong>Agradecimientos de Datos (NRT):</strong> Agradecemos a <strong>NASA LANCE</strong> por el acceso a productos MODIS y VIIRS en tiempo casi real. 
+            El acceso a datos de Sentinel-2 se realiza a través del <strong>Copernicus Open Access Hub</strong>.
+            <br>
+            <em>Referencia: Coppola D., et al. (2020). Thermal Remote Sensing for Global Volcano Monitoring: Experiences From the MIROVA System. Frontiers in Earth Science.</em>
         </p>
+        
+        <p style="margin-top: 20px; opacity: 0.6;">© 2026 - Visualizador VRP Mendoza Volcanic | Automatización mediante Cron-Job & GitHub Actions</p>
     </footer>
 
 <script>

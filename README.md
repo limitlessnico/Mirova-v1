@@ -3,17 +3,6 @@
 **Mirova-OVDAS VRP Monitor** es una plataforma de **automatización y visualización científica** diseñada para el seguimiento de la Potencia Radiada Volcánica (VRP) en los principales centros eruptivos de Chile. El sistema actúa como un nodo de respaldo y análisis que captura, procesa y grafica la información pública de la plataforma **MIROVA** (Universidad de Turín).
 
 ⚠️ **Aclaración:** Este software es una herramienta independiente de soporte técnico. No reemplaza los canales oficiales de alerta temprana de instituciones estatales.
- ---
-
-## 🙏 Acknowledgements
-Toda la información térmica utilizada en este proyecto es procesada y obtenida a través de la infraestructura de la plataforma **MIROVA** (Middle InfraRed Observation of Volcanic Activity).
-
-* **Desarrollo y Mantenimiento:** Departamento de Ciencias de la Tierra de la [Universidad de Turín](https://www.unito.it/) (Italia), en colaboración con la [Universidad de Florencia](https://www.unifi.it/).
-* **Investigador Principal:** Diego Coppola.
-* **Referencias Científicas:** * Coppola, D., et al. (2016). *Enhanced volcanic hot-spot detection using MODIS IR data: results from the MIROVA system*.
-    * Coppola, D., et al. (2020). *Thermal Remote Sensing for Global Volcano Monitoring: Experiences From the MIROVA System*.
-* Para más información, visite el sitio oficial de MIROVA.
-We gratefully acknowledge NASA LANCE for access to MODIS and VIIRS Near Real Time products. Sentinel-2 and Landsat 8 data are accessed through the Copernicus Open Access Hub.
 ---
 
 ## 📡 Dashboard e Interfaz de Auditoría
@@ -92,5 +81,16 @@ Se aplica un filtro de precisión geográfica (**Geofencing**) para validar que 
 * **Infraestructura:** GitHub Actions (Automated Workflows).
 * **Arquitectura:** Mendoza Volcanic.
 * **Asistencia Técnica:** Gemini AI (Google).
+
+
+## 🙏 Acknowledgements
+Toda la información térmica utilizada en este proyecto es procesada y obtenida a través de la infraestructura de la plataforma **MIROVA** (Middle InfraRed Observation of Volcanic Activity).
+
+* **Desarrollo y Mantenimiento:** Departamento de Ciencias de la Tierra de la [Universidad de Turín](https://www.unito.it/) (Italia), en colaboración con la [Universidad de Florencia](https://www.unifi.it/).
+* **Investigador Principal:** Diego Coppola.
+* **Referencias Científicas:** * Coppola, D., et al. (2016). *Enhanced volcanic hot-spot detection using MODIS IR data: results from the MIROVA system*.
+    * Coppola, D., et al. (2020). *Thermal Remote Sensing for Global Volcano Monitoring: Experiences From the MIROVA System*.
+* Para más información, visite el sitio oficial de MIROVA.
+* We gratefully acknowledge NASA LANCE for access to MODIS and VIIRS Near Real Time products. Sentinel-2 and Landsat 8 data are accessed through the Copernicus Open Access Hub.
 
 ---

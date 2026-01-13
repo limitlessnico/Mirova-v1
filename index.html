@@ -39,17 +39,20 @@
             z-index: 1000; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
         }
 
-        /* ESTILO PARA LOS CRÉDITOS */
+        /* ESTILO PARA LOS CRÉDITOS MEJORADO */
         .acknowledgements {
             background-color: #0d1117;
             color: #8b949e;
-            padding: 20px;
+            padding: 25px 40px;
             text-align: center;
-            font-size: 0.75em;
+            font-size: 0.78em;
             border-top: 1px solid #30363d;
-            line-height: 1.5;
+            line-height: 1.6;
         }
         .acknowledgements strong { color: #c9d1d9; }
+        .acknowledgements a { color: #58a6ff; text-decoration: none; }
+        .acknowledgements a:hover { text-decoration: underline; }
+        .credit-divider { border: 0; border-top: 1px solid #30363d; width: 40%; margin: 12px auto; }
     </style>
 </head>
 <body>
@@ -65,8 +68,19 @@
     <div class="grid-container" id="galeria"></div>
 
     <footer class="acknowledgements">
-        <strong>Acknowledgements:</strong> We gratefully acknowledge <strong>NASA LANCE</strong> for access to MODIS and VIIRS Near Real Time products. <br>
-        Sentinel-2 and Landsat 8 data are accessed through the <strong>Copernicus Open Access Hub</strong>.
+        <p>
+            Toda la información térmica es procesada y obtenida a través de la infraestructura de la plataforma 
+            <strong><a href="https://www.mirovaweb.it/" target="_blank">MIROVA</a> (Middle InfraRed Observation of Volcanic Activity)</strong>, 
+            un sistema colaborativo del <strong>Departamento de Ciencias de la Tierra de la Universidad de Turín</strong> 
+            y la <strong>Universidad de Florencia (Italia)</strong>.
+            <br>
+            <em>Referencias: Coppola et al. (2016; 2020).</em>
+        </p>
+        <hr class="credit-divider">
+        <p>
+            <strong>Acknowledgements:</strong> We gratefully acknowledge <strong>NASA LANCE</strong> for access to MODIS and VIIRS Near Real Time products. 
+            Sentinel-2 and Landsat 8 data are accessed through the <strong>Copernicus Open Access Hub</strong>.
+        </p>
     </footer>
 
 <script>

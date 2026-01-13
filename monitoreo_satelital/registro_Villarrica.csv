@@ -1,2 +1,2 @@
 timestamp,Fecha_Satelite_UTC,Fecha_Captura_Chile,Volcan,Sensor,VRP_MW,Distancia_km,Tipo_Registro,Clasificacion Mirova,Ruta Foto,Fecha_Proceso_GitHub,Ultima_Actualizacion,Editado
-1768283280,2026-01-13 05:48:00,2026-01-13 02:48:00,Villarrica,VIIRS375,0.05,0.84,ALERTA_TERMICA,Bajo,imagenes_satelitales/Villarrica/2026-01-13/05-48-00_Villarrica_VIIRS375_Latest.png,2026-01-13 09:45:29,2026-01-13 10:15:47,NO
+1768283280,2026-01-13 05:48:00,2026-01-13 02:48:00,Villarrica,VIIRS375,0.05,0.84,ALERTA_TERMICA,Bajo,imagenes_satelitales/Villarrica/2026-01-13/05-48-00_Villarrica_VIIRS375_Latest.png,2026-01-13 09:45:29,2026-01-13 10:30:29,NO

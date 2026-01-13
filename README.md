@@ -90,5 +90,3 @@ Se aplica un filtro de precisión geográfica (**Geofencing**) para validar que 
 * **Asistencia Técnica:** Gemini AI (Google).
 
 ---
-
-**¿Te gustaría que ahora configuremos el sistema de notificaciones automáticas para que recibas un aviso cuando un volcán supere los 5 MW?**

@@ -14,7 +14,7 @@ Toda la información térmica utilizada en este proyecto es procesada y obtenida
     * Coppola, D., et al. (2020). *Thermal Remote Sensing for Global Volcano Monitoring: Experiences From the MIROVA System*.
 
 Para más información, visite el sitio oficial de [MIROVA](https://www.mirovaweb.it/).
-    *  We gratefully acknowledge **NASA LANCE** for access to MODIS and VIIRS Near Real Time products.  Sentinel-2 and Landsat 8 data are accessed through the **Copernicus Open Access Hub**.  
+We gratefully acknowledge **NASA LANCE** for access to MODIS and VIIRS Near Real Time products.  Sentinel-2 and Landsat 8 data are accessed through the **Copernicus Open Access Hub**.  
 ---
 
 ## 📡 Dashboard e Interfaz de Auditoría

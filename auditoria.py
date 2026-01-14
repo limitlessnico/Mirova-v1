@@ -1,49 +1,31 @@
 import os
 import pandas as pd
 
-def auditar_sistema():
+def auditar_estricto():
     csv_path = "monitoreo_satelital/registro_vrp_consolidado.csv"
-    if not os.path.exists(csv_path):
-        print("❌ Error: No se encuentra el archivo consolidado.")
-        return
-
     df = pd.read_csv(csv_path)
-    df['Fecha_Satelite_UTC'] = pd.to_datetime(df['Fecha_Satelite_UTC'])
-    df['Solo_Fecha'] = df['Fecha_Satelite_UTC'].dt.date
+    df['Solo_Fecha'] = pd.to_datetime(df['Fecha_Satelite_UTC']).dt.date
     
-    print(f"=== REPORTE DE AUDITORÍA DE IMÁGENES Y LÓGICA DE CALMA ===\n")
+    print("🔍 AUDITORÍA DE REGLAS LÓGICAS\n")
 
-    # 1. Auditoría de archivos físicos (¿Están donde el CSV dice?)
-    registros_con_foto = df[df['Ruta Foto'] != 'No descargada']
-    fisicos_ok = 0
-    faltantes = []
-
-    for _, row in registros_con_foto.iterrows():
-        if os.path.exists(row['Ruta Foto']):
-            fisicos_ok += 1
-        else:
-            faltantes.append(f"{row['Volcan']} [{row['Fecha_Satelite_UTC']}]: {row['Ruta Foto']}")
-
-    print(f"📁 INTEGRIDAD FÍSICA:")
-    print(f"   - Total en CSV: {len(registros_con_foto)}")
-    print(f"   - Confirmados en carpeta: {fisicos_ok}")
-    print(f"   - Archivos faltantes (Fantasmas): {len(faltantes)}")
-    for f in faltantes[:5]: print(f"     ⚠️ Faltante: {f}")
-
-    # 2. Auditoría de Lógica de Calma (¿Se bajó foto de evidencia tras un día sin alertas?)
-    print(f"\n🔍 LÓGICA DE CALMA (EVIDENCIA DIARIA):")
     for volcan in df['Volcan'].unique():
-        df_v = df[df['Volcan'] == volcan].sort_values('Fecha_Satelite_UTC')
+        df_v = df[df['Volcan'] == volcan].sort_values('timestamp')
         fechas = sorted(df_v['Solo_Fecha'].unique())
-        
-        for i in range(1, len(fechas)):
-            ayer, hoy = fechas[i-1], fechas[i]
-            alertas_ayer = df_v[(df_v['Solo_Fecha'] == ayer) & (df_v['Tipo_Registro'] == 'ALERTA_TERMICA')]
+
+        for fecha in fechas:
+            dia_actual = df_v[df_v['Solo_Fecha'] == fecha]
             
-            if len(alertas_ayer) == 0: # Ayer fue calma
-                evidencia_hoy = df_v[(df_v['Solo_Fecha'] == hoy) & (df_v['Ruta Foto'] != 'No descargada')]
-                if evidencia_hoy.empty:
-                    print(f"   ⚠️ {volcan}: Día {ayer} sin alertas, pero el {hoy} no registró foto de evidencia.")
+            # REGLA 1: ¿Hubo alerta y evidencia el mismo día? (Redundancia)
+            tiene_alerta = not dia_actual[dia_actual['Tipo_Registro'] == 'ALERTA_TERMICA'].empty
+            tiene_evidencia = not dia_actual[dia_actual['Tipo_Registro'] == 'EVIDENCIA_DIARIA'].empty
+            
+            if tiene_alerta and tiene_evidencia:
+                print(f"⚠️ REDUNDANCIA en {volcan} ({fecha}): Bajó evidencia diaria teniendo una alerta activa. (Gasto de espacio)")
+
+            # REGLA 2: El caso Puyehue/Peteroa (Alerta sin fotos)
+            alertas_sin_foto = dia_actual[(dia_actual['Tipo_Registro'] == 'ALERTA_TERMICA') & (dia_actual['Ruta Foto'] == 'No descargada')]
+            for _, row in alertas_sin_foto.iterrows():
+                print(f"❌ FALLO DE CAPTURA en {volcan} ({fecha}): Hay alerta de {row['VRP_MW']} MW pero la foto dice 'No descargada'.")
 
 if __name__ == "__main__":
-    auditar_sistema()
+    auditar_estricto()

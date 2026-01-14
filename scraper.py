@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 import pytz
 import time
 
-# --- CONFIGURACIÓN MAESTRA (IDs de Mirova Confirmados) ---
+# --- CONFIGURACIÓN MAESTRA ---
 VOLCANES_CONFIG = {
     "355100": {"nombre": "Lascar", "id_mirova": "Lascar", "limite_km": 5.0},
     "355120": {"nombre": "Lastarria", "id_mirova": "Lastarria", "limite_km": 3.0},
@@ -42,27 +42,21 @@ def log_debug(mensaje, tipo="INFO"):
     except: pass
 
 def descargar_v104(session, volcan_id, dt_utc, sensor_tabla, es_alerta_real):
-    # Accedemos directamente al ID interno de Mirova configurado
     conf = VOLCANES_CONFIG[volcan_id]
     nombre_v = conf["nombre"]
     id_mirova = conf["id_mirova"]
-    
     f_c = dt_utc.strftime("%Y-%m-%d")
     h_a = dt_utc.strftime("%H-%M-%S")
     ruta_dia = os.path.join(RUTA_IMAGENES_BASE, nombre_v, f_c)
     os.makedirs(ruta_dia, exist_ok=True)
-    
     s_url = "VIIRS750" if sensor_tabla == "VIIRS" else sensor_tabla
     tipos = ["VRP", "logVRP", "Latest", "Dist"] if es_alerta_real else ["Latest"]
     ruta_relativa = "No descargada"
-    
     for t in tipos:
         t_url = f"{t}10NTI" if t == "Latest" else t
-        # Usamos id_mirova para construir la URL perfecta
         url = f"https://www.mirovaweb.it/OUTPUTweb/MIROVA/{s_url}/VOLCANOES/{id_mirova}/{id_mirova}_{s_url}_{t_url}.png"
         filename = f"{h_a}_{nombre_v}_{s_url}_{t}.png"
         path_f = os.path.join(ruta_dia, filename)
-        
         try:
             r = session.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=25)
             if r.status_code == 200 and len(r.content) > 5000:
@@ -77,7 +71,7 @@ def procesar():
     os.makedirs(CARPETA_PRINCIPAL, exist_ok=True)
     session = requests.Session()
     ahora_cl = datetime.now(pytz.timezone('America/Santiago')).strftime("%Y-%m-%d %H:%M:%S")
-    log_debug("INICIO V108.0: FIX URLs + CALMA INTELIGENTE", "INFO")
+    log_debug("INICIO V109.0: LÓGICA DE DESCUBRIMIENTO PRESERVADA", "INFO")
 
     try:
         df_master = pd.read_csv(DB_MASTER) if os.path.exists(DB_MASTER) else pd.DataFrame(columns=COLUMNAS_ESTANDAR)
@@ -103,41 +97,56 @@ def procesar():
             es_alerta_real = (vrp > 0 and dist <= conf["limite_km"])
             tipo = "ALERTA_TERMICA" if es_alerta_real else ("EVIDENCIA_DIARIA" if sensor == "VIIRS375" else "RUTINA")
 
+            # --- LÓGICA DE PRESERVACIÓN DE FECHA ---
             mask = (df_master['timestamp'] == ts) & (df_master['Volcan'] == volcan_nombre) & (df_master['Sensor'] == sensor)
-            if not df_master[mask].empty:
-                ruta_foto = df_master[mask].iloc[0]['Ruta Foto']
+            registro_previo = df_master[mask]
+
+            if not registro_previo.empty:
+                # Si ya existía, recuperamos su "Fecha de Descubrimiento" original y su foto
+                f_descubrimiento = registro_previo.iloc[0]['Fecha_Proceso_GitHub']
+                ruta_foto = registro_previo.iloc[0]['Ruta Foto']
+                editado = registro_previo.iloc[0]['Editado'] if 'Editado' in registro_previo.columns else "NO"
             else:
+                # Es la primera vez que vemos este registro: la fecha de descubrimiento es AHORA
+                f_descubrimiento = ahora_cl
                 ruta_foto = "No descargada"
+                editado = "NO"
                 hora_utc = dt_utc.hour
                 
                 if (int(time.time()) - ts) < 86400:
                     if es_alerta_real:
-                        # PRIORIDAD 1: Fuego real -> Descarga con ID de Mirova mapeado
                         ruta_foto = descargar_v104(session, id_v, dt_utc, sensor, True)
                     elif sensor == "VIIRS375" and hora_utc >= 17:
-                        # REGLA DE CALMA: Doble silencio + Segunda captura
                         f_ayer = (dt_utc.date() - timedelta(days=1))
                         t_ayer = not df_master[(df_master['Volcan']==volcan_nombre) & (df_master['Fecha_Satelite_UTC_dt'].dt.date == f_ayer) & (df_master['Tipo_Registro']=="ALERTA_TERMICA")].empty
                         t_hoy = not df_master[(df_master['Volcan']==volcan_nombre) & (df_master['Fecha_Satelite_UTC_dt'].dt.date == dt_utc.date()) & (df_master['Tipo_Registro']=="ALERTA_TERMICA")].empty
                         
                         if not t_ayer and not t_hoy:
-                            # Contamos si ya pasó el primer satélite de la tarde
                             prev_tarde = len(df_master[(df_master['Volcan']==volcan_nombre) & (df_master['Sensor']=="VIIRS375") & (df_master['Fecha_Satelite_UTC_dt'].dt.date == dt_utc.date()) & (df_master['Fecha_Satelite_UTC_dt'].dt.hour >= 17)])
                             if prev_tarde >= 1:
                                 ruta_foto = descargar_v104(session, id_v, dt_utc, sensor, False)
 
             nuevos_datos.append({
-                "timestamp": ts, "Fecha_Satelite_UTC": dt_utc.strftime("%Y-%m-%d %H:%M:%S"),
+                "timestamp": ts, 
+                "Fecha_Satelite_UTC": dt_utc.strftime("%Y-%m-%d %H:%M:%S"),
                 "Fecha_Captura_Chile": dt_utc.replace(tzinfo=pytz.utc).astimezone(pytz.timezone('America/Santiago')).strftime("%Y-%m-%d %H:%M:%S"),
-                "Volcan": volcan_nombre, "Sensor": sensor, "VRP_MW": vrp, "Distancia_km": dist,
-                "Tipo_Registro": tipo, "Clasificacion Mirova": "Bajo" if es_alerta_real else "NULO",
-                "Ruta Foto": ruta_foto, "Fecha_Proceso_GitHub": ahora_cl, "Ultima_Actualizacion": ahora_cl, "Editado": "NO"
+                "Volcan": volcan_nombre, 
+                "Sensor": sensor, 
+                "VRP_MW": vrp, 
+                "Distancia_km": dist,
+                "Tipo_Registro": tipo, 
+                "Clasificacion Mirova": "Bajo" if es_alerta_real else "NULO",
+                "Ruta Foto": ruta_foto, 
+                "Fecha_Proceso_GitHub": f_descubrimiento, # Descubrimiento real
+                "Ultima_Actualizacion": ahora_cl,        # Última vez que el bot lo vio
+                "Editado": editado
             })
 
-        df_final = pd.concat([df_master.drop(columns=['Fecha_Satelite_UTC_dt']), pd.DataFrame(nuevos_datos)]).drop_duplicates(subset=['timestamp', 'Volcan', 'Sensor'], keep='last')
+        df_nuevos = pd.DataFrame(nuevos_datos)
+        df_final = pd.concat([df_master.drop(columns=['Fecha_Satelite_UTC_dt']), df_nuevos]).drop_duplicates(subset=['timestamp', 'Volcan', 'Sensor'], keep='last')
         df_final[COLUMNAS_ESTANDAR].sort_values('timestamp', ascending=False).to_csv(DB_MASTER, index=False)
         df_final[df_final['Tipo_Registro']=="ALERTA_TERMICA"].to_csv(DB_POSITIVOS, index=False)
-        log_debug("Proceso finalizado. URLs corregidas para Puyehue, Peteroa y Chillán.", "EXITO")
+        log_debug("Sincronización finalizada. Fechas de descubrimiento preservadas.", "EXITO")
 
     except Exception as e:
         log_debug(f"ERROR: {str(e)}", "ERROR")

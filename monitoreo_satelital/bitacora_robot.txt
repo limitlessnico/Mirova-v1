@@ -1238,3 +1238,5 @@
 [2026-01-12 22:45:25] ✅ Sincronización y Reubicación de archivos completada.
 [2026-01-12 23:00:31] 🔵 INICIO CICLO V106.0 (ACCESIBILIDAD CSV Y LIMPIEZA)
 [2026-01-12 23:00:32] ✅ Sincronización y Reubicación de archivos completada.
+[2026-01-14 03:30:22] INICIO V108.0: FIX URLs + CALMA INTELIGENTE
+[2026-01-14 03:30:23] Proceso finalizado. URLs corregidas para Puyehue, Peteroa y Chillán.

@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 import pytz
 import time
 
-# --- CONFIGURACIÓN CON IDs INTERNOS DE MIROVA ---
+# --- CONFIGURACIÓN MAESTRA (IDs de Mirova Confirmados) ---
 VOLCANES_CONFIG = {
     "355100": {"nombre": "Lascar", "id_mirova": "Lascar", "limite_km": 5.0},
     "355120": {"nombre": "Lastarria", "id_mirova": "Lastarria", "limite_km": 3.0},
@@ -42,6 +42,7 @@ def log_debug(mensaje, tipo="INFO"):
     except: pass
 
 def descargar_v104(session, volcan_id, dt_utc, sensor_tabla, es_alerta_real):
+    # Accedemos directamente al ID interno de Mirova configurado
     conf = VOLCANES_CONFIG[volcan_id]
     nombre_v = conf["nombre"]
     id_mirova = conf["id_mirova"]
@@ -57,6 +58,7 @@ def descargar_v104(session, volcan_id, dt_utc, sensor_tabla, es_alerta_real):
     
     for t in tipos:
         t_url = f"{t}10NTI" if t == "Latest" else t
+        # Usamos id_mirova para construir la URL perfecta
         url = f"https://www.mirovaweb.it/OUTPUTweb/MIROVA/{s_url}/VOLCANOES/{id_mirova}/{id_mirova}_{s_url}_{t_url}.png"
         filename = f"{h_a}_{nombre_v}_{s_url}_{t}.png"
         path_f = os.path.join(ruta_dia, filename)
@@ -75,7 +77,7 @@ def procesar():
     os.makedirs(CARPETA_PRINCIPAL, exist_ok=True)
     session = requests.Session()
     ahora_cl = datetime.now(pytz.timezone('America/Santiago')).strftime("%Y-%m-%d %H:%M:%S")
-    log_debug("INICIO V108.0: FIX URLs PUYEHUE/PETEROA + CALMA 2DA PASADA", "INFO")
+    log_debug("INICIO V108.0: FIX URLs + CALMA INTELIGENTE", "INFO")
 
     try:
         df_master = pd.read_csv(DB_MASTER) if os.path.exists(DB_MASTER) else pd.DataFrame(columns=COLUMNAS_ESTANDAR)
@@ -110,16 +112,16 @@ def procesar():
                 
                 if (int(time.time()) - ts) < 86400:
                     if es_alerta_real:
-                        # Prioridad: Alerta con ID Mirova correcto
+                        # PRIORIDAD 1: Fuego real -> Descarga con ID de Mirova mapeado
                         ruta_foto = descargar_v104(session, id_v, dt_utc, sensor, True)
                     elif sensor == "VIIRS375" and hora_utc >= 17:
-                        # Calma inteligente: Segunda pasada
+                        # REGLA DE CALMA: Doble silencio + Segunda captura
                         f_ayer = (dt_utc.date() - timedelta(days=1))
                         t_ayer = not df_master[(df_master['Volcan']==volcan_nombre) & (df_master['Fecha_Satelite_UTC_dt'].dt.date == f_ayer) & (df_master['Tipo_Registro']=="ALERTA_TERMICA")].empty
                         t_hoy = not df_master[(df_master['Volcan']==volcan_nombre) & (df_master['Fecha_Satelite_UTC_dt'].dt.date == dt_utc.date()) & (df_master['Tipo_Registro']=="ALERTA_TERMICA")].empty
                         
                         if not t_ayer and not t_hoy:
-                            # ¿Es la segunda captura de la tarde?
+                            # Contamos si ya pasó el primer satélite de la tarde
                             prev_tarde = len(df_master[(df_master['Volcan']==volcan_nombre) & (df_master['Sensor']=="VIIRS375") & (df_master['Fecha_Satelite_UTC_dt'].dt.date == dt_utc.date()) & (df_master['Fecha_Satelite_UTC_dt'].dt.hour >= 17)])
                             if prev_tarde >= 1:
                                 ruta_foto = descargar_v104(session, id_v, dt_utc, sensor, False)
@@ -135,7 +137,7 @@ def procesar():
         df_final = pd.concat([df_master.drop(columns=['Fecha_Satelite_UTC_dt']), pd.DataFrame(nuevos_datos)]).drop_duplicates(subset=['timestamp', 'Volcan', 'Sensor'], keep='last')
         df_final[COLUMNAS_ESTANDAR].sort_values('timestamp', ascending=False).to_csv(DB_MASTER, index=False)
         df_final[df_final['Tipo_Registro']=="ALERTA_TERMICA"].to_csv(DB_POSITIVOS, index=False)
-        log_debug("Sincronización exitosa con IDs de Mirova corregidos.", "EXITO")
+        log_debug("Proceso finalizado. URLs corregidas para Puyehue, Peteroa y Chillán.", "EXITO")
 
     except Exception as e:
         log_debug(f"ERROR: {str(e)}", "ERROR")

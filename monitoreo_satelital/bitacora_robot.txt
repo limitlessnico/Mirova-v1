@@ -1456,3 +1456,5 @@
 [2026-01-14 15:35:25] Proceso finalizado. URLs corregidas para Puyehue, Peteroa y Chillán.
 [2026-01-14 15:42:24] INICIO V108.0: FIX URLs + CALMA INTELIGENTE
 [2026-01-14 15:42:25] Proceso finalizado. URLs corregidas para Puyehue, Peteroa y Chillán.
+[2026-01-14 15:49:20] INICIO V108.0: FIX URLs + CALMA INTELIGENTE
+[2026-01-14 15:49:21] Proceso finalizado. URLs corregidas para Puyehue, Peteroa y Chillán.

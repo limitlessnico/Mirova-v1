@@ -19,10 +19,10 @@ def procesar():
     df = pd.read_csv(ARCHIVO_POSITIVOS) if os.path.exists(ARCHIVO_POSITIVOS) else pd.DataFrame()
     tz_chile = pytz.timezone('America/Santiago')
     ahora = datetime.now(tz_chile)
-    # FORZAMOS EL INICIO EXACTO HACE 30 DÍAS
+    # FORZAMOS EL INICIO EXACTO HACE 30 DÍAS (Anclaje rígido)
     hace_30_dias = (ahora - timedelta(days=30)).replace(hour=0, minute=0, second=0, microsecond=0)
 
-    # Definimos las marcas principales cada 5 días para las etiquetas
+    # Etiquetas principales cada 5 días para evitar amontonamiento
     ticks_principales = [hace_30_dias + timedelta(days=x) for x in range(0, 31, 5)]
     labels_principales = [f"{d.day} {MESES_ES[d.month]}" for d in ticks_principales]
 
@@ -32,7 +32,7 @@ def procesar():
         
         fig = go.Figure()
 
-        # --- NIVELES MIROVA EN LEYENDA ---
+        # --- NIVELES MIROVA EN LEYENDA SUPERIOR ---
         niveles = [
             (0, 1, "Nivel: Muy Bajo", "rgba(100, 100, 100, 0.2)"),
             (1, 10, "Nivel: Bajo", "rgba(150, 150, 0, 0.15)"),
@@ -59,29 +59,39 @@ def procesar():
             fig.add_annotation(x=max_r['Fecha_Chile'], y=max_r['VRP_MW'], text=f"MÁX: {max_r['VRP_MW']:.2f} MW", 
                                showarrow=True, arrowhead=1, bgcolor="white", font=dict(color="black", size=10))
 
-        # --- CORRECCIÓN CRÍTICA DE EJES ---
+        # --- CONFIGURACIÓN DE GRILLA MILIMETRADA (Día a Día) ---
         fig.update_xaxes(
-            range=[hace_30_dias, ahora], # FIJA EL RANGO A 30 DÍAS SIEMPRE
+            range=[hace_30_dias, ahora], # Rango fijo de 30 días
             tickvals=ticks_principales,
             ticktext=labels_principales,
             showgrid=True,
-            gridcolor='rgba(255, 255, 255, 0.2)', # Línea cada 5 días
+            gridcolor='rgba(255, 255, 255, 0.25)', # Grilla principal cada 5 días
             minor=dict(
                 tickmode="linear",
-                dtick=86400000.0, # 1 DÍA EN MILISEGUNDOS PARA LA GRILLA MILIMETRADA
+                dtick=86400000.0, # 1 día exacto en milisegundos
                 showgrid=True,
-                gridcolor='rgba(255, 255, 255, 0.05)' # Grilla diaria muy tenue
+                gridcolor='rgba(255, 255, 255, 0.08)' # Grilla milimetrada diaria (tenue)
             ),
             tickangle=-45,
-            fixedrange=True # Evita que el usuario mueva el eje accidentalmente
+            fixedrange=True # Desactiva el zoom automático que causa el error de la foto
         )
         
-        fig.update_yaxes(showgrid=True, gridcolor='rgba(255, 255, 255, 0.1)', title="Potencia (MW)",
-                         range=[0, max(1.2, (df_v['VRP_MW'].max() * 1.3) if not df_v.empty else 1.2)], fixedrange=True)
+        fig.update_yaxes(
+            showgrid=True, 
+            gridcolor='rgba(255, 255, 255, 0.1)', 
+            title="Potencia Radiada (MW)",
+            range=[0, max(1.2, (df_v['VRP_MW'].max() * 1.3) if not df_v.empty else 1.2)], 
+            fixedrange=True
+        )
 
-        fig.update_layout(template="plotly_dark", height=400, margin=dict(l=50, r=20, t=10, b=60),
-                          paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                          legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5, font=dict(size=9)))
+        fig.update_layout(
+            template="plotly_dark", 
+            height=400, 
+            margin=dict(l=50, r=20, t=10, b=60),
+            paper_bgcolor='rgba(0,0,0,0)', 
+            plot_bgcolor='rgba(0,0,0,0)',
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5, font=dict(size=9))
+        )
         
         fig.write_html(ruta_v, full_html=False, include_plotlyjs='cdn')
 

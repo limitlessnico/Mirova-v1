@@ -3,149 +3,130 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mirova-OVDAS VRP Monitor</title>
+    <title>Mirova-OVDAS VRP Interactive Monitor</title>
     <style>
-        body { background-color: #0b0e14; color: #e0e0e0; font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; padding: 0; display: flex; flex-direction: column; min-height: 100vh; }
+        :root {
+            --bg-color: #0b0e14;
+            --card-bg: #161b22;
+            --text-color: #e0e0e0;
+            --accent-color: #58a6ff;
+            --border-color: #30363d;
+        }
+
+        body { 
+            background-color: var(--bg-color); 
+            color: var(--text-color); 
+            font-family: 'Segoe UI', Tahoma, sans-serif; 
+            margin: 0; padding: 0; 
+            display: flex; flex-direction: column; 
+            min-height: 100vh; 
+        }
         
         #audit-bar { 
-            background: #161b22; padding: 12px 25px; border-bottom: 1px solid #30363d; 
+            background: var(--card-bg); 
+            padding: 12px 25px; 
+            border-bottom: 1px solid var(--border-color); 
             display: flex; justify-content: space-between; align-items: center; 
             position: sticky; top: 0; z-index: 1000; font-size: 0.85em;
         }
-        .status-badge { padding: 4px 12px; border-radius: 20px; font-weight: bold; border: 1px solid #30363d; background: #0d1117; }
-        
-        .grid-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 25px; padding: 30px; justify-items: center; flex: 1; }
-        
-        .card { 
-            background-color: #161b22; border-radius: 12px; padding: 15px; 
-            width: 100%; max-width: 600px; text-align: center; border: 1px solid #30363d;
-            transition: transform 0.3s ease;
-        }
-        .card:hover { transform: translateY(-5px); border-color: #58a6ff; }
-        .card h2 { margin: 5px 0 10px 0; font-size: 1.3em; color: #58a6ff; }
-        
-        .region-tag {
-            display: inline-block; background-color: #21262d; color: #8b949e;
-            padding: 3px 10px; border-radius: 20px; font-size: 0.7em;
-            margin-bottom: 10px; text-transform: uppercase; border: 1px solid #30363d;
+
+        .status-badge { 
+            padding: 4px 12px; 
+            border-radius: 20px; 
+            font-weight: bold; 
+            border: 1px solid var(--border-color); 
+            background: #0d1117; 
         }
 
-        img { width: 100%; border-radius: 8px; border: 1px solid #30363d; min-height: 250px; background: #0d1117; }
+        header { padding: 40px 30px 20px 30px; text-align: center; }
+        header h1 { margin: 0; color: var(--accent-color); font-size: 2em; }
+        header p { color: #8b949e; margin-top: 8px; }
 
-        #btnFullscreen {
-            position: fixed; bottom: 20px; right: 20px; padding: 12px 20px;
-            background-color: #238636; color: white; border: none;
-            border-radius: 8px; cursor: pointer; font-weight: bold;
-            z-index: 1000; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        /* Contenedor del Dashboard Interactivo */
+        .dashboard-wrapper {
+            padding: 0 20px 40px 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+            box-sizing: border-box;
         }
 
-        /* ESTILO PARA LOS CRÉDITOS MEJORADO */
-        .acknowledgements {
-            background-color: #0d1117;
-            color: #8b949e;
-            padding: 35px 40px;
-            text-align: center;
-            font-size: 0.75em;
-            border-top: 1px solid #30363d;
-            line-height: 1.8;
+        .iframe-container {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+            height: 1000px; /* Ajusta según el número de volcanes */
         }
-        .acknowledgements strong { color: #c9d1d9; }
-        .acknowledgements a { color: #58a6ff; text-decoration: none; font-weight: bold; }
-        .acknowledgements a:hover { text-decoration: underline; }
-        .credit-divider { border: 0; border-top: 1px solid #30363d; width: 25%; margin: 20px auto; }
-        .institution-list { margin-top: 10px; color: #c9d1d9; font-weight: 500; }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        footer { 
+            text-align: center; padding: 25px; 
+            border-top: 1px solid var(--border-color); 
+            color: #8b949e; font-size: 0.8em; 
+        }
+
+        @media (max-width: 768px) {
+            #audit-bar { flex-direction: column; gap: 10px; text-align: center; }
+            .iframe-container { height: 1500px; } /* Más alto en móvil para ver facets */
+        }
     </style>
 </head>
 <body>
 
     <div id="audit-bar">
-        <div><strong style="color: #58a6ff; letter-spacing: 1px;">📡 MIROVA-OVDAS VRP MONITOR</strong></div>
-        <div id="sys-status" class="status-badge">CONECTANDO...</div>
-        <div>ACTUALIZACIÓN UTC: <span id="last-sync" style="color:white;">--:--</span></div>
+        <div>
+            Sincronización OVDAS (Chile): <span id="last-sync">Cargando...</span>
+        </div>
+        <div id="sys-status" class="status-badge">🟡 VERIFICANDO SISTEMA</div>
     </div>
 
-    <button id="btnFullscreen">📺 MODO KIOSCO</button>
+    <header>
+        <h1>Monitoreo Volcánico VRP</h1>
+        <p>Visualizador interactivo de anomalías térmicas mediante sensores MODIS y VIIRS</p>
+    </header>
 
-    <div class="grid-container" id="galeria"></div>
-
-    <footer class="acknowledgements">
-        <p>
-            Toda la información térmica y satelital es procesada a través de la infraestructura de 
-            <strong><a href="https://www.mirovaweb.it/" target="_blank">MIROVA</a> (Middle InfraRed Observation of Volcanic Activity)</strong>.
-            <br>
-            Un sistema desarrollado por el <strong>Departamento de Ciencias de la Tierra de la Universidad de Turín (UNITO)</strong>, Italia.
-        </p>
-        
-        <div class="institution-list">
-            Colaboración Institucional: UNITO (Turín) | UNIFI (Florencia) | NASA LANCE | ESA Copernicus
+    <main class="dashboard-wrapper">
+        <div class="iframe-container">
+            <iframe id="plotly-frame" src="monitoreo_satelital/dashboard_interactivo.html"></iframe>
         </div>
+    </main>
 
-        <hr class="credit-divider">
-        
-        <p>
-            <strong>Agradecimientos de Datos (NRT):</strong> Agradecemos a <strong>NASA LANCE</strong> por el acceso a productos MODIS y VIIRS en tiempo casi real. 
-            El acceso a datos de Sentinel-2 se realiza a través del <strong>Copernicus Open Access Hub</strong>.
-            <br>
-            <em>Referencia: Coppola D., et al. (2020). Thermal Remote Sensing for Global Volcano Monitoring: Experiences From the MIROVA System. Frontiers in Earth Science.</em>
-        </p>
-        
-        <p style="margin-top: 20px; opacity: 0.6;">© 2026 - Visualizador VRP Mendoza Volcanic | Automatización mediante Cron-Job & GitHub Actions</p>
+    <footer>
+        &copy; 2026 MendozaVolcanic - Datos procesados vía Mirova Web & OVDAS Chile
     </footer>
 
-<script>
-    const datosVolcanes = [
-        { nombre: "Isluga", region: "Tarapacá" },
-        { nombre: "Lascar", region: "Antofagasta" },
-        { nombre: "Lastarria", region: "Antofagasta" },
-        { nombre: "Peteroa", region: "Maule" },
-        { nombre: "Nevados de Chillan", region: "Ñuble" },
-        { nombre: "Copahue", region: "Biobío" },
-        { nombre: "Llaima", region: "Araucanía" },
-        { nombre: "Villarrica", region: "Araucanía" },
-        { nombre: "Puyehue-Cordon Caulle", region: "Los Ríos" },
-        { nombre: "Chaiten", region: "Los Lagos" }
-    ];
-
-    document.getElementById('btnFullscreen').addEventListener('click', () => {
-        if (!document.fullscreenElement) document.documentElement.requestFullscreen();
-        else document.exitFullscreen();
-    });
-
-    function checkAudit() {
-        fetch('monitoreo_satelital/estado_sistema.json?t=' + new Date().getTime())
-        .then(res => res.json())
-        .then(data => {
-            const badge = document.getElementById('sys-status');
-            badge.innerText = data.estado;
-            badge.style.color = data.color;
-            badge.style.borderColor = data.color;
-            document.getElementById('last-sync').innerText = data.ultima_actualizacion;
-        })
-        .catch(() => { document.getElementById('sys-status').innerText = "⚪ DESCONECTADO"; });
-    }
-
-    function actualizarTablero() {
-        const contenedor = document.getElementById('galeria');
-        contenedor.innerHTML = ''; 
-        const timestamp = new Date().getTime(); 
-
-        datosVolcanes.forEach(v => {
-            const card = document.createElement('div');
-            card.className = 'card';
-            
-            card.innerHTML = `
-                <h2>${v.nombre}</h2>
-                <div class="region-tag">Región de ${v.region}</div>
-                <img src="monitoreo_satelital/graficos_tendencia/${v.nombre}/Grafico_${v.nombre}_Mensual.png?t=${timestamp}" 
-                     onerror="this.onerror=null; this.src='https://placehold.co/600x300/161b22/8b949e?text=${v.nombre}+-+NOMINAL';">
-            `;
-            contenedor.appendChild(card);
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            checkAudit();
+            // Refrescar cada 10 minutos
+            setInterval(checkAudit, 600000);
         });
-        checkAudit();
-    }
 
-    actualizarTablero();
-    setInterval(actualizarTablero, 600000); 
-</script>
+        function checkAudit() {
+            // Buscamos el JSON de estado generado por el visualizador.py
+            fetch('monitoreo_satelital/estado_sistema.json?t=' + new Date().getTime())
+            .then(res => res.json())
+            .then(data => {
+                const badge = document.getElementById('sys-status');
+                badge.innerText = data.estado;
+                badge.style.color = data.color;
+                badge.style.borderColor = data.color;
+                document.getElementById('last-sync').innerText = data.ultima_actualizacion;
+                
+                // Recargar el iframe para asegurar datos frescos
+                document.getElementById('plotly-frame').src = 'monitoreo_satelital/dashboard_interactivo.html?t=' + new Date().getTime();
+            })
+            .catch(() => { 
+                document.getElementById('sys-status').innerText = "⚪ DESCONECTADO"; 
+            });
+        }
+    </script>
 </body>
 </html>

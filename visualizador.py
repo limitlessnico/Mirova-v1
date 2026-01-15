@@ -53,7 +53,7 @@ def procesar():
 
         if df_v.empty or (not df_v.empty and df_v[df_v['Fecha_Chile'] >= hace_30_dias].empty):
             with open(ruta_v, "w", encoding='utf-8') as f:
-                f.write(f"<body style='background:#0d1117; display:flex; align-items:center; justify-content:center; height:280px; margin:0; overflow:hidden;'><div style='color:#8b949e; font-family:sans-serif; border: 1px dashed #30363d; padding: 20px; border-radius:8px; text-align:center;'>SIN ANOMALÍA TÉRMICA</div></body>")
+                f.write(f"<body style='background:#0d1117; display:flex; align-items:center; justify-content:center; height:300px; margin:0; overflow:hidden;'><div style='color:#8b949e; font-family:sans-serif; border: 1px dashed #30363d; padding: 20px; border-radius:8px; text-align:center;'>SIN ANOMALÍA TÉRMICA</div></body>")
             continue
 
         fig.update_xaxes(type="date", range=[hace_30_dias, ahora], tickvals=ticks_x, ticktext=labels_x, 
@@ -62,15 +62,15 @@ def procesar():
         
         fig.update_yaxes(range=[0, max(1.1, v_max * 1.3)], fixedrange=True, gridcolor='rgba(255,255,255,0.05)', tickfont=dict(size=9))
         
-        # MW: Forzado a alinearse con los números del eje Y (x=0 con paper coord)
-        fig.add_annotation(xref="paper", yref="paper", x=-0.01, y=1.05, text="<b>MW</b>", showarrow=False, 
+        # MW ALINEADO: x=0 en 'paper' lo pega al inicio de la cuadrícula
+        fig.add_annotation(xref="paper", yref="paper", x=0, y=1.05, text="<b>MW</b>", showarrow=False, 
                            font=dict(size=10, color="rgba(255,255,255,0.8)"), xanchor="right", yanchor="middle")
         
         fig.update_layout(
-            template="plotly_dark", height=280, 
-            margin=dict(l=30, r=2, t=15, b=30), # l=30 es el límite para no cortar números
+            template="plotly_dark", height=300, 
+            margin=dict(l=35, r=5, t=15, b=35), # l=35 asegura espacio para los números sin desperdiciar
             paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5, font=dict(size=9), entrywidth=0.2, entrywidthmode="fraction"),
+            legend=dict(orientation="h", yanchor="bottom", y=1.03, xanchor="center", x=0.5, font=dict(size=9), entrywidth=0.2, entrywidthmode="fraction"),
             hovermode="closest"
         )
         fig.write_html(ruta_v, full_html=False, include_plotlyjs='cdn', config={'displayModeBar': False})

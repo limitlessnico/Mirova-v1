@@ -33,12 +33,16 @@ def procesar():
             df_v = df_v[df_v['Fecha_Chile'] >= hace_30_dias]
             v_max = df_v['VRP_MW'].max()
 
-            niveles = [(0, 1, "Muy Bajo", "rgba(100,100,100,0.2)"), (1, 10, "Bajo", "rgba(150,150,0,0.15)"), (10, 100, "Moderado", "rgba(255,165,0,0.15)")]
+            # NIVELES MIROVA (Nombres cortos para forzar columnas)
+            niveles = [(0, 1, "Muy Bajo", "rgba(100,100,100,0.2)"), 
+                       (1, 10, "Bajo", "rgba(150,150,0,0.15)"), 
+                       (10, 100, "Moderado", "rgba(255,165,0,0.15)")]
+            
             for z_min, z_max, label, color in niveles:
                 fig.add_hrect(y0=z_min, y1=z_max, fillcolor=color, line_width=0, layer="below")
                 if v_max >= z_min:
                     fig.add_trace(go.Scatter(x=[None], y=[None], mode='markers', name=label, 
-                                           marker=dict(size=10, symbol='square', color=color.replace('0.15', '0.8').replace('0.2', '0.8'))))
+                                           marker=dict(size=8, symbol='square', color=color.replace('0.15', '0.8').replace('0.2', '0.8'))))
 
             for sensor, grupo in df_v.groupby('Sensor'):
                 fig.add_trace(go.Scatter(x=grupo['Fecha_Chile'], y=grupo['VRP_MW'], mode='markers', name=sensor,
@@ -50,17 +54,17 @@ def procesar():
         fig.update_xaxes(type="date", range=[hace_30_dias, ahora], tickvals=ticks_principales, ticktext=labels_principales, showgrid=True, gridcolor='rgba(255,255,255,0.1)', minor=dict(dtick=86400000.0, showgrid=True, gridcolor='rgba(255,255,255,0.03)'), tickangle=-45, fixedrange=True)
         fig.update_yaxes(title="MW", range=[0, max(1.2, (df_v['VRP_MW'].max() * 1.3) if not df_v.empty else 1.2)], fixedrange=True, gridcolor='rgba(255,255,255,0.05)')
         
-        # LEYENDA EN MÚLTIPLES COLUMNAS PARA AHORRAR ESPACIO
+        # AJUSTE DE LEYENDA MULTICOLUMNA
         fig.update_layout(
-            template="plotly_dark", height=300, margin=dict(l=45, r=10, t=10, b=45),
+            template="plotly_dark", height=280, margin=dict(l=45, r=10, t=10, b=45),
             paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
             legend=dict(
                 orientation="h", 
-                yanchor="bottom", y=1.02, 
+                yanchor="bottom", y=1.05, 
                 xanchor="center", x=0.5,
-                traceorder="normal",
-                itemwidth=30, # Ajusta el ancho de cada item para que quepan más por fila
-                font=dict(size=9)
+                font=dict(size=10),
+                entrywidth=0.25, # Forzamos que cada item ocupe el 25% del ancho (4 columnas)
+                entrywidthmode="fraction"
             )
         )
         fig.write_html(ruta_v, full_html=False, include_plotlyjs='cdn')

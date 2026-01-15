@@ -2,48 +2,51 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Mirova-OVDAS VRP Monitor</title>
+    <title>📡 MIROVA-OVDAS VRP MONITOR</title>
     <style>
-        body { background-color: #0b0e14; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; margin: 0; }
-        #audit-bar { background: #161b22; padding: 12px 25px; border-bottom: 1px solid #30363d; display: flex; justify-content: space-between; align-items: center; font-size: 0.85em; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 20px; padding: 20px; }
-        .card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 15px; text-align: center; }
-        .card h2 { margin: 0 0 10px 0; font-size: 1.2em; color: #58a6ff; }
-        iframe { width: 100%; height: 320px; border: none; }
-        footer { padding: 20px; text-align: center; color: #8b949e; font-size: 0.8em; border-top: 1px solid #30363d; }
+        body { background-color: #0b0e14; color: #e0e0e0; font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; }
+        #audit-bar { background: #161b22; padding: 12px 25px; border-bottom: 1px solid #30363d; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(550px, 1fr)); gap: 25px; padding: 30px; }
+        .card { background-color: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 15px; text-align: center; }
+        .card h2 { margin: 5px 0 10px 0; font-size: 1.4em; color: #58a6ff; border-bottom: 1px solid #30363d; padding-bottom: 10px; }
+        iframe { width: 100%; height: 400px; border: none; border-radius: 8px; background: #0d1117; }
+        .acknowledgements { background-color: #0d1117; color: #8b949e; padding: 35px; text-align: center; font-size: 0.8em; border-top: 1px solid #30363d; line-height: 1.8; }
+        .acknowledgements a { color: #58a6ff; text-decoration: none; font-weight: bold; }
     </style>
 </head>
 <body>
     <div id="audit-bar">
-        <div>SINCRONIZACIÓN OVDAS: <span id="last-sync">--:--</span></div>
-        <div id="sys-status">Cargando...</div>
+        <div><strong style="color: #58a6ff;">MIROVA-OVDAS VRP MONITOR</strong></div>
+        <div id="sys-status" style="font-weight:bold;">CONECTANDO...</div>
+        <div>ÚLTIMA ACTUALIZACIÓN: <span id="last-sync">--:--</span></div>
     </div>
     
     <div class="grid" id="galeria"></div>
 
-    <footer>
-        <p>📊 Créditos: Mirova Web (Turin) & OVDAS Chile | © 2026 MendozaVolcanic</p>
+    <footer class="acknowledgements">
+        <p>Infraestructura térmica procesada por <strong><a href="https://www.mirovaweb.it/">MIROVA</a></strong>, Universidad de Turín (UNITO).</p>
+        <p>Colaboración: UNITO | NASA LANCE | ESA Copernicus | OVDAS Chile</p>
+        <p>© 2026 - Visualizador VRP Mendoza Volcanic</p>
     </footer>
 
     <script>
-        const volcanes = ["Isluga", "Lascar", "Lastarria", "Peteroa", "Nevados_de_Chillan", "Copahue", "Llaima", "Villarrica", "Puyehue-Cordon_Caulle", "Chaiten"];
-        
-        function cargar() {
+        const volcanes = ["Isluga", "Lascar", "Lastarria", "Peteroa", "Nevados de Chillan", "Copahue", "Llaima", "Villarrica", "Puyehue-Cordon Caulle", "Chaiten"];
+        function render() {
             const container = document.getElementById('galeria');
             volcanes.forEach(v => {
                 const card = document.createElement('div');
                 card.className = 'card';
-                card.innerHTML = `<h2>${v.replace(/_/g, ' ')}</h2><iframe src="monitoreo_satelital/v_html/${v}.html"></iframe>`;
+                card.innerHTML = `<h2>${v}</h2><iframe src="monitoreo_satelital/v_html/${v.replace(/ /g, '_')}.html"></iframe>`;
                 container.appendChild(card);
             });
-
-            fetch('monitoreo_satelital/estado_sistema.json').then(r => r.json()).then(data => {
-                document.getElementById('last-sync').innerText = data.ultima_actualizacion;
-                document.getElementById('sys-status').innerText = data.estado;
-                document.getElementById('sys-status').style.color = data.color;
-            });
+            fetch('monitoreo_satelital/estado_sistema.json?t=' + new Date().getTime())
+                .then(r => r.json()).then(data => {
+                    document.getElementById('last-sync').innerText = data.ultima_actualizacion;
+                    document.getElementById('sys-status').innerText = data.estado;
+                    document.getElementById('sys-status').style.color = data.color;
+                });
         }
-        window.onload = cargar;
+        window.onload = render;
     </script>
 </body>
 </html>

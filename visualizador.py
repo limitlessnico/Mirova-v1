@@ -20,10 +20,10 @@ def procesar():
     tz_chile = pytz.timezone('America/Santiago')
     ahora = datetime.now(tz_chile)
     
-    # FORZAMOS EL INICIO EXACTO HACE 30 DÍAS (Anclaje rígido para el eje X)
+    # ANCLAJE RÍGIDO: Hace exactamente 30 días a las 00:00
     hace_30_dias = (ahora - timedelta(days=30)).replace(hour=0, minute=0, second=0, microsecond=0)
 
-    # Definimos las marcas principales cada 5 días para las etiquetas legibles
+    # Etiquetas principales cada 5 días
     ticks_principales = [hace_30_dias + timedelta(days=x) for x in range(0, 31, 5)]
     labels_principales = [f"{d.day} {MESES_ES[d.month]}" for d in ticks_principales]
 
@@ -31,6 +31,7 @@ def procesar():
         df_v = df[df['Volcan'] == v].copy() if not df.empty else pd.DataFrame()
         ruta_v = os.path.join(CARPETA_SALIDA, f"{v.replace(' ', '_')}.html")
         
+        # Iniciamos figura manual para control total del eje
         fig = go.Figure()
 
         # --- NIVELES MIROVA EN LEYENDA (Unificada arriba) ---
@@ -49,50 +50,66 @@ def procesar():
             df_v['Fecha_Chile'] = pd.to_datetime(df_v['Fecha_Satelite_UTC']).dt.tz_localize('UTC').dt.tz_convert('America/Santiago')
             df_v = df_v[df_v['Fecha_Chile'] >= hace_30_dias]
 
+            # Graficar cada sensor manualmente para asegurar simbología
             for sensor, grupo in df_v.groupby('Sensor'):
-                fig.add_trace(go.Scatter(x=grupo['Fecha_Chile'], y=grupo['VRP_MW'], mode='markers',
+                fig.add_trace(go.Scatter(
+                    x=grupo['Fecha_Chile'], 
+                    y=grupo['VRP_MW'], 
+                    mode='markers',
                     name=f"Sensor: {sensor}",
-                    marker=dict(symbol=MAPA_SIMBOLOS.get(sensor, "circle"), color=COLORES_SENSORES.get(sensor, "#C0C0C0"), size=10, line=dict(width=1, color='white')),
-                    hovertemplate="<b>%{x|%d %b, %H:%M}</b><br>Potencia: %{y:.2f} MW<extra></extra>"))
+                    marker=dict(
+                        symbol=MAPA_SIMBOLOS.get(sensor, "circle"), 
+                        color=COLORES_SENSORES.get(sensor, "#C0C0C0"), 
+                        size=10, 
+                        line=dict(width=1, color='white')
+                    ),
+                    hovertemplate="<b>%{x|%d %b, %H:%M}</b><br>Potencia: %{y:.2f} MW<extra></extra>"
+                ))
 
-            # Anotación Máximo con 2 decimales
-            max_r = df_v.loc[df_v['VRP_MW'].idxmax()]
-            fig.add_annotation(x=max_r['Fecha_Chile'], y=max_r['VRP_MW'], text=f"MÁX: {max_r['VRP_MW']:.2f} MW", 
-                               showarrow=True, arrowhead=1, bgcolor="white", font=dict(color="black", size=10))
+            if not df_v.empty:
+                max_r = df_v.loc[df_v['VRP_MW'].idxmax()]
+                fig.add_annotation(x=max_r['Fecha_Chile'], y=max_r['VRP_MW'], 
+                                   text=f"MÁX: {max_r['VRP_MW']:.2f} MW", 
+                                   showarrow=True, arrowhead=1, bgcolor="white", font=dict(color="black", size=10))
 
-        # --- CONFIGURACIÓN DE GRILLA MILIMETRADA (Día a Día) ---
+        # --- CONFIGURACIÓN DE EJES (Solución al error de visualización) ---
         fig.update_xaxes(
-            type="date",
-            range=[hace_30_dias, ahora], # Rango fijo de 30 días garantizado
+            type="date", # Fuerza el eje a ser de tiempo real
+            range=[hace_30_dias, ahora], # Garantiza los 30 días exactos
             tickvals=ticks_principales,
             ticktext=labels_principales,
             showgrid=True,
-            gridcolor='rgba(255, 255, 255, 0.25)', # Grilla principal cada 5 días
+            gridcolor='rgba(255, 255, 255, 0.2)', 
             minor=dict(
                 tickmode="linear",
-                dtick=86400000.0, # 1 día exacto en milisegundos para la grilla diaria
+                dtick=86400000.0, # 1 día en milisegundos (Grilla milimetrada)
                 showgrid=True,
-                gridcolor='rgba(255, 255, 255, 0.08)' # Grilla milimetrada tenue
+                gridcolor='rgba(255, 255, 255, 0.05)'
             ),
             tickangle=-45,
-            fixedrange=True # Desactiva el auto-zoom que causaba el error
+            fixedrange=True # Evita que el gráfico se "encoja"
         )
         
         fig.update_yaxes(
             showgrid=True, 
             gridcolor='rgba(255, 255, 255, 0.1)', 
             title="Potencia Radiada (MW)",
-            range=[0, max(1.2, (df_v['VRP_MW'].max() * 1.3) if not df_v.empty else 1.2)], 
+            range=[0, max(1.2, (df_v['VRP_MW'].max() * 1.3) if not df_v.empty else 1.2)],
             fixedrange=True
         )
 
         fig.update_layout(
-            template="plotly_dark", 
+            template="plotly_dark",
             height=400, 
             margin=dict(l=50, r=20, t=10, b=60),
             paper_bgcolor='rgba(0,0,0,0)', 
             plot_bgcolor='rgba(0,0,0,0)',
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5, font=dict(size=9))
+            legend=dict(
+                orientation="h", 
+                yanchor="bottom", y=1.02, 
+                xanchor="center", x=0.5, 
+                font=dict(size=9)
+            )
         )
         
         fig.write_html(ruta_v, full_html=False, include_plotlyjs='cdn')

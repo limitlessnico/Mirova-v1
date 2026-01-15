@@ -42,11 +42,14 @@ def procesar():
                                            marker=dict(size=7, symbol='square', color=color.replace('0.15', '0.7').replace('0.12', '0.7'))))
 
             for sensor, grupo in df_v_30.groupby('Sensor'):
+                # Aseguramos que Distancia_km exista para evitar errores
+                dist_label = grupo['Distancia_km'].iloc[0] if 'Distancia_km' in grupo.columns else "N/A"
+                
                 fig.add_trace(go.Scatter(x=grupo['Fecha_Chile'], y=grupo['VRP_MW'], mode='markers', name=sensor,
                     marker=dict(symbol=MAPA_SIMBOLOS.get(sensor, "circle"), color=COLORES_SENSORES.get(sensor, "#C0C0C0"), size=9, line=dict(width=1, color='white')),
-                    # Configuración manual de la etiqueta para evitar el cuadro blanco
-                    hoverlabel=dict(bgcolor="rgba(0,0,0,0.8)", font=dict(color="white", size=11), bordercolor="#58a6ff"),
-                    hovertemplate="<b>%{y:.2f} MW</b><br>%{x|%d %b, %H:%M}<extra></extra>"))
+                    customdata=grupo['Distancia_km'] if 'Distancia_km' in grupo.columns else [0]*len(grupo),
+                    hoverlabel=dict(bgcolor="rgba(26, 31, 41, 0.9)", font=dict(color="white", size=11), bordercolor="#58a6ff"),
+                    hovertemplate="<b>%{y:.2f} MW</b><br>%{x|%d %b, %H:%M} | dist: %{customdata}km<extra></extra>"))
 
             if not df_v_30.empty:
                 max_r = df_v_30.loc[df_v_30['VRP_MW'].idxmax()]
@@ -65,13 +68,13 @@ def procesar():
         fig.update_yaxes(range=[0, max(1.1, v_max * 1.3)], fixedrange=True, 
                          gridcolor='rgba(255,255,255,0.05)', tickfont=dict(size=9))
         
-        # Etiqueta "MW" en posición segura (Margen l=38 permite x=-0.01 sin cortes)
-        fig.add_annotation(xref="paper", yref="paper", x=-0.01, y=1.05, text="<b>MW</b>", showarrow=False, 
+        # Etiqueta "MW" desplazada un poco más a la derecha (x=-0.03 en lugar de -0.01)
+        fig.add_annotation(xref="paper", yref="paper", x=-0.03, y=1.05, text="<b>MW</b>", showarrow=False, 
                            font=dict(size=10, color="rgba(255,255,255,0.8)"), xanchor="right", yanchor="middle")
         
         fig.update_layout(
             template="plotly_dark", height=300, 
-            margin=dict(l=38, r=5, t=25, b=35), # Margen izquierdo corregido
+            margin=dict(l=35, r=5, t=25, b=35), # Margen l=35 para aprovechar el espacio lateral
             paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
             legend=dict(orientation="h", yanchor="bottom", y=1.03, xanchor="center", x=0.5, font=dict(size=9), entrywidth=0.2, entrywidthmode="fraction"),
             hovermode="closest"

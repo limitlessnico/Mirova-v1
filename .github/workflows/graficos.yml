@@ -3,10 +3,8 @@ name: Generador de Graficos
 on:
   workflow_run:
     workflows: ["Monitor Volcanico VRP"]
-    types:
-      - completed
+    types: [completed]
 
-# --- SOLUCIÓN A LA ACUMULACIÓN ---
 concurrency:
   group: generador-graficos
   cancel-in-progress: true
@@ -15,42 +13,35 @@ jobs:
   pintar_y_publicar:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
-    
     permissions:
       contents: write
 
     steps:
       - name: Checkout del repositorio
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
 
       - name: Configurar Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.9'
 
-      - name: Instalar librerías de visualización
-        run: |
-          python -m pip install --upgrade pip
-          pip install pandas plotly pytz
+      - name: Instalar librerías
+        run: pip install pandas plotly pytz
 
       - name: Ejecutar el Visualizador
         run: python visualizador.py
 
-      - name: Guardar Dashboard y Estado en GitHub
+      - name: Guardar en GitHub
         run: |
           git config --global user.name "VolcanoVisualizer"
           git config --global user.email "viz@volcano.com"
           
-          git add monitoreo_satelital/dashboard_interactivo.html
+          # AGREGAMOS LA CARPETA DE LAS TARJETAS
+          git add monitoreo_satelital/v_html/
           git add monitoreo_satelital/estado_sistema.json
-          git add monitoreo_satelital/graficos_tendencia/
           
           if ! git diff --quiet --staged; then
-            git commit -m "📊 Actualización: Dashboard interactivo y estado del sistema"
+            git commit -m "📊 Tarjetas interactivas generadas"
             git pull origin main --rebase -X ours
             git push origin main
-          else
-            echo "Sin cambios detectados en el dashboard."
           fi

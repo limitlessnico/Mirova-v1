@@ -7,48 +7,49 @@
     <style>
         body { background-color: #0b0e14; color: #e0e0e0; font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; }
         
+        /* BARRA DE AUDITORÍA CON BOTÓN FULLSCREEN */
         #audit-bar { 
             background: #161b22; padding: 12px 25px; border-bottom: 1px solid #30363d; 
             display: flex; justify-content: space-between; align-items: center; 
             position: sticky; top: 0; z-index: 1000; font-size: 0.85em;
         }
         .status-badge { padding: 4px 12px; border-radius: 20px; font-weight: bold; border: 1px solid #30363d; background: #0d1117; }
+        
+        .fs-btn {
+            background: #58a6ff; color: white; border: none; padding: 6px 15px; 
+            border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.3s;
+        }
+        .fs-btn:hover { background: #1f6feb; }
 
         header { text-align: center; padding: 25px; background: #0d1117; border-bottom: 1px solid #30363d; }
         header h1 { margin: 0; color: #58a6ff; font-size: 2em; }
-        header p { color: #8b949e; margin: 5px 0 0 0; font-size: 0.95em; }
         
         .grid { 
             display: grid; 
             grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); 
-            gap: 20px; 
-            padding: 20px; 
-            max-width: 95%; 
-            margin: 0 auto;
+            gap: 20px; padding: 20px; max-width: 95%; margin: 0 auto;
         }
         
         .card { background-color: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 12px; position: relative; }
         .card h2 { margin: 0; font-size: 1.25em; color: #58a6ff; text-align: center; }
         .region-tag { font-size: 0.75em; color: #8b949e; display: block; margin-bottom: 8px; text-align: center; }
         
-        /* Botón Pantalla Completa */
         .expand-btn {
             position: absolute; top: 10px; right: 10px;
-            background: #30363d; color: white; border: none; border-radius: 4px;
+            background: rgba(48, 54, 61, 0.8); color: white; border: none; border-radius: 4px;
             padding: 5px 10px; cursor: pointer; font-size: 12px; z-index: 10;
         }
-        .expand-btn:hover { background: #58a6ff; }
 
         iframe { width: 100%; height: 320px; border: none; background: #0d1117; border-radius: 6px; }
 
-        /* ESTILOS DEL MODAL (VENTANA EMERGENTE) */
+        /* VENTANA EMERGENTE (MODAL) */
         #modal-overlay {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.9); z-index: 2000; justify-content: center; align-items: center;
         }
-        .modal-content { width: 90%; height: 80%; background: #161b22; border: 1px solid #58a6ff; border-radius: 15px; position: relative; padding: 20px; }
+        .modal-content { width: 90%; height: 85%; background: #161b22; border: 1px solid #58a6ff; border-radius: 12px; position: relative; }
         .close-modal { position: absolute; top: -15px; right: -15px; background: #ff4500; color: white; border: none; border-radius: 50%; width: 35px; height: 35px; cursor: pointer; font-weight: bold; }
-        #modal-iframe { width: 100%; height: 100%; border: none; }
+        #modal-iframe { width: 100%; height: 100%; border: none; border-radius: 12px; }
 
         footer { background: #0d1117; padding: 30px; text-align: center; color: #8b949e; border-top: 1px solid #30363d; font-size: 0.85em; }
     </style>
@@ -56,7 +57,8 @@
 <body>
     <div id="audit-bar">
         <div><strong>SISTEMA:</strong> <span id="sys-status" class="status-badge">CONECTANDO...</span></div>
-        <div>ÚLTIMA ACTUALIZACIÓN: <span id="last-sync">--:--</span></div>
+        <button class="fs-btn" onclick="toggleFullScreen()">🖥️ PANTALLA COMPLETA</button>
+        <div>ACTUALIZACIÓN: <span id="last-sync">--:--</span></div>
     </div>
 
     <header>
@@ -75,7 +77,6 @@
 
     <footer>
         <p>Infraestructura: <b>MIROVA</b> (UNITO) | NASA | OVDAS Chile</p>
-        <p>© 2026 - Visualizador VRP Mendoza Volcanic</p>
     </footer>
 
     <script>
@@ -85,6 +86,14 @@
             {n: "Llaima", r: "Araucanía"}, {n: "Villarrica", r: "Araucanía"}, {n: "Puyehue-Cordon Caulle", r: "Los Ríos"},
             {n: "Chaiten", r: "Los Lagos"}
         ];
+
+        function toggleFullScreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else if (document.exitFullscreen) {
+                document.exitFullscreen();
+            }
+        }
 
         function openModal(url) {
             document.getElementById('modal-iframe').src = url;
@@ -99,13 +108,11 @@
         function render() {
             const container = document.getElementById('galeria');
             const ts = new Date().getTime();
-
             volcanes.forEach(v => {
                 const card = document.createElement('div');
                 card.className = 'card';
                 const nombreArchivo = v.n.replace(/ /g, '_');
                 const url = `monitoreo_satelital/v_html/${nombreArchivo}.html?t=${ts}`;
-                
                 card.innerHTML = `
                     <button class="expand-btn" onclick="openModal('${url}')">⛶ Ampliar</button>
                     <h2>${v.n}</h2>
@@ -114,14 +121,11 @@
                 `;
                 container.appendChild(card);
             });
-
             fetch('monitoreo_satelital/estado_sistema.json?t=' + ts)
-                .then(r => r.json())
-                .then(data => {
+                .then(r => r.json()).then(data => {
                     document.getElementById('last-sync').innerText = data.ultima_actualizacion;
-                    const st = document.getElementById('sys-status');
-                    st.innerText = data.estado;
-                    st.style.color = data.color;
+                    document.getElementById('sys-status').innerText = data.estado;
+                    document.getElementById('sys-status').style.color = data.color;
                 });
         }
         window.onload = render;

@@ -55,18 +55,23 @@ def procesar():
                 f.write(f"<body style='background:#0d1117; display:flex; align-items:center; justify-content:center; height:300px; margin:0; overflow:hidden;'><div style='color:#8b949e; font-family:sans-serif; border: 1px dashed #30363d; padding: 20px; border-radius:8px; text-align:center;'>SIN ANOMALÍA TÉRMICA</div></body>")
             continue
 
-        fig.update_xaxes(type="date", range=[hace_30_dias, ahora], tickvals=ticks_x, ticktext=labels_x, showgrid=True, gridcolor='rgba(255,255,255,0.08)', minor=dict(dtick=86400000.0, showgrid=True, gridcolor='rgba(255,255,255,0.03)'), tickangle=-45, fixedrange=True)
-        fig.update_yaxes(title="MW", range=[0, max(1.1, v_max * 1.3)], fixedrange=True, gridcolor='rgba(255,255,255,0.05)')
+        fig.update_xaxes(type="date", range=[hace_30_dias, ahora], tickvals=ticks_x, ticktext=labels_x, 
+                         showgrid=True, gridcolor='rgba(255,255,255,0.08)', 
+                         minor=dict(dtick=86400000.0, showgrid=True, gridcolor='rgba(255,255,255,0.03)'), 
+                         tickangle=-45, fixedrange=True, tickfont=dict(size=9))
         
-        # MÁXIMO APROVECHAMIENTO DE ESPACIO
+        fig.update_yaxes(title=dict(text="MW", standout=True, font=dict(size=10)), 
+                         range=[0, max(1.1, v_max * 1.3)], fixedrange=True, 
+                         gridcolor='rgba(255,255,255,0.05)', tickfont=dict(size=9))
+        
+        # MÁXIMA COMPRESIÓN DE MÁRGENES
         fig.update_layout(
             template="plotly_dark", height=300, 
-            margin=dict(l=35, r=5, t=5, b=35), # Márgenes ultra reducidos
+            margin=dict(l=28, r=2, t=5, b=35), # Reducción extrema a 28px en la izquierda
             paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
             legend=dict(orientation="h", yanchor="bottom", y=1.03, xanchor="center", x=0.5, font=dict(size=9), entrywidth=0.2, entrywidthmode="fraction"),
             hovermode="x unified"
         )
-        # Desactivamos barra de herramientas para ganar espacio
         fig.write_html(ruta_v, full_html=False, include_plotlyjs='cdn', config={'displayModeBar': False})
 
 if __name__ == "__main__":

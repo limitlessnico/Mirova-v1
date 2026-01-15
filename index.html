@@ -2,43 +2,44 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mirova-OVDAS VRP Interactive Monitor</title>
+    <title>Mirova-OVDAS VRP Monitor</title>
     <style>
-        :root {
-            --bg-color: #0b0e14;
-            --card-bg: #161b22;
-            --text-color: #e0e0e0;
-            --accent-color: #58a6ff;
-            --border-color: #30363d;
-        }
-        body { 
-            background-color: var(--bg-color); color: var(--text-color); 
-            font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; 
-            display: flex; flex-direction: column; min-height: 100vh; 
-        }
-        #audit-bar { 
-            background: var(--card-bg); padding: 12px 25px; 
-            border-bottom: 1px solid var(--border-color); 
-            display: flex; justify-content: space-between; align-items: center; 
-        }
-        .status-badge { padding: 4px 12px; border-radius: 20px; font-weight: bold; border: 1px solid var(--border-color); background: #0d1117; }
-        .dashboard-wrapper { flex: 1; display: flex; padding: 20px; }
-        .iframe-container { width: 100%; border-radius: 8px; overflow: hidden; background: var(--card-bg); border: 1px solid var(--border-color); }
-        iframe { width: 100%; height: 85vh; border: none; }
+        body { background-color: #0b0e14; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; flex-direction: column; min-height: 100vh; }
+        #audit-bar { background: #161b22; padding: 12px 25px; border-bottom: 1px solid #30363d; display: flex; justify-content: space-between; align-items: center; font-size: 0.85em; }
+        .status-badge { padding: 4px 12px; border-radius: 20px; font-weight: bold; border: 1px solid #30363d; background: #0d1117; }
+        
+        header { text-align: center; padding: 20px; background: #0d1117; }
+        header h1 { margin: 0; color: #58a6ff; font-size: 1.8em; }
+        header p { color: #8b949e; margin: 5px 0 0 0; }
+
+        .main-content { flex: 1; padding: 15px; display: flex; flex-direction: column; }
+        .iframe-container { flex: 1; background: #161b22; border: 1px solid #30363d; border-radius: 8px; overflow: hidden; }
+        iframe { width: 100%; height: 1450px; border: none; }
+
+        footer { background: #0d1117; padding: 20px; text-align: center; border-top: 1px solid #30363d; color: #8b949e; font-size: 0.9em; }
     </style>
 </head>
 <body>
     <div id="audit-bar">
-        <div><strong>ESTADO DEL SISTEMA:</strong> <span id="sys-status" class="status-badge">REVISANDO...</span></div>
-        <div>ÚLTIMA SINCRONIZACIÓN: <span id="last-sync">--:--</span></div>
+        <div><strong>SISTEMA:</strong> <span id="sys-status" class="status-badge">REVISANDO...</span></div>
+        <div>ÚLTIMA ACTUALIZACIÓN: <span id="last-sync">--:--</span></div>
     </div>
 
-    <main class="dashboard-wrapper">
+    <header>
+        <h1>Monitoreo Volcánico VRP</h1>
+        <p>Visualizador interactivo de anomalías térmicas (Sensores MODIS y VIIRS)</p>
+    </header>
+
+    <main class="main-content">
         <div class="iframe-container">
             <iframe id="plotly-frame" src="monitoreo_satelital/dashboard_interactivo.html"></iframe>
         </div>
     </main>
+
+    <footer>
+        <p>&copy; 2026 MendozaVolcanic - Procesamiento de Datos Satelitales</p>
+        <p style="font-size: 0.8em;">Fuentes: Mirova Web (University of Turin) & OVDAS Chile</p>
+    </footer>
 
     <script>
         function checkAudit() {
@@ -48,14 +49,11 @@
                 document.getElementById('sys-status').innerText = data.estado;
                 document.getElementById('sys-status').style.color = data.color;
                 document.getElementById('last-sync').innerText = data.ultima_actualizacion;
-                
-                const frame = document.getElementById('plotly-frame');
-                frame.src = 'monitoreo_satelital/dashboard_interactivo.html?t=' + new Date().getTime();
-            })
-            .catch(() => { document.getElementById('sys-status').innerText = "⚪ SINCRONIZANDO..."; });
+                document.getElementById('plotly-frame').src = 'monitoreo_satelital/dashboard_interactivo.html?t=' + new Date().getTime();
+            });
         }
-        document.addEventListener('DOMContentLoaded', checkAudit);
-        setInterval(checkAudit, 300000);
+        setInterval(checkAudit, 600000);
+        window.onload = checkAudit;
     </script>
 </body>
 </html>

@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 import pytz
 import time
 
-# --- CONFIGURACIÓN MAESTRA ---
+# --- CONFIGURACIÓN MAESTRA (IDs de Mirova y Límites) ---
 VOLCANES_CONFIG = {
     "355100": {"nombre": "Lascar", "id_mirova": "Lascar", "limite_km": 5.0},
     "355120": {"nombre": "Lastarria", "id_mirova": "Lastarria", "limite_km": 3.0},
@@ -45,18 +45,22 @@ def descargar_v104(session, volcan_id, dt_utc, sensor_tabla, es_alerta_real):
     conf = VOLCANES_CONFIG[volcan_id]
     nombre_v = conf["nombre"]
     id_mirova = conf["id_mirova"]
+    
     f_c = dt_utc.strftime("%Y-%m-%d")
     h_a = dt_utc.strftime("%H-%M-%S")
     ruta_dia = os.path.join(RUTA_IMAGENES_BASE, nombre_v, f_c)
     os.makedirs(ruta_dia, exist_ok=True)
+    
     s_url = "VIIRS750" if sensor_tabla == "VIIRS" else sensor_tabla
     tipos = ["VRP", "logVRP", "Latest", "Dist"] if es_alerta_real else ["Latest"]
     ruta_relativa = "No descargada"
+    
     for t in tipos:
         t_url = f"{t}10NTI" if t == "Latest" else t
         url = f"https://www.mirovaweb.it/OUTPUTweb/MIROVA/{s_url}/VOLCANOES/{id_mirova}/{id_mirova}_{s_url}_{t_url}.png"
         filename = f"{h_a}_{nombre_v}_{s_url}_{t}.png"
         path_f = os.path.join(ruta_dia, filename)
+        
         try:
             r = session.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=25)
             if r.status_code == 200 and len(r.content) > 5000:
@@ -71,12 +75,14 @@ def procesar():
     os.makedirs(CARPETA_PRINCIPAL, exist_ok=True)
     session = requests.Session()
     ahora_cl = datetime.now(pytz.timezone('America/Santiago')).strftime("%Y-%m-%d %H:%M:%S")
-    log_debug("INICIO V109.0: LÓGICA DE DESCUBRIMIENTO PRESERVADA", "INFO")
+    log_debug("INICIO V109.1: SINCRONIZACIÓN TOTAL + DESCUBRIMIENTO", "INFO")
 
     try:
+        # Cargar base de datos maestra
         df_master = pd.read_csv(DB_MASTER) if os.path.exists(DB_MASTER) else pd.DataFrame(columns=COLUMNAS_ESTANDAR)
         df_master['Fecha_Satelite_UTC_dt'] = pd.to_datetime(df_master['Fecha_Satelite_UTC'])
 
+        # Scrapear Mirova Latest
         res = session.get("https://www.mirovaweb.it/NRT/latest.php", timeout=30)
         soup = BeautifulSoup(res.text, 'html.parser')
         filas = soup.find('tbody').find_all('tr')
@@ -97,26 +103,27 @@ def procesar():
             es_alerta_real = (vrp > 0 and dist <= conf["limite_km"])
             tipo = "ALERTA_TERMICA" if es_alerta_real else ("EVIDENCIA_DIARIA" if sensor == "VIIRS375" else "RUTINA")
 
-            # --- LÓGICA DE PRESERVACIÓN DE FECHA ---
+            # --- LÓGICA DE DESCUBRIMIENTO (Preservación de Fecha) ---
             mask = (df_master['timestamp'] == ts) & (df_master['Volcan'] == volcan_nombre) & (df_master['Sensor'] == sensor)
             registro_previo = df_master[mask]
 
             if not registro_previo.empty:
-                # Si ya existía, recuperamos su "Fecha de Descubrimiento" original y su foto
+                # Si ya existe, recuperamos su "Fecha de Descubrimiento" original y su foto
                 f_descubrimiento = registro_previo.iloc[0]['Fecha_Proceso_GitHub']
                 ruta_foto = registro_previo.iloc[0]['Ruta Foto']
                 editado = registro_previo.iloc[0]['Editado'] if 'Editado' in registro_previo.columns else "NO"
             else:
-                # Es la primera vez que vemos este registro: la fecha de descubrimiento es AHORA
+                # Si es nuevo para el bot, la fecha de descubrimiento es AHORA
                 f_descubrimiento = ahora_cl
                 ruta_foto = "No descargada"
                 editado = "NO"
-                hora_utc = dt_utc.hour
                 
+                # Intentar descarga de fotos solo para registros nuevos (últimas 24h)
                 if (int(time.time()) - ts) < 86400:
                     if es_alerta_real:
                         ruta_foto = descargar_v104(session, id_v, dt_utc, sensor, True)
-                    elif sensor == "VIIRS375" and hora_utc >= 17:
+                    elif sensor == "VIIRS375" and dt_utc.hour >= 17:
+                        # Regla de Calma de Tarde
                         f_ayer = (dt_utc.date() - timedelta(days=1))
                         t_ayer = not df_master[(df_master['Volcan']==volcan_nombre) & (df_master['Fecha_Satelite_UTC_dt'].dt.date == f_ayer) & (df_master['Tipo_Registro']=="ALERTA_TERMICA")].empty
                         t_hoy = not df_master[(df_master['Volcan']==volcan_nombre) & (df_master['Fecha_Satelite_UTC_dt'].dt.date == dt_utc.date()) & (df_master['Tipo_Registro']=="ALERTA_TERMICA")].empty
@@ -137,16 +144,31 @@ def procesar():
                 "Tipo_Registro": tipo, 
                 "Clasificacion Mirova": "Bajo" if es_alerta_real else "NULO",
                 "Ruta Foto": ruta_foto, 
-                "Fecha_Proceso_GitHub": f_descubrimiento, # Descubrimiento real
-                "Ultima_Actualizacion": ahora_cl,        # Última vez que el bot lo vio
+                "Fecha_Proceso_GitHub": f_descubrimiento, # Descubrimiento original
+                "Ultima_Actualizacion": ahora_cl,         # Siempre se actualiza
                 "Editado": editado
             })
 
+        # --- GUARDADO CONSOLIDADO ---
         df_nuevos = pd.DataFrame(nuevos_datos)
         df_final = pd.concat([df_master.drop(columns=['Fecha_Satelite_UTC_dt']), df_nuevos]).drop_duplicates(subset=['timestamp', 'Volcan', 'Sensor'], keep='last')
-        df_final[COLUMNAS_ESTANDAR].sort_values('timestamp', ascending=False).to_csv(DB_MASTER, index=False)
+        df_final = df_final[COLUMNAS_ESTANDAR].sort_values('timestamp', ascending=False)
+        
+        df_final.to_csv(DB_MASTER, index=False)
         df_final[df_final['Tipo_Registro']=="ALERTA_TERMICA"].to_csv(DB_POSITIVOS, index=False)
-        log_debug("Sincronización finalizada. Fechas de descubrimiento preservadas.", "EXITO")
+
+        # --- ACTUALIZACIÓN MASIVA DE CSVs INDIVIDUALES (BACKFILL) ---
+        log_debug("Sincronizando archivos individuales por volcán...", "INFO")
+        for id_v, config in VOLCANES_CONFIG.items():
+            nom_v = config["nombre"]
+            # El nombre del archivo usa guiones bajos para evitar problemas de ruta
+            archivo_v = os.path.join(CARPETA_PRINCIPAL, f"registro_{nom_v.replace(' ', '_')}.csv")
+            
+            # Filtramos TODO el historial del maestro para este volcán y que sean positivos
+            df_v = df_final[(df_final['Volcan'] == nom_v) & (df_final['Tipo_Registro'] == "ALERTA_TERMICA")]
+            df_v.to_csv(archivo_v, index=False)
+
+        log_debug("Proceso completado. Datos de descubrimiento preservados y CSVs individuales al día.", "EXITO")
 
     except Exception as e:
         log_debug(f"ERROR: {str(e)}", "ERROR")

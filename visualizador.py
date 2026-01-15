@@ -43,7 +43,10 @@ def procesar():
 
             for sensor, grupo in df_v_30.groupby('Sensor'):
                 fig.add_trace(go.Scatter(x=grupo['Fecha_Chile'], y=grupo['VRP_MW'], mode='markers', name=sensor,
-                    marker=dict(symbol=MAPA_SIMBOLOS.get(sensor, "circle"), color=COLORES_SENSORES.get(sensor, "#C0C0C0"), size=9, line=dict(width=1, color='white'))))
+                    marker=dict(symbol=MAPA_SIMBOLOS.get(sensor, "circle"), color=COLORES_SENSORES.get(sensor, "#C0C0C0"), size=9, line=dict(width=1, color='white')),
+                    # Configuración manual de la etiqueta para evitar el cuadro blanco
+                    hoverlabel=dict(bgcolor="rgba(0,0,0,0.8)", font=dict(color="white", size=11), bordercolor="#58a6ff"),
+                    hovertemplate="<b>%{y:.2f} MW</b><br>%{x|%d %b, %H:%M}<extra></extra>"))
 
             if not df_v_30.empty:
                 max_r = df_v_30.loc[df_v_30['VRP_MW'].idxmax()]
@@ -59,20 +62,19 @@ def procesar():
                          minor=dict(dtick=86400000.0, showgrid=True, gridcolor='rgba(255,255,255,0.03)'), 
                          tickangle=-45, fixedrange=True, tickfont=dict(size=9))
         
-        # Ajuste del eje Y: sin título lateral para ganar espacio horizontal
         fig.update_yaxes(range=[0, max(1.1, v_max * 1.3)], fixedrange=True, 
                          gridcolor='rgba(255,255,255,0.05)', tickfont=dict(size=9))
         
-        # Etiqueta "MW" alineada con los números del eje Y (fuera del gráfico)
-        fig.add_annotation(xref="paper", yref="paper", x=-0.06, y=1.05, text="<b>MW</b>", showarrow=False, 
+        # Etiqueta "MW" en posición segura (Margen l=38 permite x=-0.01 sin cortes)
+        fig.add_annotation(xref="paper", yref="paper", x=-0.01, y=1.05, text="<b>MW</b>", showarrow=False, 
                            font=dict(size=10, color="rgba(255,255,255,0.8)"), xanchor="right", yanchor="middle")
         
         fig.update_layout(
             template="plotly_dark", height=300, 
-            margin=dict(l=32, r=2, t=25, b=35), # Margen l=32 para acomodar números y el "MW" a la izquierda
+            margin=dict(l=38, r=5, t=25, b=35), # Margen izquierdo corregido
             paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
             legend=dict(orientation="h", yanchor="bottom", y=1.03, xanchor="center", x=0.5, font=dict(size=9), entrywidth=0.2, entrywidthmode="fraction"),
-            hovermode="x unified"
+            hovermode="closest"
         )
         fig.write_html(ruta_v, full_html=False, include_plotlyjs='cdn', config={'displayModeBar': False})
 

@@ -19,10 +19,11 @@ def procesar():
     df = pd.read_csv(ARCHIVO_POSITIVOS) if os.path.exists(ARCHIVO_POSITIVOS) else pd.DataFrame()
     tz_chile = pytz.timezone('America/Santiago')
     ahora = datetime.now(tz_chile)
-    # FORZAMOS EL INICIO EXACTO HACE 30 DÍAS (Anclaje rígido)
+    
+    # FORZAMOS EL INICIO EXACTO HACE 30 DÍAS (Anclaje rígido para el eje X)
     hace_30_dias = (ahora - timedelta(days=30)).replace(hour=0, minute=0, second=0, microsecond=0)
 
-    # Etiquetas principales cada 5 días para evitar amontonamiento
+    # Definimos las marcas principales cada 5 días para las etiquetas legibles
     ticks_principales = [hace_30_dias + timedelta(days=x) for x in range(0, 31, 5)]
     labels_principales = [f"{d.day} {MESES_ES[d.month]}" for d in ticks_principales]
 
@@ -32,7 +33,7 @@ def procesar():
         
         fig = go.Figure()
 
-        # --- NIVELES MIROVA EN LEYENDA SUPERIOR ---
+        # --- NIVELES MIROVA EN LEYENDA (Unificada arriba) ---
         niveles = [
             (0, 1, "Nivel: Muy Bajo", "rgba(100, 100, 100, 0.2)"),
             (1, 10, "Nivel: Bajo", "rgba(150, 150, 0, 0.15)"),
@@ -61,19 +62,20 @@ def procesar():
 
         # --- CONFIGURACIÓN DE GRILLA MILIMETRADA (Día a Día) ---
         fig.update_xaxes(
-            range=[hace_30_dias, ahora], # Rango fijo de 30 días
+            type="date",
+            range=[hace_30_dias, ahora], # Rango fijo de 30 días garantizado
             tickvals=ticks_principales,
             ticktext=labels_principales,
             showgrid=True,
             gridcolor='rgba(255, 255, 255, 0.25)', # Grilla principal cada 5 días
             minor=dict(
                 tickmode="linear",
-                dtick=86400000.0, # 1 día exacto en milisegundos
+                dtick=86400000.0, # 1 día exacto en milisegundos para la grilla diaria
                 showgrid=True,
-                gridcolor='rgba(255, 255, 255, 0.08)' # Grilla milimetrada diaria (tenue)
+                gridcolor='rgba(255, 255, 255, 0.08)' # Grilla milimetrada tenue
             ),
             tickangle=-45,
-            fixedrange=True # Desactiva el zoom automático que causa el error de la foto
+            fixedrange=True # Desactiva el auto-zoom que causaba el error
         )
         
         fig.update_yaxes(

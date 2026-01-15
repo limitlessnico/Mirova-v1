@@ -1,9 +1,12 @@
 name: Monitor Volcanico VRP 
 
 on:
-  # Se elimina el schedule interno para evitar duplicados y retrasos.
-  # Ahora el control total lo tiene el cron-job externo a través de workflow_dispatch.
   workflow_dispatch: 
+
+# --- SOLUCIÓN A LA ACUMULACIÓN ---
+concurrency:
+  group: monitor-vrp
+  cancel-in-progress: true 
 
 jobs:
   build:
@@ -15,7 +18,7 @@ jobs:
       - name: Checkout del repositorio
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1 # CAMBIADO: Solo descarga la última versión (más rápido)
+          fetch-depth: 1
 
       - name: Configurar Python
         uses: actions/setup-python@v4
@@ -38,7 +41,7 @@ jobs:
           if ! git diff --quiet --staged; then
             git commit -m "Auto: Sincronización de datos e imágenes"
             git pull origin main --rebase -X ours
-            git push origin main || (git pull origin main --rebase -X ours && git push origin main)
+            git push origin main
           else
             echo "No hay cambios nuevos para subir."
           fi

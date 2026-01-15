@@ -19,9 +19,10 @@ def procesar():
     df = pd.read_csv(ARCHIVO_POSITIVOS) if os.path.exists(ARCHIVO_POSITIVOS) else pd.DataFrame()
     tz_chile = pytz.timezone('America/Santiago')
     ahora = datetime.now(tz_chile)
+    # FORZAMOS EL INICIO EXACTO HACE 30 DÍAS
     hace_30_dias = (ahora - timedelta(days=30)).replace(hour=0, minute=0, second=0, microsecond=0)
 
-    # Etiquetas principales cada 5 días
+    # Definimos las marcas principales cada 5 días para las etiquetas
     ticks_principales = [hace_30_dias + timedelta(days=x) for x in range(0, 31, 5)]
     labels_principales = [f"{d.day} {MESES_ES[d.month]}" for d in ticks_principales]
 
@@ -29,86 +30,58 @@ def procesar():
         df_v = df[df['Volcan'] == v].copy() if not df.empty else pd.DataFrame()
         ruta_v = os.path.join(CARPETA_SALIDA, f"{v.replace(' ', '_')}.html")
         
-        if not df_v.empty:
-            df_v['Fecha_Chile'] = pd.to_datetime(df_v['Fecha_Satelite_UTC']).dt.tz_localize('UTC').dt.tz_convert('America/Santiago')
-            df_v = df_v[df_v['Fecha_Chile'] >= hace_30_dias]
-
         fig = go.Figure()
 
-        # --- AÑADIR BANDAS MIROVA COMO LEYENDA ---
+        # --- NIVELES MIROVA EN LEYENDA ---
         niveles = [
             (0, 1, "Nivel: Muy Bajo", "rgba(100, 100, 100, 0.2)"),
             (1, 10, "Nivel: Bajo", "rgba(150, 150, 0, 0.15)"),
             (10, 100, "Nivel: Moderado", "rgba(255, 165, 0, 0.15)")
         ]
-        
         for z_min, z_max, label, color in niveles:
-            # Añadimos un rastro invisible solo para que aparezca en la leyenda
-            fig.add_trace(go.Scatter(
-                x=[None], y=[None], mode='markers',
+            fig.add_trace(go.Scatter(x=[None], y=[None], mode='markers',
                 marker=dict(size=10, symbol='square', color=color.replace('0.15', '0.8').replace('0.2', '0.8')),
-                name=label, showlegend=True
-            ))
-            # Dibujamos la banda real en el fondo
+                name=label, showlegend=True))
             fig.add_hrect(y0=z_min, y1=z_max, fillcolor=color, line_width=0, layer="below")
 
         if not df_v.empty:
-            # Añadir datos de sensores
+            df_v['Fecha_Chile'] = pd.to_datetime(df_v['Fecha_Satelite_UTC']).dt.tz_localize('UTC').dt.tz_convert('America/Santiago')
+            df_v = df_v[df_v['Fecha_Chile'] >= hace_30_dias]
+
             for sensor, grupo in df_v.groupby('Sensor'):
-                fig.add_trace(go.Scatter(
-                    x=grupo['Fecha_Chile'], y=grupo['VRP_MW'],
-                    mode='markers',
+                fig.add_trace(go.Scatter(x=grupo['Fecha_Chile'], y=grupo['VRP_MW'], mode='markers',
                     name=f"Sensor: {sensor}",
-                    marker=dict(
-                        symbol=MAPA_SIMBOLOS.get(sensor, "circle"),
-                        color=COLORES_SENSORES.get(sensor, "#C0C0C0"),
-                        size=10, line=dict(width=1, color='white')
-                    ),
-                    hovertemplate="<b>%{x|%d %b, %H:%M}</b><br>Potencia: %{y:.2f} MW<extra></extra>"
-                ))
+                    marker=dict(symbol=MAPA_SIMBOLOS.get(sensor, "circle"), color=COLORES_SENSORES.get(sensor, "#C0C0C0"), size=10, line=dict(width=1, color='white')),
+                    hovertemplate="<b>%{x|%d %b, %H:%M}</b><br>Potencia: %{y:.2f} MW<extra></extra>"))
 
-            # Etiqueta MÁXIMO
+            # Anotación Máximo con 2 decimales
             max_r = df_v.loc[df_v['VRP_MW'].idxmax()]
-            fig.add_annotation(x=max_r['Fecha_Chile'], y=max_r['VRP_MW'], 
-                               text=f"MÁX: {max_r['VRP_MW']:.2f} MW", 
-                               showarrow=True, arrowhead=1, bgcolor="white", font=dict(color="black"))
+            fig.add_annotation(x=max_r['Fecha_Chile'], y=max_r['VRP_MW'], text=f"MÁX: {max_r['VRP_MW']:.2f} MW", 
+                               showarrow=True, arrowhead=1, bgcolor="white", font=dict(color="black", size=10))
 
-        # --- CONFIGURACIÓN DE EJES Y GRILLA MILIMETRADA ---
+        # --- CORRECCIÓN CRÍTICA DE EJES ---
         fig.update_xaxes(
-            range=[hace_30_dias, ahora],
+            range=[hace_30_dias, ahora], # FIJA EL RANGO A 30 DÍAS SIEMPRE
             tickvals=ticks_principales,
             ticktext=labels_principales,
             showgrid=True,
-            gridcolor='rgba(255, 255, 255, 0.25)', # Grilla principal cada 5 días
+            gridcolor='rgba(255, 255, 255, 0.2)', # Línea cada 5 días
             minor=dict(
                 tickmode="linear",
-                dtick=86400000.0, # 1 día exacto
+                dtick=86400000.0, # 1 DÍA EN MILISEGUNDOS PARA LA GRILLA MILIMETRADA
                 showgrid=True,
-                gridcolor='rgba(255, 255, 255, 0.08)' # Grilla diaria muy tenue
+                gridcolor='rgba(255, 255, 255, 0.05)' # Grilla diaria muy tenue
             ),
             tickangle=-45,
-            fixedrange=True
+            fixedrange=True # Evita que el usuario mueva el eje accidentalmente
         )
         
-        fig.update_yaxes(
-            showgrid=True, gridcolor='rgba(255, 255, 255, 0.1)', 
-            title="Potencia Radiada (MW)",
-            range=[0, max(1.2, (df_v['VRP_MW'].max() * 1.3) if not df_v.empty else 1.2)],
-            fixedrange=True
-        )
+        fig.update_yaxes(showgrid=True, gridcolor='rgba(255, 255, 255, 0.1)', title="Potencia (MW)",
+                         range=[0, max(1.2, (df_v['VRP_MW'].max() * 1.3) if not df_v.empty else 1.2)], fixedrange=True)
 
-        fig.update_layout(
-            template="plotly_dark",
-            height=400, margin=dict(l=50, r=20, t=10, b=60),
-            paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-            legend=dict(
-                orientation="h", 
-                yanchor="bottom", y=1.02, 
-                xanchor="center", x=0.5,
-                font=dict(size=9),
-                bgcolor="rgba(0,0,0,0)"
-            )
-        )
+        fig.update_layout(template="plotly_dark", height=400, margin=dict(l=50, r=20, t=10, b=60),
+                          paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+                          legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5, font=dict(size=9)))
         
         fig.write_html(ruta_v, full_html=False, include_plotlyjs='cdn')
 

@@ -7,7 +7,6 @@
     <style>
         body { background-color: #0b0e14; color: #e0e0e0; font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; }
         
-        /* RESTAURACIÓN DEL BANNER SUPERIOR */
         #audit-bar { 
             background: #161b22; padding: 12px 25px; border-bottom: 1px solid #30363d; 
             display: flex; justify-content: space-between; align-items: center; 
@@ -15,26 +14,27 @@
         }
         .status-badge { padding: 4px 12px; border-radius: 20px; font-weight: bold; border: 1px solid #30363d; background: #0d1117; }
 
-        header { text-align: center; padding: 30px; background: #0d1117; border-bottom: 1px solid #30363d; }
-        header h1 { margin: 0; color: #58a6ff; font-size: 2.2em; }
-        header p { color: #8b949e; margin: 5px 0 0 0; }
+        header { text-align: center; padding: 25px; background: #0d1117; border-bottom: 1px solid #30363d; }
+        header h1 { margin: 0; color: #58a6ff; font-size: 2em; }
+        header p { color: #8b949e; margin: 5px 0 0 0; font-size: 0.95em; }
         
+        /* Grilla expandida para aprovechar mejor el ancho */
         .grid { 
             display: grid; 
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); 
-            gap: 25px; 
-            padding: 30px; 
-            max-width: 1400px;
+            grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); 
+            gap: 20px; 
+            padding: 20px; 
+            max-width: 95%; 
             margin: 0 auto;
         }
         
-        .card { background-color: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        .card h2 { margin: 0; font-size: 1.4em; color: #58a6ff; text-align: center; }
-        .region-tag { font-size: 0.7em; color: #8b949e; display: block; margin-bottom: 10px; text-align: center; font-weight: normal; }
+        .card { background-color: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 12px; box-shadow: 0 8px 25px rgba(0,0,0,0.4); }
+        .card h2 { margin: 0; font-size: 1.25em; color: #58a6ff; text-align: center; }
+        .region-tag { font-size: 0.75em; color: #8b949e; display: block; margin-bottom: 8px; text-align: center; }
         
-        iframe { width: 100%; height: 420px; border: none; background: #0d1117; border-radius: 8px; margin-top: 10px; }
+        iframe { width: 100%; height: 320px; border: none; background: #0d1117; border-radius: 6px; }
 
-        footer { background: #0d1117; padding: 40px; text-align: center; color: #8b949e; border-top: 1px solid #30363d; font-size: 0.9em; line-height: 1.6; }
+        footer { background: #0d1117; padding: 30px; text-align: center; color: #8b949e; border-top: 1px solid #30363d; font-size: 0.85em; }
         footer b { color: #e0e0e0; }
     </style>
 </head>
@@ -46,19 +46,17 @@
 
     <header>
         <h1>Monitoreo Volcánico VRP</h1>
-        <p>Análisis Térmico Satelital (Últimos 30 días) - MendozaVolcanic / OVDAS</p>
+        <p>Análisis Térmico Satelital (30 días) - MendozaVolcanic / OVDAS</p>
     </header>
     
     <div class="grid" id="galeria"></div>
 
     <footer>
-        <p>Infraestructura de datos procesada por <b>MIROVA</b>, Universidad de Turín (UNITO), Italia.</p>
-        <p>Fuentes: NASA LANCE | ESA Copernicus | OVDAS Chile | University of Turin</p>
+        <p>Infraestructura: <b>MIROVA</b> (UNITO) | NASA | OVDAS Chile</p>
         <p>© 2026 - Visualizador VRP Mendoza Volcanic</p>
     </footer>
 
     <script>
-        // Lista recuperada con Regiones
         const volcanes = [
             {n: "Isluga", r: "Tarapacá"}, {n: "Lascar", r: "Antofagasta"}, {n: "Lastarria", r: "Antofagasta"},
             {n: "Peteroa", r: "Maule"}, {n: "Nevados de Chillan", r: "Ñuble"}, {n: "Copahue", r: "Biobío"},
@@ -68,7 +66,7 @@
 
         function render() {
             const container = document.getElementById('galeria');
-            const ts = new Date().getTime(); // Para evitar caché
+            const ts = new Date().getTime();
 
             volcanes.forEach(v => {
                 const card = document.createElement('div');
@@ -82,7 +80,6 @@
                 container.appendChild(card);
             });
 
-            // Lógica de actualización de banner recuperada
             fetch('monitoreo_satelital/estado_sistema.json?t=' + ts)
                 .then(r => r.json())
                 .then(data => {

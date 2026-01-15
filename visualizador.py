@@ -44,16 +44,16 @@ def procesar():
             ]
 
             for z_min, z_max, label, color in niveles_config:
-                # SOLO APARECE EN LEYENDA SI EL VOLCÁN ALCANZÓ ESE NIVEL EN LOS ÚLTIMOS 30 DÍAS
-                mostar_en_leyenda = v_max_actual >= z_min
+                # SOLUCIÓN AL ERROR: Convertimos explícitamente a bool de Python
+                mostrar_en_leyenda = bool(v_max_actual >= z_min)
                 
                 fig.add_trace(go.Scatter(x=[None], y=[None], mode='markers',
                     marker=dict(size=10, symbol='square', color=color.replace('0.15', '0.8').replace('0.2', '0.8')),
-                    name=label, showlegend=mostar_en_leyenda))
+                    name=label, showlegend=mostrar_en_leyenda))
                 
                 fig.add_hrect(y0=z_min, y1=z_max, fillcolor=color, line_width=0, layer="below")
 
-            # Añadir datos de sensores
+            # Datos de sensores
             for sensor, grupo in df_v.groupby('Sensor'):
                 fig.add_trace(go.Scatter(x=grupo['Fecha_Chile'], y=grupo['VRP_MW'], mode='markers',
                     name=f"Sensor: {sensor}",
@@ -61,9 +61,10 @@ def procesar():
                     hovertemplate="<b>%{x|%d %b, %H:%M}</b><br>Potencia: %{y:.2f} MW<extra></extra>"))
 
             # Anotación Máximo
-            max_r = df_v.loc[df_v['VRP_MW'].idxmax()]
-            fig.add_annotation(x=max_r['Fecha_Chile'], y=max_r['VRP_MW'], text=f"MÁX: {max_r['VRP_MW']:.2f} MW", 
-                               showarrow=True, arrowhead=1, bgcolor="white", font=dict(color="black", size=10))
+            if not df_v.empty:
+                max_r = df_v.loc[df_v['VRP_MW'].idxmax()]
+                fig.add_annotation(x=max_r['Fecha_Chile'], y=max_r['VRP_MW'], text=f"MÁX: {max_r['VRP_MW']:.2f} MW", 
+                                   showarrow=True, arrowhead=1, bgcolor="white", font=dict(color="black", size=10))
 
         # --- CONFIGURACIÓN DE EJES ---
         fig.update_xaxes(
@@ -74,9 +75,9 @@ def procesar():
             tickangle=-45, fixedrange=True
         )
         
-        y_max_grafico = max(1.2, (df_v['VRP_MW'].max() * 1.3) if not df_v.empty else 1.2)
+        y_max_val = df_v['VRP_MW'].max() if not df_v.empty else 1.2
         fig.update_yaxes(showgrid=True, gridcolor='rgba(255, 255, 255, 0.1)', title="Potencia Radiada (MW)",
-                         range=[0, y_max_grafico], fixedrange=True)
+                         range=[0, max(1.2, y_max_val * 1.3)], fixedrange=True)
 
         fig.update_layout(template="plotly_dark", height=400, margin=dict(l=50, r=20, t=10, b=60),
                           paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',

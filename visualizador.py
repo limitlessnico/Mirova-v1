@@ -1,47 +1,76 @@
-name: Monitor Volcanico VRP 
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
+import os
+import json
+import pytz
+from datetime import datetime
 
-on:
-  workflow_dispatch: 
+# --- CONFIGURACIÓN DE RUTAS ---
+ARCHIVO_POSITIVOS = "monitoreo_satelital/registro_vrp_positivos.csv"
+OUTPUT_INTERACTIVO = "monitoreo_satelital/dashboard_interactivo.html"
+ARCHIVO_STATUS = "monitoreo_satelital/estado_sistema.json"
 
-# --- SOLUCIÓN A LA ACUMULACIÓN ---
-concurrency:
-  group: monitor-vrp
-  cancel-in-progress: true 
+COLORES_SENSORES = {
+    "MODIS": "#FFA500", "VIIRS375": "#FF4500", "VIIRS750": "#FF0000", "VIIRS": "#C0C0C0"
+}
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
+def actualizar_estado_sistema(exito=True):
+    tz_chile = pytz.timezone('America/Santiago')
+    ahora_cl = datetime.now(tz_chile)
+    estado = {
+        "ultima_actualizacion": ahora_cl.strftime("%d-%m-%Y %H:%M"),
+        "estado": "🟢 MONITOR MIROVA-OVDAS OPERATIVO",
+        "color": "#2ecc71" if exito else "#e74c3c"
+    }
+    with open(ARCHIVO_STATUS, "w") as f:
+        json.dump(estado, f)
 
-    steps:
-      - name: Checkout del repositorio
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
+def procesar():
+    try:
+        if not os.path.exists(ARCHIVO_POSITIVOS):
+            return
+        
+        df = pd.read_csv(ARCHIVO_POSITIVOS)
+        df['Fecha_Chile'] = pd.to_datetime(df['Fecha_Satelite_UTC']).dt.tz_localize('UTC').dt.tz_convert('America/Santiago')
+        df['VRP_MW'] = pd.to_numeric(df['VRP_MW'], errors='coerce')
 
-      - name: Configurar Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.9'
+        fig = px.scatter(
+            df, x="Fecha_Chile", y="VRP_MW", color="Sensor",
+            facet_col="Volcan", facet_col_wrap=2,
+            color_discrete_map=COLORES_SENSORES,
+            hover_data={"VRP_MW": ':.2f', "Sensor": True, "Fecha_Chile": "|%d %b, %H:%M"},
+            template="plotly_dark"
+        )
 
-      - name: Instalar dependencias
-        run: |
-          python -m pip install --upgrade pip
-          pip install requests beautifulsoup4 pandas pytz
+        # --- LÓGICA DE VALOR MÁXIMO (Rescatada del antiguo plt.annotate) ---
+        for volcan in df['Volcan'].unique():
+            df_v = df[df['Volcan'] == volcan]
+            if not df_v.empty:
+                max_row = df_v.loc[df_v['VRP_MW'].idxmax()]
+                # Añadir etiqueta al punto más alto en cada sub-gráfico
+                fig.add_annotation(
+                    x=max_row['Fecha_Chile'], y=max_row['VRP_MW'],
+                    text=f"Máx: {max_row['VRP_MW']:.1f} MW",
+                    showarrow=True, arrowhead=2,
+                    patch={ "xref": "x", "yref": "y" },
+                    row=(list(df['Volcan'].unique()).index(volcan) // 2) + 1,
+                    col=(list(df['Volcan'].unique()).index(volcan) % 2) + 1
+                )
 
-      - name: Ejecutar Scraper
-        run: python scraper.py
+        fig.update_layout(
+            height=1400,
+            title="Análisis Térmico VRP - Red de Monitoreo Volcánico Chile",
+            yaxis_title="Potencia Radiada (MW)",
+            font=dict(family="Segoe UI", size=11),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+        )
+        
+        fig.write_html(OUTPUT_INTERACTIVO, full_html=False, include_plotlyjs='cdn')
+        actualizar_estado_sistema(True)
+    except Exception as e:
+        print(f"Error: {e}")
+        actualizar_estado_sistema(False)
 
-      - name: Guardar cambios en GitHub
-        run: |
-          git config --global user.name "VolcanoBot"
-          git config --global user.email "bot@volcano.com"
-          git add -A
-          if ! git diff --quiet --staged; then
-            git commit -m "Auto: Sincronización de datos e imágenes"
-            git pull origin main --rebase -X ours
-            git push origin main
-          else
-            echo "No hay cambios nuevos para subir."
-          fi
+if __name__ == "__main__":
+    procesar()

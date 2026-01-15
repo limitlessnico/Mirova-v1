@@ -2,13 +2,23 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>📡 MIROVA-OVDAS VRP MONITOR</title>
     <style>
         body { background-color: #0b0e14; color: #e0e0e0; font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; }
+        
+        /* RESTAURACIÓN DEL BANNER SUPERIOR */
+        #audit-bar { 
+            background: #161b22; padding: 12px 25px; border-bottom: 1px solid #30363d; 
+            display: flex; justify-content: space-between; align-items: center; 
+            position: sticky; top: 0; z-index: 1000; font-size: 0.85em;
+        }
+        .status-badge { padding: 4px 12px; border-radius: 20px; font-weight: bold; border: 1px solid #30363d; background: #0d1117; }
+
         header { text-align: center; padding: 30px; background: #0d1117; border-bottom: 1px solid #30363d; }
         header h1 { margin: 0; color: #58a6ff; font-size: 2.2em; }
+        header p { color: #8b949e; margin: 5px 0 0 0; }
         
-        /* Grilla de 3 columnas para PC, 1 para móvil */
         .grid { 
             display: grid; 
             grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); 
@@ -19,14 +29,21 @@
         }
         
         .card { background-color: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        .card h2 { margin: 0 0 15px 0; font-size: 1.4em; color: #58a6ff; text-align: center; border-bottom: 1px solid #30363d; padding-bottom: 10px; }
-        iframe { width: 100%; height: 420px; border: none; background: #0d1117; border-radius: 8px; }
+        .card h2 { margin: 0; font-size: 1.4em; color: #58a6ff; text-align: center; }
+        .region-tag { font-size: 0.7em; color: #8b949e; display: block; margin-bottom: 10px; text-align: center; font-weight: normal; }
+        
+        iframe { width: 100%; height: 420px; border: none; background: #0d1117; border-radius: 8px; margin-top: 10px; }
 
         footer { background: #0d1117; padding: 40px; text-align: center; color: #8b949e; border-top: 1px solid #30363d; font-size: 0.9em; line-height: 1.6; }
         footer b { color: #e0e0e0; }
     </style>
 </head>
 <body>
+    <div id="audit-bar">
+        <div><strong>SISTEMA:</strong> <span id="sys-status" class="status-badge">CONECTANDO...</span></div>
+        <div>ÚLTIMA ACTUALIZACIÓN: <span id="last-sync">--:--</span></div>
+    </div>
+
     <header>
         <h1>Monitoreo Volcánico VRP</h1>
         <p>Análisis Térmico Satelital (Últimos 30 días) - MendozaVolcanic / OVDAS</p>
@@ -41,15 +58,39 @@
     </footer>
 
     <script>
-        const volcanes = ["Isluga", "Lascar", "Lastarria", "Peteroa", "Nevados de Chillan", "Copahue", "Llaima", "Villarrica", "Puyehue-Cordon Caulle", "Chaiten"];
+        // Lista recuperada con Regiones
+        const volcanes = [
+            {n: "Isluga", r: "Tarapacá"}, {n: "Lascar", r: "Antofagasta"}, {n: "Lastarria", r: "Antofagasta"},
+            {n: "Peteroa", r: "Maule"}, {n: "Nevados de Chillan", r: "Ñuble"}, {n: "Copahue", r: "Biobío"},
+            {n: "Llaima", r: "Araucanía"}, {n: "Villarrica", r: "Araucanía"}, {n: "Puyehue-Cordon Caulle", r: "Los Ríos"},
+            {n: "Chaiten", r: "Los Lagos"}
+        ];
+
         function render() {
             const container = document.getElementById('galeria');
+            const ts = new Date().getTime(); // Para evitar caché
+
             volcanes.forEach(v => {
                 const card = document.createElement('div');
                 card.className = 'card';
-                card.innerHTML = `<h2>${v}</h2><iframe src="monitoreo_satelital/v_html/${v.replace(/ /g, '_')}.html"></iframe>`;
+                const nombreArchivo = v.n.replace(/ /g, '_');
+                card.innerHTML = `
+                    <h2>${v.n}</h2>
+                    <span class="region-tag">Región de ${v.r}</span>
+                    <iframe src="monitoreo_satelital/v_html/${nombreArchivo}.html?t=${ts}"></iframe>
+                `;
                 container.appendChild(card);
             });
+
+            // Lógica de actualización de banner recuperada
+            fetch('monitoreo_satelital/estado_sistema.json?t=' + ts)
+                .then(r => r.json())
+                .then(data => {
+                    document.getElementById('last-sync').innerText = data.ultima_actualizacion;
+                    const st = document.getElementById('sys-status');
+                    st.innerText = data.estado;
+                    st.style.color = data.color;
+                });
         }
         window.onload = render;
     </script>

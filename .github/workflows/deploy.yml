@@ -6,8 +6,6 @@ on:
     types:
       - completed
 
-# --- NUEVA SECCIÓN DE CONCURRENCIA ---
-# Evita que los procesos choquen. Si uno está trabado, el nuevo lo cancela.
 concurrency:
   group: "pages"
   cancel-in-progress: true
@@ -25,28 +23,26 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1 # Solo descarga la última versión (optimizado)
+          fetch-depth: 1
         
       - name: Configurar Pages
         uses: actions/configure-pages@v4
 
-      # Filtramos: Solo subimos lo necesario para la web
-      # Ignoramos la carpeta 'imagenes_satelitales' para evitar los 10 min de espera
       - name: Preparar contenido web
         run: |
           mkdir public
+          # Copiamos el index a la raíz de la carpeta pública
           cp index.html public/
+          # Copiamos la carpeta de datos pero excluyendo las imágenes pesadas
           cp -r monitoreo_satelital public/
-          # Eliminamos la subcarpeta de imágenes pesadas del paquete de subida
+          # Borramos imágenes para no exceder el límite de Pages y acelerar el deploy
           rm -rf public/monitoreo_satelital/imagenes_satelitales
         
       - name: Subir Artefacto
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './public' # Sube solo la carpeta optimizada
+          path: './public'
           
       - name: Desplegar a GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-        with:
-          timeout: 600000

@@ -7,7 +7,6 @@
     <style>
         body { background-color: #0b0e14; color: #e0e0e0; font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; }
         
-        /* BARRA DE AUDITORÍA CON BOTÓN FULLSCREEN */
         #audit-bar { 
             background: #161b22; padding: 12px 25px; border-bottom: 1px solid #30363d; 
             display: flex; justify-content: space-between; align-items: center; 
@@ -15,38 +14,27 @@
         }
         .status-badge { padding: 4px 12px; border-radius: 20px; font-weight: bold; border: 1px solid #30363d; background: #0d1117; }
         
-        .fs-btn {
-            background: #58a6ff; color: white; border: none; padding: 6px 15px; 
-            border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.3s;
-        }
-        .fs-btn:hover { background: #1f6feb; }
+        .header-btns { display: flex; gap: 10px; }
+        .btn-ui { background: #30363d; color: white; border: 1px solid #444; padding: 6px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.3s; font-size: 0.8em; }
+        .btn-ui:hover { background: #58a6ff; border-color: #58a6ff; }
 
         header { text-align: center; padding: 25px; background: #0d1117; border-bottom: 1px solid #30363d; }
         header h1 { margin: 0; color: #58a6ff; font-size: 2em; }
+        header p { color: #8b949e; margin: 5px 0 0 0; font-size: 0.95em; }
         
-        .grid { 
-            display: grid; 
-            grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); 
-            gap: 20px; padding: 20px; max-width: 95%; margin: 0 auto;
-        }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 20px; padding: 20px; max-width: 95%; margin: 0 auto; }
         
         .card { background-color: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 12px; position: relative; }
         .card h2 { margin: 0; font-size: 1.25em; color: #58a6ff; text-align: center; }
         .region-tag { font-size: 0.75em; color: #8b949e; display: block; margin-bottom: 8px; text-align: center; }
         
-        .expand-btn {
-            position: absolute; top: 10px; right: 10px;
-            background: rgba(48, 54, 61, 0.8); color: white; border: none; border-radius: 4px;
-            padding: 5px 10px; cursor: pointer; font-size: 12px; z-index: 10;
-        }
+        .card-controls { position: absolute; top: 10px; right: 10px; display: flex; gap: 5px; z-index: 10; }
+        .mini-btn { background: rgba(48, 54, 61, 0.9); color: white; border: 1px solid #555; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 11px; }
+        .mini-btn:hover { background: #58a6ff; }
 
-        iframe { width: 100%; height: 320px; border: none; background: #0d1117; border-radius: 6px; }
+        iframe { width: 100%; height: 300px; border: none; background: #0d1117; border-radius: 6px; }
 
-        /* VENTANA EMERGENTE (MODAL) */
-        #modal-overlay {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9); z-index: 2000; justify-content: center; align-items: center;
-        }
+        #modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 2000; justify-content: center; align-items: center; }
         .modal-content { width: 90%; height: 85%; background: #161b22; border: 1px solid #58a6ff; border-radius: 12px; position: relative; }
         .close-modal { position: absolute; top: -15px; right: -15px; background: #ff4500; color: white; border: none; border-radius: 50%; width: 35px; height: 35px; cursor: pointer; font-weight: bold; }
         #modal-iframe { width: 100%; height: 100%; border: none; border-radius: 12px; }
@@ -57,13 +45,15 @@
 <body>
     <div id="audit-bar">
         <div><strong>SISTEMA:</strong> <span id="sys-status" class="status-badge">CONECTANDO...</span></div>
-        <button class="fs-btn" onclick="toggleFullScreen()">🖥️ PANTALLA COMPLETA</button>
+        <div class="header-btns">
+            <button class="btn-ui" onclick="toggleFullScreen()">🖥️ Pantalla Completa</button>
+        </div>
         <div>ACTUALIZACIÓN: <span id="last-sync">--:--</span></div>
     </div>
 
     <header>
-        <h1>Monitoreo Volcánico VRP</h1>
-        <p>Análisis Térmico Satelital (30 días) - MendozaVolcanic / OVDAS</p>
+        <h1>Monitoreo Volcánico MIROVA</h1>
+        <p>Análisis Térmico Satelital - MIROVA / OVDAS Chile</p>
     </header>
     
     <div class="grid" id="galeria"></div>
@@ -76,7 +66,7 @@
     </div>
 
     <footer>
-        <p>Infraestructura: <b>MIROVA</b> (UNITO) | NASA | OVDAS Chile</p>
+        <p>Datos procesados vía <b>MIROVA</b> (University of Turin) | NASA | OVDAS Chile</p>
     </footer>
 
     <script>
@@ -87,12 +77,11 @@
             {n: "Chaiten", r: "Los Lagos"}
         ];
 
+        let baseDatosCompleta = [];
+
         function toggleFullScreen() {
-            if (!document.fullscreenElement) {
-                document.documentElement.requestFullscreen();
-            } else if (document.exitFullscreen) {
-                document.exitFullscreen();
-            }
+            if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+            else document.exitFullscreen();
         }
 
         function openModal(url) {
@@ -105,22 +94,55 @@
             document.getElementById('modal-iframe').src = '';
         }
 
-        function render() {
+        function descargarCSV(nombreVolcan) {
+            const filtrados = baseDatosCompleta.filter(d => d.Volcan === nombreVolcan);
+            if (filtrados.length === 0) return alert("No hay datos históricos para descargar.");
+            
+            const cabecera = Object.keys(filtrados[0]).join(",");
+            const filas = filtrados.map(obj => Object.values(obj).join(",")).join("\n");
+            const csvContent = "data:text/csv;charset=utf-8," + cabecera + "\n" + filas;
+            
+            const link = document.createElement("a");
+            link.setAttribute("href", encodeURI(csvContent));
+            link.setAttribute("download", `Datos_${nombreVolcan.replace(/ /g,'_')}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        async function init() {
             const container = document.getElementById('galeria');
             const ts = new Date().getTime();
+
+            // Cargar base de datos para habilitar descargas
+            try {
+                const response = await fetch('monitoreo_satelital/registro_vrp_positivos.csv?t=' + ts);
+                const text = await response.text();
+                const rows = text.split('\n').slice(1);
+                const headers = text.split('\n')[0].split(',');
+                baseDatosCompleta = rows.map(row => {
+                    const values = row.split(',');
+                    return headers.reduce((obj, h, i) => ({ ...obj, [h]: values[i] }), {});
+                });
+            } catch (e) { console.error("Error cargando base de datos para descarga"); }
+
             volcanes.forEach(v => {
                 const card = document.createElement('div');
                 card.className = 'card';
                 const nombreArchivo = v.n.replace(/ /g, '_');
                 const url = `monitoreo_satelital/v_html/${nombreArchivo}.html?t=${ts}`;
                 card.innerHTML = `
-                    <button class="expand-btn" onclick="openModal('${url}')">⛶ Ampliar</button>
+                    <div class="card-controls">
+                        <button class="mini-btn" onclick="descargarCSV('${v.n}')">📥 CSV</button>
+                        <button class="mini-btn" onclick="openModal('${url}')">⛶</button>
+                    </div>
                     <h2>${v.n}</h2>
                     <span class="region-tag">Región de ${v.r}</span>
                     <iframe src="${url}"></iframe>
                 `;
                 container.appendChild(card);
             });
+
             fetch('monitoreo_satelital/estado_sistema.json?t=' + ts)
                 .then(r => r.json()).then(data => {
                     document.getElementById('last-sync').innerText = data.ultima_actualizacion;
@@ -128,7 +150,7 @@
                     document.getElementById('sys-status').style.color = data.color;
                 });
         }
-        window.onload = render;
+        window.onload = init;
     </script>
 </body>
 </html>

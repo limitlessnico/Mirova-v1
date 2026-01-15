@@ -28,6 +28,12 @@ jobs:
       - name: Instalar librerías
         run: pip install pandas plotly pytz
 
+      - name: Preparar entorno
+        run: |
+          # Creamos la carpeta por si no existe y la vaciamos para evitar basura de runs anteriores
+          mkdir -p monitoreo_satelital/v_html/
+          rm -rf monitoreo_satelital/v_html/*
+
       - name: Ejecutar el Visualizador
         run: python visualizador.py
 
@@ -36,12 +42,14 @@ jobs:
           git config --global user.name "VolcanoVisualizer"
           git config --global user.email "viz@volcano.com"
           
-          # AGREGAMOS LA CARPETA DE LAS TARJETAS
-          git add monitoreo_satelital/v_html/
+          # Añadimos específicamente la carpeta de tarjetas y el estado
+          git add monitoreo_satelital/v_html/*.html
           git add monitoreo_satelital/estado_sistema.json
           
           if ! git diff --quiet --staged; then
-            git commit -m "📊 Tarjetas interactivas generadas"
+            git commit -m "📊 Actualización: Tarjetas interactivas (Look Día 13)"
             git pull origin main --rebase -X ours
             git push origin main
+          else
+            echo "Sin cambios en los gráficos."
           fi

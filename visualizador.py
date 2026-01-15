@@ -18,10 +18,11 @@ def procesar():
     df = pd.read_csv(ARCHIVO_POSITIVOS) if os.path.exists(ARCHIVO_POSITIVOS) else pd.DataFrame()
     tz_chile = pytz.timezone('America/Santiago')
     ahora = datetime.now(tz_chile)
-    hace_30_dias = (ahora - timedelta(days=30)).replace(hour=0, minute=0, second=0, microsecond=0)
+    hace_30_dias = (ahora - timedelta(days=30)).replace(hour=0, minute=0, second=0)
 
-    ticks_principales = [hace_30_dias + timedelta(days=x) for x in range(0, 31, 7)]
-    labels_principales = [f"{d.day} {MESES_ES[d.month]}" for d in ticks_principales]
+    # Ticks cada 7 días para no saturar el eje X
+    ticks_x = [hace_30_dias + timedelta(days=x) for x in range(0, 31, 7)]
+    labels_x = [f"{d.day} {MESES_ES[d.month]}" for d in ticks_x]
 
     for v in VOLCANES:
         df_v = df[df['Volcan'] == v].copy() if not df.empty else pd.DataFrame()
@@ -30,44 +31,37 @@ def procesar():
 
         if not df_v.empty:
             df_v['Fecha_Chile'] = pd.to_datetime(df_v['Fecha_Satelite_UTC']).dt.tz_localize('UTC').dt.tz_convert('America/Santiago')
-            df_v_30d = df_v[df_v['Fecha_Chile'] >= hace_30_dias]
-            v_max = df_v_30d['VRP_MW'].max() if not df_v_30d.empty else 0
+            df_v_30 = df_v[df_v['Fecha_Chile'] >= hace_30_dias]
+            v_max = df_v_30['VRP_MW'].max() if not df_v_30.empty else 0
 
-            # NIVELES MIROVA (Nombres cortos para forzar columnas)
-            niveles = [(0, 1, "Muy Bajo", "rgba(100,100,100,0.2)"), 
-                       (1, 10, "Bajo", "rgba(150,150,0,0.15)"), 
-                       (10, 100, "Moderado", "rgba(255,165,0,0.15)")]
-            
+            # Niveles MIROVA (Solo aparecen si hay datos que los toquen)
+            niveles = [(0, 1, "Muy Bajo", "rgba(100,100,100,0.15)"), (1, 10, "Bajo", "rgba(150,150,0,0.12)"), (10, 100, "Moderado", "rgba(255,165,0,0.12)")]
             for z_min, z_max, label, color in niveles:
                 fig.add_hrect(y0=z_min, y1=z_max, fillcolor=color, line_width=0, layer="below")
                 if v_max >= z_min:
                     fig.add_trace(go.Scatter(x=[None], y=[None], mode='markers', name=label, 
-                                           marker=dict(size=8, symbol='square', color=color.replace('0.15', '0.8').replace('0.2', '0.8'))))
+                                           marker=dict(size=7, symbol='square', color=color.replace('0.12', '0.7').replace('0.15', '0.7'))))
 
-            for sensor, grupo in df_v_30d.groupby('Sensor'):
+            for sensor, grupo in df_v_30.groupby('Sensor'):
                 fig.add_trace(go.Scatter(x=grupo['Fecha_Chile'], y=grupo['VRP_MW'], mode='markers', name=sensor,
-                    marker=dict(symbol=MAPA_SIMBOLOS.get(sensor, "circle"), color=COLORES_SENSORES.get(sensor, "#C0C0C0"), size=10, line=dict(width=1.5, color='white'))))
+                    marker=dict(symbol=MAPA_SIMBOLOS.get(sensor, "circle"), color=COLORES_SENSORES.get(sensor, "#C0C0C0"), size=9, line=dict(width=1, color='white'))))
 
-            if not df_v_30d.empty:
-                max_r = df_v_30d.loc[df_v_30d['VRP_MW'].idxmax()]
-                fig.add_annotation(x=max_r['Fecha_Chile'], y=max_r['VRP_MW'], text=f"MÁX: {max_r['VRP_MW']:.2f} MW", showarrow=True, arrowhead=1, bgcolor="white", font=dict(color="black", size=10))
+            if not df_v_30.empty:
+                max_r = df_v_30.loc[df_v_30['VRP_MW'].idxmax()]
+                fig.add_annotation(x=max_r['Fecha_Chile'], y=max_r['VRP_MW'], text=f"MÁX: {max_r['VRP_MW']:.2f}", showarrow=True, arrowhead=1, bgcolor="white", font=dict(color="black", size=9))
 
-        # SI NO HAY DATOS
         if df_v.empty or (not df_v.empty and df_v[df_v['Fecha_Chile'] >= hace_30_dias].empty):
             with open(ruta_v, "w", encoding='utf-8') as f:
-                f.write(f"<body style='background:#0d1117; display:flex; align-items:center; justify-content:center; height:280px; margin:0;'><div style='color:#8b949e; font-family:sans-serif; border: 1px dashed #30363d; padding: 30px; border-radius:10px; text-align:center;'><b style='color:#58a6ff;'>SIN ANOMALÍA TÉRMICA</b><br>Estado Nominal</div></body>")
+                f.write(f"<body style='background:#0d1117; display:flex; align-items:center; justify-content:center; height:280px; margin:0;'><div style='color:#8b949e; font-family:sans-serif; border: 1px dashed #30363d; padding: 20px; border-radius:8px; text-align:center;'><b style='color:#58a6ff;'>SIN ANOMALÍA TÉRMICA</b></div></body>")
             continue
 
-        fig.update_xaxes(type="date", range=[hace_30_dias, ahora], tickvals=ticks_principales, ticktext=labels_principales, showgrid=True, gridcolor='rgba(255,255,255,0.1)', minor=dict(dtick=86400000.0, showgrid=True, gridcolor='rgba(255,255,255,0.03)'), tickangle=-45, fixedrange=True)
-        fig.update_yaxes(title="MW", range=[0, max(1.2, (v_max * 1.3))], fixedrange=True, gridcolor='rgba(255,255,255,0.05)')
+        fig.update_xaxes(type="date", range=[hace_30_dias, ahora], tickvals=ticks_x, ticktext=labels_x, showgrid=True, gridcolor='rgba(255,255,255,0.08)', minor=dict(dtick=86400000.0, showgrid=True, gridcolor='rgba(255,255,255,0.03)'), tickangle=-45, fixedrange=True)
+        fig.update_yaxes(title="MW", range=[0, max(1.1, v_max * 1.3)], fixedrange=True, gridcolor='rgba(255,255,255,0.05)')
         
         fig.update_layout(
-            template="plotly_dark", height=280, margin=dict(l=45, r=10, t=10, b=45),
+            template="plotly_dark", height=280, margin=dict(l=40, r=5, t=5, b=40),
             paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-            legend=dict(
-                orientation="h", yanchor="bottom", y=1.05, xanchor="center", x=0.5,
-                font=dict(size=10), entrywidth=0.25, entrywidthmode="fraction"
-            )
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5, font=dict(size=9), entrywidth=0.2, entrywidthmode="fraction")
         )
         fig.write_html(ruta_v, full_html=False, include_plotlyjs='cdn')
 

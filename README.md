@@ -5,7 +5,7 @@
 ⚠️ **Aclaración:** Este software es una herramienta independiente de soporte técnico. No reemplaza los canales oficiales de alerta temprana de instituciones estatales.
 ---
 
-## 📡 Dashboard e Interfaz de Auditoría
+## 📡 Dashboard e Interfaz de Auditoría a
 
 El sistema cuenta con un **Dashboard Profesional** que permite visualizar el estado de salud del monitor y las tendencias térmicas en tiempo real.
 

@@ -6,8 +6,9 @@ on:
     types:
       - completed
 
+# --- SOLUCIÓN A LA ACUMULACIÓN ---
 concurrency:
-  group: "pages"
+  group: pages-deploy
   cancel-in-progress: true
 
 permissions:
@@ -28,7 +29,6 @@ jobs:
 
       - name: Limpiar para Despliegue
         run: |
-          # Eliminamos carpetas innecesarias para la web para evitar errores de tamaño
           rm -rf .git
           rm -rf .github
           rm -rf monitoreo_satelital/imagenes_satelitales
@@ -36,7 +36,7 @@ jobs:
       - name: Subir Artefacto
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '.' # Ahora que limpiamos, subir la raíz es seguro y rápido
+          path: '.'
           
       - name: Desplegar a GitHub Pages
         id: deployment

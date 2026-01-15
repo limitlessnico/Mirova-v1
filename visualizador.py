@@ -11,7 +11,7 @@ VOLCANES = ["Isluga", "Lascar", "Lastarria", "Peteroa", "Nevados de Chillan", "C
 
 MAPA_SIMBOLOS = {"MODIS": "triangle-up", "VIIRS375": "square", "VIIRS750": "circle", "VIIRS": "circle"}
 COLORES_SENSORES = {"MODIS": "#FFA500", "VIIRS375": "#FF4500", "VIIRS750": "#FF0000", "VIIRS": "#C0C0C0"}
-MESES_ES = {1:"Ene", 2:"Feb", 3:"Mar", 4:"Abr", 5:"May", 6:"Jun", 7:"Jul", 8:"Ago", 9:"Sep", 10:"Oct", 11:"Nov", 12:"Dic"}
+MESES_ES = {1: "Ene", 2: "Feb", 3: "Mar", 4: "Abr", 5: "May", 6: "Jun", 7: "Jul", 8: "Ago", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dic"}
 
 def procesar():
     os.makedirs(CARPETA_SALIDA, exist_ok=True)
@@ -20,7 +20,6 @@ def procesar():
     ahora = datetime.now(tz_chile)
     hace_30_dias = (ahora - timedelta(days=30)).replace(hour=0, minute=0, second=0)
 
-    # Etiquetas cada 7 días para no saturar
     ticks_x = [hace_30_dias + timedelta(days=x) for x in range(0, 31, 7)]
     labels_x = [f"{d.day} {MESES_ES[d.month]}" for d in ticks_x]
 
@@ -60,14 +59,17 @@ def procesar():
                          minor=dict(dtick=86400000.0, showgrid=True, gridcolor='rgba(255,255,255,0.03)'), 
                          tickangle=-45, fixedrange=True, tickfont=dict(size=9))
         
-        fig.update_yaxes(title=dict(text="MW", standout=True, font=dict(size=10)), 
-                         range=[0, max(1.1, v_max * 1.3)], fixedrange=True, 
+        # Eliminamos el título del eje Y para ahorrar espacio lateral
+        fig.update_yaxes(range=[0, max(1.1, v_max * 1.3)], fixedrange=True, 
                          gridcolor='rgba(255,255,255,0.05)', tickfont=dict(size=9))
         
-        # MÁXIMA COMPRESIÓN DE MÁRGENES
+        # Añadimos "MW" como una anotación interna para ganar el margen izquierdo
+        fig.add_annotation(xref="paper", yref="paper", x=0, y=1, text="<b>MW</b>", showarrow=False, 
+                           font=dict(size=10, color="rgba(255,255,255,0.7)"), xanchor="left", yanchor="bottom")
+        
         fig.update_layout(
             template="plotly_dark", height=300, 
-            margin=dict(l=28, r=2, t=5, b=35), # Reducción extrema a 28px en la izquierda
+            margin=dict(l=22, r=2, t=20, b=35), # Margen izquierdo mínimo para los números
             paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
             legend=dict(orientation="h", yanchor="bottom", y=1.03, xanchor="center", x=0.5, font=dict(size=9), entrywidth=0.2, entrywidthmode="fraction"),
             hovermode="x unified"

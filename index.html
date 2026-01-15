@@ -4,37 +4,37 @@
     <meta charset="UTF-8">
     <title>📡 MIROVA-OVDAS VRP MONITOR</title>
     <style>
-        body { background-color: #0b0e14; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; margin: 0; }
-        #audit-bar { background: #161b22; padding: 12px 25px; border-bottom: 1px solid #30363d; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; }
-        
+        body { background-color: #0b0e14; color: #e0e0e0; font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; }
         header { text-align: center; padding: 30px; background: #0d1117; border-bottom: 1px solid #30363d; }
         header h1 { margin: 0; color: #58a6ff; font-size: 2.2em; }
-        header p { color: #8b949e; margin: 5px 0 0 0; }
-
-        .grid { display: grid; grid-template-columns: 1fr; gap: 30px; padding: 30px; max-width: 900px; margin: 0 auto; }
-        .card { background-color: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
-        .card h2 { margin: 0 0 15px 0; font-size: 1.5em; color: #58a6ff; text-align: center; border-bottom: 1px solid #30363d; padding-bottom: 10px; }
         
+        /* Grilla de 3 columnas para PC, 1 para móvil */
+        .grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); 
+            gap: 25px; 
+            padding: 30px; 
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .card { background-color: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .card h2 { margin: 0 0 15px 0; font-size: 1.4em; color: #58a6ff; text-align: center; border-bottom: 1px solid #30363d; padding-bottom: 10px; }
         iframe { width: 100%; height: 420px; border: none; background: #0d1117; border-radius: 8px; }
 
-        .footer-credits { background: #0d1117; padding: 40px; text-align: center; color: #8b949e; border-top: 1px solid #30363d; font-size: 0.9em; line-height: 1.6; }
-        .footer-credits b { color: #e0e0e0; }
+        footer { background: #0d1117; padding: 40px; text-align: center; color: #8b949e; border-top: 1px solid #30363d; font-size: 0.9em; line-height: 1.6; }
+        footer b { color: #e0e0e0; }
     </style>
 </head>
 <body>
-    <div id="audit-bar">
-        <div id="sys-status" style="font-weight:bold;">SISTEMA INICIALIZANDO...</div>
-        <div>ÚLTIMA ACTUALIZACIÓN (CHILE): <span id="last-sync">--:--</span></div>
-    </div>
-
     <header>
         <h1>Monitoreo Volcánico VRP</h1>
-        <p>Análisis Térmico Satelital en Tiempo Real - MendozaVolcanic</p>
+        <p>Análisis Térmico Satelital (Últimos 30 días) - MendozaVolcanic / OVDAS</p>
     </header>
     
     <div class="grid" id="galeria"></div>
 
-    <footer class="footer-credits">
+    <footer>
         <p>Infraestructura de datos procesada por <b>MIROVA</b>, Universidad de Turín (UNITO), Italia.</p>
         <p>Fuentes: NASA LANCE | ESA Copernicus | OVDAS Chile | University of Turin</p>
         <p>© 2026 - Visualizador VRP Mendoza Volcanic</p>
@@ -50,13 +50,6 @@
                 card.innerHTML = `<h2>${v}</h2><iframe src="monitoreo_satelital/v_html/${v.replace(/ /g, '_')}.html"></iframe>`;
                 container.appendChild(card);
             });
-            fetch('monitoreo_satelital/estado_sistema.json?t=' + new Date().getTime())
-                .then(r => r.json()).then(data => {
-                    document.getElementById('last-sync').innerText = data.ultima_actualizacion;
-                    const st = document.getElementById('sys-status');
-                    st.innerText = data.estado;
-                    st.style.color = data.color;
-                });
         }
         window.onload = render;
     </script>

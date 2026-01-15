@@ -20,7 +20,7 @@ def procesar():
     ahora = datetime.now(tz_chile)
     hace_30_dias = (ahora - timedelta(days=30)).replace(hour=0, minute=0, second=0)
 
-    # Ticks cada 7 días para no saturar el eje X
+    # Etiquetas cada 7 días para no saturar
     ticks_x = [hace_30_dias + timedelta(days=x) for x in range(0, 31, 7)]
     labels_x = [f"{d.day} {MESES_ES[d.month]}" for d in ticks_x]
 
@@ -34,7 +34,7 @@ def procesar():
             df_v_30 = df_v[df_v['Fecha_Chile'] >= hace_30_dias]
             v_max = df_v_30['VRP_MW'].max() if not df_v_30.empty else 0
 
-            # Niveles MIROVA (Solo aparecen si hay datos que los toquen)
+            # Niveles MIROVA
             niveles = [(0, 1, "Muy Bajo", "rgba(100,100,100,0.15)"), (1, 10, "Bajo", "rgba(150,150,0,0.12)"), (10, 100, "Moderado", "rgba(255,165,0,0.12)")]
             for z_min, z_max, label, color in niveles:
                 fig.add_hrect(y0=z_min, y1=z_max, fillcolor=color, line_width=0, layer="below")
@@ -52,18 +52,22 @@ def procesar():
 
         if df_v.empty or (not df_v.empty and df_v[df_v['Fecha_Chile'] >= hace_30_dias].empty):
             with open(ruta_v, "w", encoding='utf-8') as f:
-                f.write(f"<body style='background:#0d1117; display:flex; align-items:center; justify-content:center; height:280px; margin:0;'><div style='color:#8b949e; font-family:sans-serif; border: 1px dashed #30363d; padding: 20px; border-radius:8px; text-align:center;'><b style='color:#58a6ff;'>SIN ANOMALÍA TÉRMICA</b></div></body>")
+                f.write(f"<body style='background:#0d1117; display:flex; align-items:center; justify-content:center; height:300px; margin:0; overflow:hidden;'><div style='color:#8b949e; font-family:sans-serif; border: 1px dashed #30363d; padding: 20px; border-radius:8px; text-align:center;'>SIN ANOMALÍA TÉRMICA</div></body>")
             continue
 
         fig.update_xaxes(type="date", range=[hace_30_dias, ahora], tickvals=ticks_x, ticktext=labels_x, showgrid=True, gridcolor='rgba(255,255,255,0.08)', minor=dict(dtick=86400000.0, showgrid=True, gridcolor='rgba(255,255,255,0.03)'), tickangle=-45, fixedrange=True)
         fig.update_yaxes(title="MW", range=[0, max(1.1, v_max * 1.3)], fixedrange=True, gridcolor='rgba(255,255,255,0.05)')
         
+        # MÁXIMO APROVECHAMIENTO DE ESPACIO
         fig.update_layout(
-            template="plotly_dark", height=280, margin=dict(l=40, r=5, t=5, b=40),
+            template="plotly_dark", height=300, 
+            margin=dict(l=35, r=5, t=5, b=35), # Márgenes ultra reducidos
             paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5, font=dict(size=9), entrywidth=0.2, entrywidthmode="fraction")
+            legend=dict(orientation="h", yanchor="bottom", y=1.03, xanchor="center", x=0.5, font=dict(size=9), entrywidth=0.2, entrywidthmode="fraction"),
+            hovermode="x unified"
         )
-        fig.write_html(ruta_v, full_html=False, include_plotlyjs='cdn')
+        # Desactivamos barra de herramientas para ganar espacio
+        fig.write_html(ruta_v, full_html=False, include_plotlyjs='cdn', config={'displayModeBar': False})
 
 if __name__ == "__main__":
     procesar()

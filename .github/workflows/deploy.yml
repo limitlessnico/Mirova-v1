@@ -22,26 +22,21 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
         
       - name: Configurar Pages
         uses: actions/configure-pages@v4
 
-      - name: Preparar contenido web
+      - name: Limpiar archivos pesados
         run: |
-          mkdir public
-          # Copiamos el index a la raíz de la carpeta pública
-          cp index.html public/
-          # Copiamos la carpeta de datos pero excluyendo las imágenes pesadas
-          cp -r monitoreo_satelital public/
-          # Borramos imágenes para no exceder el límite de Pages y acelerar el deploy
-          rm -rf public/monitoreo_satelital/imagenes_satelitales
+          # Eliminamos imágenes para que el paquete de subida sea ligero
+          # pero MANTENEMOS el index.html y el dashboard interactivo
+          rm -rf monitoreo_satelital/imagenes_satelitales
         
       - name: Subir Artefacto
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './public'
+          # Subimos la raíz directamente (.)
+          path: '.'
           
       - name: Desplegar a GitHub Pages
         id: deployment

@@ -6,6 +6,11 @@ on:
     types:
       - completed
 
+# --- SOLUCIÓN A LA ACUMULACIÓN ---
+concurrency:
+  group: generador-graficos
+  cancel-in-progress: true
+
 jobs:
   pintar_y_publicar:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
@@ -38,15 +43,13 @@ jobs:
           git config --global user.name "VolcanoVisualizer"
           git config --global user.email "viz@volcano.com"
           
-          # Forzamos la subida del archivo interactivo y el JSON de estado
           git add monitoreo_satelital/dashboard_interactivo.html
           git add monitoreo_satelital/estado_sistema.json
-          
-          # También añadimos los gráficos de tendencia por si acaso
           git add monitoreo_satelital/graficos_tendencia/
           
           if ! git diff --quiet --staged; then
             git commit -m "📊 Actualización: Dashboard interactivo y estado del sistema"
+            git pull origin main --rebase -X ours
             git push origin main
           else
             echo "Sin cambios detectados en el dashboard."

@@ -44,9 +44,8 @@ def procesar():
             for sensor, grupo in df_v_30.groupby('Sensor'):
                 fig.add_trace(go.Scatter(x=grupo['Fecha_Chile'], y=grupo['VRP_MW'], mode='markers', name=sensor,
                     marker=dict(symbol=MAPA_SIMBOLOS.get(sensor, "circle"), color=COLORES_SENSORES.get(sensor, "#C0C0C0"), size=9, line=dict(width=1, color='white')),
-                    # Carga de datos personalizados para el hover
                     customdata=grupo['Distancia_km'] if 'Distancia_km' in grupo.columns else [0]*len(grupo),
-                    hoverlabel=dict(bgcolor="rgba(26, 31, 41, 0.9)", font=dict(color="white", size=11), bordercolor="#58a6ff"),
+                    hoverlabel=dict(bgcolor="rgba(20, 24, 33, 0.95)", font=dict(color="white", size=11), bordercolor="#58a6ff"),
                     hovertemplate="<b>%{y:.2f} MW</b><br>%{x|%d %b, %H:%M} | dist: %{customdata}km<extra></extra>"))
 
             if not df_v_30.empty:
@@ -66,13 +65,13 @@ def procesar():
         fig.update_yaxes(range=[0, max(1.1, v_max * 1.3)], fixedrange=True, 
                          gridcolor='rgba(255,255,255,0.05)', tickfont=dict(size=9))
         
-        # AJUSTE "MW": Movido a x=-0.04 y alineado a la derecha para que quede pegado a los números del eje
-        fig.add_annotation(xref="paper", yref="paper", x=-0.04, y=1.05, text="<b>MW</b>", showarrow=False, 
+        # AJUSTE "MW": Movido a la derecha para alinearse con los números (x=0.02, xanchor="right")
+        fig.add_annotation(xref="paper", yref="paper", x=0.02, y=1.05, text="<b>MW</b>", showarrow=False, 
                            font=dict(size=10, color="rgba(255,255,255,0.8)"), xanchor="right", yanchor="middle")
         
         fig.update_layout(
             template="plotly_dark", height=300, 
-            margin=dict(l=30, r=2, t=25, b=35), # Reducción final de margen izquierdo a 30px
+            margin=dict(l=25, r=2, t=25, b=35), # Reducción de margen izquierdo para pegar gráfico al borde
             paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
             legend=dict(orientation="h", yanchor="bottom", y=1.03, xanchor="center", x=0.5, font=dict(size=9), entrywidth=0.2, entrywidthmode="fraction"),
             hovermode="closest"

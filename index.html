@@ -5,49 +5,54 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>📡 MIROVA-OVDAS VRP MONITOR</title>
     <style>
-        body { background-color: #0b0e14; color: #e0e0e0; font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; }
+        body { background-color: #0b0e14; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; margin: 0; }
         
         #audit-bar { 
-            background: #161b22; padding: 12px 25px; border-bottom: 1px solid #30363d; 
+            background: #161b22; padding: 10px 20px; border-bottom: 1px solid #30363d; 
             display: flex; justify-content: space-between; align-items: center; 
             position: sticky; top: 0; z-index: 1000; font-size: 0.85em;
         }
         .status-badge { padding: 4px 12px; border-radius: 20px; font-weight: bold; border: 1px solid #30363d; background: #0d1117; }
         
-        .header-btns { display: flex; gap: 10px; }
-        .btn-ui { background: #30363d; color: white; border: 1px solid #444; padding: 6px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.3s; font-size: 0.8em; }
-        .btn-ui:hover { background: #58a6ff; border-color: #58a6ff; }
+        .header-btns .btn-ui { background: #30363d; color: white; border: 1px solid #444; padding: 5px 12px; border-radius: 4px; cursor: pointer; font-size: 0.85em; }
+        .header-btns .btn-ui:hover { background: #58a6ff; }
 
-        header { text-align: center; padding: 25px; background: #0d1117; border-bottom: 1px solid #30363d; }
-        header h1 { margin: 0; color: #58a6ff; font-size: 2em; }
-        header p { color: #8b949e; margin: 5px 0 0 0; font-size: 0.95em; }
+        header { text-align: center; padding: 20px; background: #0d1117; border-bottom: 1px solid #30363d; }
+        header h1 { margin: 0; color: #58a6ff; font-size: 1.8em; }
+        header p { color: #8b949e; margin: 5px 0 0 0; font-size: 0.9em; }
         
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 20px; padding: 20px; max-width: 95%; margin: 0 auto; }
+        /* GRILLA EXTRA ANCHA */
+        .grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); 
+            gap: 15px; 
+            padding: 15px; 
+            max-width: 98%; 
+            margin: 0 auto;
+        }
         
-        .card { background-color: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 12px; position: relative; }
-        .card h2 { margin: 0; font-size: 1.25em; color: #58a6ff; text-align: center; }
-        .region-tag { font-size: 0.75em; color: #8b949e; display: block; margin-bottom: 8px; text-align: center; }
+        .card { background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 8px; position: relative; }
+        .card h2 { margin: 0; font-size: 1.15em; color: #58a6ff; text-align: center; }
+        .region-tag { font-size: 0.7em; color: #8b949e; display: block; margin-bottom: 5px; text-align: center; }
         
-        .card-controls { position: absolute; top: 10px; right: 10px; display: flex; gap: 5px; z-index: 10; }
-        .mini-btn { background: rgba(48, 54, 61, 0.9); color: white; border: 1px solid #555; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 11px; }
-        .mini-btn:hover { background: #58a6ff; }
+        .card-controls { position: absolute; top: 8px; right: 8px; display: flex; gap: 4px; z-index: 10; }
+        .mini-btn { background: rgba(33, 38, 45, 0.9); color: #c9d1d9; border: 1px solid #444; border-radius: 3px; padding: 2px 6px; cursor: pointer; font-size: 10px; }
+        .mini-btn:hover { background: #58a6ff; color: white; }
 
-        iframe { width: 100%; height: 300px; border: none; background: #0d1117; border-radius: 6px; }
+        iframe { width: 100%; height: 290px; border: none; background: #0d1117; border-radius: 4px; }
 
-        #modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 2000; justify-content: center; align-items: center; }
-        .modal-content { width: 90%; height: 85%; background: #161b22; border: 1px solid #58a6ff; border-radius: 12px; position: relative; }
-        .close-modal { position: absolute; top: -15px; right: -15px; background: #ff4500; color: white; border: none; border-radius: 50%; width: 35px; height: 35px; cursor: pointer; font-weight: bold; }
-        #modal-iframe { width: 100%; height: 100%; border: none; border-radius: 12px; }
+        #modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 2000; justify-content: center; align-items: center; }
+        .modal-content { width: 95%; height: 90%; background: #161b22; border: 1px solid #58a6ff; border-radius: 8px; position: relative; }
+        .close-modal { position: absolute; top: -10px; right: -10px; background: #ff4500; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-weight: bold; z-index: 2100; }
+        #modal-iframe { width: 100%; height: 100%; border: none; border-radius: 8px; }
 
-        footer { background: #0d1117; padding: 30px; text-align: center; color: #8b949e; border-top: 1px solid #30363d; font-size: 0.85em; }
+        footer { background: #0d1117; padding: 20px; text-align: center; color: #8b949e; border-top: 1px solid #30363d; font-size: 0.8em; }
     </style>
 </head>
 <body>
     <div id="audit-bar">
-        <div><strong>SISTEMA:</strong> <span id="sys-status" class="status-badge">CONECTANDO...</span></div>
-        <div class="header-btns">
-            <button class="btn-ui" onclick="toggleFullScreen()">🖥️ Pantalla Completa</button>
-        </div>
+        <div><strong>SISTEMA:</strong> <span id="sys-status" class="status-badge">...</span></div>
+        <div class="header-btns"><button class="btn-ui" onclick="toggleFullScreen()">🖥️ Pantalla Completa</button></div>
         <div>ACTUALIZACIÓN: <span id="last-sync">--:--</span></div>
     </div>
 
@@ -66,7 +71,7 @@
     </div>
 
     <footer>
-        <p>Datos procesados vía <b>MIROVA</b> (University of Turin) | NASA | OVDAS Chile</p>
+        <p>Datos: <b>MIROVA</b> (UNITO) | NASA | OVDAS Chile</p>
     </footer>
 
     <script>
@@ -77,7 +82,7 @@
             {n: "Chaiten", r: "Los Lagos"}
         ];
 
-        let baseDatosCompleta = [];
+        let baseDatosCSV = "";
 
         function toggleFullScreen() {
             if (!document.fullscreenElement) document.documentElement.requestFullscreen();
@@ -94,43 +99,32 @@
             document.getElementById('modal-iframe').src = '';
         }
 
-        function descargarCSV(nombreVolcan) {
-            const filtrados = baseDatosCompleta.filter(d => d.Volcan === nombreVolcan);
-            if (filtrados.length === 0) return alert("No hay datos históricos para descargar.");
+        function descargarCSV(nombre) {
+            if (!baseDatosCSV) return alert("Cargando base de datos...");
+            const lineas = baseDatosCSV.split('\n');
+            const cabecera = lineas[0];
+            const filtrados = lineas.filter(l => l.includes(nombre));
             
-            const cabecera = Object.keys(filtrados[0]).join(",");
-            const filas = filtrados.map(obj => Object.values(obj).join(",")).join("\n");
-            const csvContent = "data:text/csv;charset=utf-8," + cabecera + "\n" + filas;
-            
-            const link = document.createElement("a");
-            link.setAttribute("href", encodeURI(csvContent));
-            link.setAttribute("download", `Datos_${nombreVolcan.replace(/ /g,'_')}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            const blob = new Blob([cabecera + "\n" + filtrados.join("\n")], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Historial_${nombre.replace(/ /g,'_')}.csv`;
+            a.click();
         }
 
         async function init() {
             const container = document.getElementById('galeria');
             const ts = new Date().getTime();
 
-            // Cargar base de datos para habilitar descargas
-            try {
-                const response = await fetch('monitoreo_satelital/registro_vrp_positivos.csv?t=' + ts);
-                const text = await response.text();
-                const rows = text.split('\n').slice(1);
-                const headers = text.split('\n')[0].split(',');
-                baseDatosCompleta = rows.map(row => {
-                    const values = row.split(',');
-                    return headers.reduce((obj, h, i) => ({ ...obj, [h]: values[i] }), {});
-                });
-            } catch (e) { console.error("Error cargando base de datos para descarga"); }
+            fetch('monitoreo_satelital/registro_vrp_positivos.csv?t=' + ts)
+                .then(r => r.text()).then(t => baseDatosCSV = t);
 
             volcanes.forEach(v => {
                 const card = document.createElement('div');
                 card.className = 'card';
-                const nombreArchivo = v.n.replace(/ /g, '_');
-                const url = `monitoreo_satelital/v_html/${nombreArchivo}.html?t=${ts}`;
+                const nombreFile = v.n.replace(/ /g, '_');
+                const url = `monitoreo_satelital/v_html/${nombreFile}.html?t=${ts}`;
                 card.innerHTML = `
                     <div class="card-controls">
                         <button class="mini-btn" onclick="descargarCSV('${v.n}')">📥 CSV</button>
@@ -146,8 +140,9 @@
             fetch('monitoreo_satelital/estado_sistema.json?t=' + ts)
                 .then(r => r.json()).then(data => {
                     document.getElementById('last-sync').innerText = data.ultima_actualizacion;
-                    document.getElementById('sys-status').innerText = data.estado;
-                    document.getElementById('sys-status').style.color = data.color;
+                    const st = document.getElementById('sys-status');
+                    st.innerText = data.estado;
+                    st.style.color = data.color;
                 });
         }
         window.onload = init;

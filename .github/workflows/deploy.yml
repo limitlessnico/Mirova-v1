@@ -26,17 +26,17 @@ jobs:
       - name: Configurar Pages
         uses: actions/configure-pages@v4
 
-      - name: Limpiar archivos pesados
+      - name: Limpiar para Despliegue
         run: |
-          # Eliminamos imágenes para que el paquete de subida sea ligero
-          # pero MANTENEMOS el index.html y el dashboard interactivo
+          # Eliminamos carpetas innecesarias para la web para evitar errores de tamaño
+          rm -rf .git
+          rm -rf .github
           rm -rf monitoreo_satelital/imagenes_satelitales
         
       - name: Subir Artefacto
         uses: actions/upload-pages-artifact@v3
         with:
-          # Subimos la raíz directamente (.)
-          path: '.'
+          path: '.' # Ahora que limpiamos, subir la raíz es seguro y rápido
           
       - name: Desplegar a GitHub Pages
         id: deployment

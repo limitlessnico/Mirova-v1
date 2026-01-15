@@ -9,11 +9,9 @@ from datetime import datetime
 ARCHIVO_POSITIVOS = "monitoreo_satelital/registro_vrp_positivos.csv"
 CARPETA_SALIDA = "monitoreo_satelital/v_html"
 ARCHIVO_STATUS = "monitoreo_satelital/estado_sistema.json"
-VOLCANES = ["Isluga", "Lascar", "Lastarria", "Peteroa", "Nevados de Chillan", "Copahue", "Llaima", "Villarrica", "Puyehue-Cordon Caulle", "Chaiten"]
+VOLCANES = ["Isluga", "Lascar", "Lastarria", "Peteroa", "Nevados_de_Chillan", "Copahue", "Llaima", "Villarrica", "Puyehue-Cordon_Caulle", "Chaiten"]
 
-COLORES_SENSORES = {"MODIS": "#FFA500", "VIIRS375": "#FF4500", "VIIRS750": "#FF0000", "VIIRS": "#C0C0C0"}
-
-def actualizar_estado(exito=True):
+def actualizar_estado():
     tz = pytz.timezone('America/Santiago')
     estado = {
         "ultima_actualizacion": datetime.now(tz).strftime("%d-%m-%Y %H:%M"),
@@ -30,25 +28,21 @@ def procesar():
         df['Fecha_Chile'] = pd.to_datetime(df['Fecha_Satelite_UTC']).dt.tz_localize('UTC').dt.tz_convert('America/Santiago')
 
     for v in VOLCANES:
-        df_v = df[df['Volcan'] == v] if not df.empty else pd.DataFrame()
-        ruta_v = os.path.join(CARPETA_SALIDA, f"{v.replace(' ', '_')}.html")
+        # Reemplazamos guiones por espacios solo para filtrar el CSV
+        nombre_real = v.replace('_', ' ')
+        df_v = df[df['Volcan'] == nombre_real] if not df.empty else pd.DataFrame()
+        ruta_v = os.path.join(CARPETA_SALIDA, f"{v}.html")
         
         if not df_v.empty:
-            fig = px.scatter(df_v, x="Fecha_Chile", y="VRP_MW", color="Sensor",
-                           color_discrete_map=COLORES_SENSORES, template="plotly_dark",
-                           hover_data={"VRP_MW": ':.2f', "Fecha_Chile": "|%d %b"})
+            fig = px.scatter(df_v, x="Fecha_Chile", y="VRP_MW", 
+                           color_discrete_sequence=["#FFA500"], template="plotly_dark")
             
-            # Etiqueta de MÁXIMO
-            max_r = df_v.loc[df_v['VRP_MW'].idxmax()]
-            fig.add_annotation(x=max_r['Fecha_Chile'], y=max_r['VRP_MW'], text=f"MÁX: {max_r['VRP_MW']:.1f}", showarrow=True)
-            
-            fig.update_layout(height=300, margin=dict(l=10, r=10, t=10, b=10), showlegend=False,
+            fig.update_layout(height=280, margin=dict(l=10, r=10, t=10, b=10), showlegend=False,
                             paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
-            fig.update_xaxes(tickformat="%d %b", tickangle=-45)
             fig.write_html(ruta_v, full_html=False, include_plotlyjs='cdn')
         else:
-            # Si no hay datos, creamos un HTML vacío o con mensaje
-            with open(ruta_v, "w") as f: f.write("<div style='color:#8b949e; text-align:center; padding-top:100px;'>SIN ANOMALÍA TÉRMICA</div>")
+            with open(ruta_v, "w") as f: 
+                f.write("<body style='background:#161b22; display:flex; align-items:center; justify-content:center;'><div style='color:#8b949e; font-family:sans-serif; font-size:14px;'>SIN ANOMALÍA TÉRMICA</div></body>")
 
     actualizar_estado()
 

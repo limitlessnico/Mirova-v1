@@ -5,8 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mirova-OVDAS VRP Monitor</title>
     <style>
-        /* ESTILO ORIGINAL RECUPERADO */
-        body { background-color: #0b0e14; color: #e0e0e0; font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; padding: 0; display: flex; flex-direction: column; min-height: 100vh; }
+        body { background-color: #0b0e14; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; flex-direction: column; min-height: 100vh; }
         
         #audit-bar { 
             background: #161b22; padding: 12px 25px; border-bottom: 1px solid #30363d; 
@@ -17,16 +16,15 @@
         
         header { padding: 30px 20px; text-align: center; background: #0d1117; }
         header h1 { margin: 0; color: #58a6ff; font-size: 2em; letter-spacing: 1px; }
-        header p { color: #8b949e; margin-top: 5px; }
+        header p { color: #8b949e; margin-top: 5px; font-size: 0.9em; }
 
         .container { flex: 1; padding: 20px; max-width: 1400px; margin: 0 auto; width: 95%; }
         
-        /* Contenedor del gráfico que imita la tarjeta de ayer */
         .chart-card {
             background: #161b22; border: 1px solid #30363d; border-radius: 12px;
-            padding: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); overflow: hidden;
+            padding: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); overflow: hidden;
         }
-        iframe { width: 100%; height: 1550px; border: none; }
+        iframe { width: 100%; height: 1650px; border: none; }
 
         footer { 
             padding: 30px; text-align: center; border-top: 1px solid #30363d; 
@@ -37,13 +35,13 @@
 </head>
 <body>
     <div id="audit-bar">
-        <div>SINCRONIZACIÓN OVDAS: <span id="last-sync">--:--</span></div>
+        <div>SINCRONIZACIÓN OVDAS (Chile): <span id="last-sync">--:--</span></div>
         <div id="sys-status" class="status-badge">⚪ INICIALIZANDO...</div>
     </div>
 
     <header>
         <h1>Monitoreo Volcánico VRP</h1>
-        <p>Red de Alerta Satelital - MendozaVolcanic / OVDAS</p>
+        <p>Análisis Térmico Satelital (MODIS & VIIRS) - MendozaVolcanic / OVDAS</p>
     </header>
 
     <main class="container">
@@ -67,17 +65,11 @@
                 badge.style.color = data.color;
                 badge.style.borderColor = data.color;
                 document.getElementById('last-sync').innerText = data.ultima_actualizacion;
-                
-                // Actualizar el frame
-                const frame = document.getElementById('plotly-frame');
-                frame.src = 'monitoreo_satelital/dashboard_interactivo.html?t=' + new Date().getTime();
-            })
-            .catch(() => {
-                document.getElementById('sys-status').innerText = "🟡 ACTUALIZANDO...";
+                document.getElementById('plotly-frame').src = 'monitoreo_satelital/dashboard_interactivo.html?t=' + new Date().getTime();
             });
         }
         document.addEventListener('DOMContentLoaded', checkAudit);
-        setInterval(checkAudit, 300000); // Cada 5 minutos
+        setInterval(checkAudit, 300000); 
     </script>
 </body>
 </html>

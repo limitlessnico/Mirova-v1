@@ -1,5 +1,5 @@
 import pandas as pd
-import numpy as np  # <--- Agregamos esta importación
+import numpy as np
 import plotly.graph_objects as go
 import os
 import pytz
@@ -54,7 +54,6 @@ def crear_grafico(df_v, v, modo_log=False):
                      tickangle=-45, fixedrange=True, tickfont=dict(size=9))
     
     if modo_log:
-        # Usamos np.log10 directamente
         log_max = np.log10(v_max * 1.5) if v_max > 1 else 1
         fig.update_yaxes(type="log", range=[-1, max(1, log_max)], 
                          fixedrange=True, gridcolor='rgba(255,255,255,0.05)', tickfont=dict(size=9))
@@ -78,15 +77,32 @@ def procesar():
     os.makedirs(CARPETA_LOG, exist_ok=True)
     df = pd.read_csv(ARCHIVO_POSITIVOS) if os.path.exists(ARCHIVO_POSITIVOS) else pd.DataFrame()
 
+    # CONFIGURACIÓN DE LA BARRA DE HERRAMIENTAS (ModeBar)
+    # Activamos la barra y dejamos solo lo útil (Cámara, Zoom, Pan, Reset)
+    config_visual = {
+        'displayModeBar': True,
+        'displaylogo': False,
+        'modeBarButtonsToRemove': ['select2d', 'lasso2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d'],
+        'toImageButtonOptions': {
+            'format': 'png',
+            'filename': 'monitor_vrp_export',
+            'height': 600,
+            'width': 1000,
+            'scale': 2 # Alta calidad
+        }
+    }
+
     for v in VOLCANES:
         df_v = df[df['Volcan'] == v].copy() if not df.empty else pd.DataFrame()
         nombre_file = f"{v.replace(' ', '_')}.html"
         
+        # Generar Lineal
         fig_lin = crear_grafico(df_v, v, modo_log=False)
-        fig_lin.write_html(os.path.join(CARPETA_LINEAL, nombre_file), full_html=False, include_plotlyjs='cdn', config={'displayModeBar': False})
+        fig_lin.write_html(os.path.join(CARPETA_LINEAL, nombre_file), full_html=False, include_plotlyjs='cdn', config=config_visual)
         
+        # Generar Logarítmico
         fig_log = crear_grafico(df_v, v, modo_log=True)
-        fig_log.write_html(os.path.join(CARPETA_LOG, nombre_file), full_html=False, include_plotlyjs='cdn', config={'displayModeBar': False})
+        fig_log.write_html(os.path.join(CARPETA_LOG, nombre_file), full_html=False, include_plotlyjs='cdn', config=config_visual)
 
 if __name__ == "__main__":
     procesar()

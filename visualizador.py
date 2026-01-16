@@ -40,16 +40,17 @@ def crear_grafico(df_v, v, modo_log=False):
 
     v_max_val = df_v_30['VRP_MW'].max() * mult
     
-    # Bandas de fondo
+    # --- SIMBOLOGÍA Y BANDAS (Restaurado) ---
     for y0, y1, label, color in MIROVA_BANDS:
         l_y0 = y0 if modo_log else y0/1e6
         l_y1 = y1 if modo_log else y1/1e6
         fig.add_hrect(y0=l_y0, y1=l_y1, fillcolor=color, line_width=0, layer="below")
-        if v_max_val >= y0:
+        
+        # Corrección: Mostrar en simbología si el dato máximo entra o supera el rango
+        if (v_max_val >= y0):
             fig.add_trace(go.Scatter(x=[None], y=[None], mode='markers', name=label, 
                 marker=dict(size=8, symbol='square', color=color.replace('0.2', '0.8').replace('0.15', '0.8')), showlegend=True))
 
-    # Trazado de datos con escala forzada
     for sensor, grupo in df_v_30.groupby('Sensor'):
         fig.add_trace(go.Scatter(x=grupo['Fecha_Chile'], y=grupo['VRP_MW'] * mult, mode='markers', name=sensor,
             marker=dict(symbol=MAPA_SIMBOLOS.get(sensor, "circle"), color=COLORES_SENSORES.get(sensor, "#C0C0C0"), size=9, line=dict(width=1, color='white')),
@@ -58,18 +59,18 @@ def crear_grafico(df_v, v, modo_log=False):
             hovertemplate=f"<b>%{{y:.2e}} {unidad}</b><br>%{{x|%d %b, %H:%M}}<extra></extra>",
             showlegend=True))
 
-    # ANOTACIÓN MÁXIMO: Forzar yref="y" incluso en logaritmo
+    # --- ANOTACIÓN MÁXIMO (Precisión Log/Lineal) ---
     if not df_v_30.empty:
         max_r = df_v_30.loc[df_v_30['VRP_MW'].idxmax()]
-        y_val = max_r['VRP_MW'] * mult
-        fig.add_annotation(x=max_r['Fecha_Chile'], y=y_val if not modo_log else np.log10(y_val),
-            xref="x", yref="y" if not modo_log else "y",
+        y_val_plot = max_r['VRP_MW'] * mult
+        fig.add_annotation(x=max_r['Fecha_Chile'], y=y_val_plot if not modo_log else np.log10(y_val_plot),
+            xref="x", yref="y",
             text=f"MÁX: {max_r['VRP_MW']:.2f} MW", showarrow=True,
             arrowhead=2, arrowsize=1, arrowwidth=1.5, arrowcolor="white",
             bgcolor="rgba(0,0,0,0.8)", bordercolor="#58a6ff", borderwidth=1,
             font=dict(color="white", size=9), ay=-40, ax=0)
 
-    # Configuración de Ejes
+    # --- CONFIGURACIÓN DE EJES (Restaurado) ---
     ticks_x = [hace_30_dias + timedelta(days=x) for x in range(0, 31, 7)]
     labels_x = [f"{d.day} {MESES_ES[d.month]}" for d in ticks_x]
 
@@ -81,22 +82,21 @@ def crear_grafico(df_v, v, modo_log=False):
     if modo_log:
         y_min_v = 0.05 * 1e6
         y_max_v = max(1e8, v_max_val * 10)
-        # Forzamos dtick=1 para asegurar etiquetas 10^5, 10^6, etc.
         fig.update_yaxes(type="log", range=[np.log10(y_min_v), np.log10(y_max_v)], 
                          gridcolor='rgba(255,255,255,0.05)', tickfont=dict(size=9),
                          dtick=1, exponentformat="power", showexponent="all", fixedrange=True)
     else:
+        # Aumentado a 350 para ocupar mejor el espacio de la tarjeta
         fig.update_yaxes(range=[0, max(1.1, v_max_val * 1.5)], 
                          gridcolor='rgba(255,255,255,0.05)', tickfont=dict(size=9), fixedrange=True)
     
-    # ETIQUETA DE UNIDAD: xref="paper" con x=0 asegura que esté pegado al borde interno
-    fig.add_annotation(xref="paper", yref="paper", x=0, y=1.05, text=f"<b>{unidad}</b>", 
-                       showarrow=False, font=dict(size=10, color="white"), xanchor="left")
+    # --- ALINEACIÓN DE "MW" / "WATT" (Corregido) ---
+    fig.add_annotation(xref="paper", yref="paper", x=-0.02, y=1.08, text=f"<b>{unidad}</b>", 
+                       showarrow=False, font=dict(size=10, color="white"), xanchor="right")
     
-    fig.update_layout(template="plotly_dark", height=300, 
-                      margin=dict(l=80, r=10, t=20, b=40), # Aumentado margen izquierdo para evitar cortes
+    fig.update_layout(template="plotly_dark", height=350, # Altura ajustada para no dejar espacio vacío
+                      margin=dict(l=70, r=10, t=25, b=45), 
                       paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', showlegend=True,
-                      autosize=True, # Permite que el gráfico se adapte al expandir
                       legend=dict(orientation="h", yanchor="bottom", y=1.03, xanchor="center", x=0.5, font=dict(size=9)))
     return fig
 
@@ -108,9 +108,9 @@ def procesar():
     config_v = {
         'displayModeBar': 'hover', 
         'displaylogo': False,
-        'responsive': True, # Crucial para que no pierda la escala al expandir
+        'responsive': True,
         'modeBarButtonsToRemove': ['zoom2d', 'pan2d', 'select2d', 'lasso2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d'],
-        'toImageButtonOptions': {'format': 'png', 'height': 500, 'width': 1400, 'scale': 2}
+        'toImageButtonOptions': {'format': 'png', 'height': 600, 'width': 1400, 'scale': 2}
     }
 
     for v in VOLCANES:
@@ -121,7 +121,7 @@ def procesar():
             path = os.path.join(carpeta, nombre_f)
             if fig is None:
                 with open(path, "w", encoding='utf-8') as f:
-                    f.write("<body style='background:#0d1117; color:#8b949e; display:flex; align-items:center; justify-content:center; height:300px; font-family:sans-serif;'>SIN ANOMALÍA TÉRMICA</body>")
+                    f.write("<body style='background:#0d1117; color:#8b949e; display:flex; align-items:center; justify-content:center; height:350px; font-family:sans-serif;'>SIN ANOMALÍA TÉRMICA</body>")
             else:
                 fig.write_html(path, full_html=False, include_plotlyjs='cdn', config=config_v)
 

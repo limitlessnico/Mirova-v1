@@ -33,7 +33,7 @@ def crear_grafico(df_v, v, modo_log=False):
     labels_x = [f"{d.day} {MESES_ES[d.month]}" for d in ticks_x]
     v_max = df_v_30['VRP_MW'].max()
 
-    # Niveles MIROVA: Lógica inteligente de aparición
+    # Niveles MIROVA
     niveles = [(0, 1, "Muy Bajo", "rgba(100,100,100,0.15)"), 
                (1, 10, "Bajo", "rgba(150,150,0,0.12)"), 
                (10, 100, "Moderado", "rgba(255,165,0,0.12)")]
@@ -68,13 +68,13 @@ def crear_grafico(df_v, v, modo_log=False):
     else:
         fig.update_yaxes(range=[0, max(1.1, v_max * 1.3)], fixedrange=True, gridcolor='rgba(255,255,255,0.05)', tickfont=dict(size=9))
     
-    # POSICIÓN CORREGIDA: x negativo pequeño y anclaje a la derecha para que no se mueva con el zoom
+    # MW Alineado perfectamente a la izquierda del eje Y
     fig.add_annotation(xref="paper", yref="paper", x=-0.01, y=1.05, text="<b>MW</b>", showarrow=False, 
                        font=dict(size=10, color="rgba(255,255,255,0.8)"), xanchor="right", yanchor="middle")
     
     fig.update_layout(
         template="plotly_dark", height=300, 
-        margin=dict(l=40, r=5, t=15, b=35), # l=40 asegura espacio suficiente para el MW a la izquierda
+        margin=dict(l=40, r=5, t=15, b=35),
         paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
         showlegend=True,
         legend=dict(orientation="h", yanchor="bottom", y=1.03, xanchor="center", x=0.5, font=dict(size=9), entrywidth=0.2, entrywidthmode="fraction"),
@@ -87,10 +87,18 @@ def procesar():
     os.makedirs(CARPETA_LOG, exist_ok=True)
     df = pd.read_csv(ARCHIVO_POSITIVOS) if os.path.exists(ARCHIVO_POSITIVOS) else pd.DataFrame()
 
+    # CONFIGURACIÓN DE EXPORTACIÓN CORREGIDA (Relación de aspecto alargada)
     config_visual = {
-        'displayModeBar': True, 'displaylogo': False,
+        'displayModeBar': True, 
+        'displaylogo': False,
         'modeBarButtonsToRemove': ['select2d', 'lasso2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d'],
-        'toImageButtonOptions': {'format': 'png', 'filename': 'monitor_vrp_export', 'height': 600, 'width': 1000, 'scale': 2}
+        'toImageButtonOptions': {
+            'format': 'png', 
+            'filename': 'monitor_vrp_export', 
+            'height': 500, # Menor altura para que se vea estirado
+            'width': 1400, # Mayor ancho para emular el modo expandido
+            'scale': 2
+        }
     }
 
     for v in VOLCANES:

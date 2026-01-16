@@ -2950,3 +2950,6 @@
 [2026-01-16 12:14:35] Proceso completado con clasificaciones y falsos positivos.
 [2026-01-16 12:16:34] INICIO SCRAPER: SINCRONIZACIÓN Y CLASIFICACIÓN
 [2026-01-16 12:16:35] Proceso completado con clasificaciones y falsos positivos.
+[2026-01-16 12:18:34] INICIO SCRAPER: ESCANEO TOTAL DE TABLA (500+ REGISTROS)
+[2026-01-16 12:18:35] Páginas recibidas. Analizando 522 filas encontradas.
+[2026-01-16 12:18:35] Proceso completado. Escaneo profundo finalizado.

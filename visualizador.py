@@ -39,6 +39,8 @@ def crear_grafico(df_v, v, modo_log=False):
     fig = go.Figure()
 
     v_max_val = df_v_30['VRP_MW'].max() * mult
+    
+    # Bandas de fondo
     for y0, y1, label, color in MIROVA_BANDS:
         l_y0 = y0 if modo_log else y0/1e6
         l_y1 = y1 if modo_log else y1/1e6
@@ -47,6 +49,7 @@ def crear_grafico(df_v, v, modo_log=False):
             fig.add_trace(go.Scatter(x=[None], y=[None], mode='markers', name=label, 
                 marker=dict(size=8, symbol='square', color=color.replace('0.2', '0.8').replace('0.15', '0.8')), showlegend=True))
 
+    # Trazado de datos con escala forzada
     for sensor, grupo in df_v_30.groupby('Sensor'):
         fig.add_trace(go.Scatter(x=grupo['Fecha_Chile'], y=grupo['VRP_MW'] * mult, mode='markers', name=sensor,
             marker=dict(symbol=MAPA_SIMBOLOS.get(sensor, "circle"), color=COLORES_SENSORES.get(sensor, "#C0C0C0"), size=9, line=dict(width=1, color='white')),
@@ -55,18 +58,18 @@ def crear_grafico(df_v, v, modo_log=False):
             hovertemplate=f"<b>%{{y:.2e}} {unidad}</b><br>%{{x|%d %b, %H:%M}}<extra></extra>",
             showlegend=True))
 
-    # ANOTACIÓN MÁXIMO CORREGIDA PARA LOG
+    # ANOTACIÓN MÁXIMO: Forzar yref="y" incluso en logaritmo
     if not df_v_30.empty:
         max_r = df_v_30.loc[df_v_30['VRP_MW'].idxmax()]
-        y_pos = max_r['VRP_MW'] * mult
-        # En escala logarítmica, el anclaje de la anotación funciona mejor con xref/yref específicos
-        fig.add_annotation(x=max_r['Fecha_Chile'], y=y_pos,
-            xref="x", yref="y",
+        y_val = max_r['VRP_MW'] * mult
+        fig.add_annotation(x=max_r['Fecha_Chile'], y=y_val if not modo_log else np.log10(y_val),
+            xref="x", yref="y" if not modo_log else "y",
             text=f"MÁX: {max_r['VRP_MW']:.2f} MW", showarrow=True,
             arrowhead=2, arrowsize=1, arrowwidth=1.5, arrowcolor="white",
             bgcolor="rgba(0,0,0,0.8)", bordercolor="#58a6ff", borderwidth=1,
             font=dict(color="white", size=9), ay=-40, ax=0)
 
+    # Configuración de Ejes
     ticks_x = [hace_30_dias + timedelta(days=x) for x in range(0, 31, 7)]
     labels_x = [f"{d.day} {MESES_ES[d.month]}" for d in ticks_x]
 
@@ -78,20 +81,22 @@ def crear_grafico(df_v, v, modo_log=False):
     if modo_log:
         y_min_v = 0.05 * 1e6
         y_max_v = max(1e8, v_max_val * 10)
+        # Forzamos dtick=1 para asegurar etiquetas 10^5, 10^6, etc.
         fig.update_yaxes(type="log", range=[np.log10(y_min_v), np.log10(y_max_v)], 
                          gridcolor='rgba(255,255,255,0.05)', tickfont=dict(size=9),
-                         dtick=1, exponentformat="power", fixedrange=True)
+                         dtick=1, exponentformat="power", showexponent="all", fixedrange=True)
     else:
         fig.update_yaxes(range=[0, max(1.1, v_max_val * 1.5)], 
                          gridcolor='rgba(255,255,255,0.05)', tickfont=dict(size=9), fixedrange=True)
     
-    # POSICIÓN DE UNIDAD DESPLAZADA A LA IZQUIERDA
-    fig.add_annotation(xref="paper", yref="paper", x=-0.05, y=1.05, text=f"<b>{unidad}</b>", 
-                       showarrow=False, font=dict(size=10, color="white"), xanchor="right")
+    # ETIQUETA DE UNIDAD: xref="paper" con x=0 asegura que esté pegado al borde interno
+    fig.add_annotation(xref="paper", yref="paper", x=0, y=1.05, text=f"<b>{unidad}</b>", 
+                       showarrow=False, font=dict(size=10, color="white"), xanchor="left")
     
     fig.update_layout(template="plotly_dark", height=300, 
-                      margin=dict(l=75, r=5, t=15, b=35), # l=75 da espacio a Watt y 10^x
+                      margin=dict(l=80, r=10, t=20, b=40), # Aumentado margen izquierdo para evitar cortes
                       paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', showlegend=True,
+                      autosize=True, # Permite que el gráfico se adapte al expandir
                       legend=dict(orientation="h", yanchor="bottom", y=1.03, xanchor="center", x=0.5, font=dict(size=9)))
     return fig
 
@@ -103,6 +108,7 @@ def procesar():
     config_v = {
         'displayModeBar': 'hover', 
         'displaylogo': False,
+        'responsive': True, # Crucial para que no pierda la escala al expandir
         'modeBarButtonsToRemove': ['zoom2d', 'pan2d', 'select2d', 'lasso2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d'],
         'toImageButtonOptions': {'format': 'png', 'height': 500, 'width': 1400, 'scale': 2}
     }

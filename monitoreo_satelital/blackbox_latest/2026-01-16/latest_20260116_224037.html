@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Latest Measurements - MIROVA</title>
+  
+  <!--
+  <link rel="stylesheet" href="https://www.mirovaweb.it/css2/leaflet.css" />
+  <link rel="stylesheet" href="https://www.mirovaweb.it/css2/jquery.dataTables.min.css" />
+  <link rel="stylesheet" href="https://www.mirovaweb.it/css2/all.min.css" />
+  
+  
+   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+  -->
+  
+    <!-- Replace external CSS with local versions -->
+  <link rel="stylesheet" href="../assets/css/leaflet.css" />
+  <link rel="stylesheet" href="../assets/css/jquery.dataTables.min.css" />
+  <link rel="stylesheet" href="../assets/css/all.min.css" />
+  
+  <style>
+    /* Base styles */
+    html, body { 
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+    body { 
+      font-family: Arial, sans-serif; 
+      background: #f4f4f4; 
+      color: #333;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    /* Single line header with nav merged */
+    header { 
+      background: #2c2c54; 
+      color: white; 
+      padding: 0 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      height: 60px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    
+    /* Logo and title in compact format */
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .logo-container {
+      height: 45px;
+    }
+    .logo-container img {
+      height: 100%;
+      width: auto;
+    }
+    .title-container {
+      display: flex;
+      flex-direction: column;
+    }
+    .title-container h1 {
+      margin: 0;
+      font-size: 1.5rem;
+      line-height: 1.1;
+    }
+    .title-container p {
+      margin: 0;
+      font-size: 0.7rem;
+      opacity: 0.9;
+    }
+    
+    /* Header logo and title link styling */
+    .brand-link {
+      text-decoration: none;
+      color: white;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand-link:hover {
+      opacity: 0.9;
+    }
+    
+    /* Combined navigation and clock */
+    .header-center {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+    }
+    
+    /* Navigation integrated in header */
+    .main-nav {
+      display: flex;
+      justify-content: center;
+    }
+    .nav-menu {
+      display: flex;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .nav-menu li {
+      position: relative;
+    }
+    .nav-menu a {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      color: white;
+      text-decoration: none;
+      padding: 0 15px;
+      height: 60px;
+      font-size: 0.9rem;
+      transition: background-color 0.2s;
+    }
+    .nav-menu a:hover {
+      background-color: #3a3a68;
+    }
+    .nav-menu a.active {
+      background-color: #f1c40f;
+      color: #1d1d38;
+      font-weight: bold;
+    }
+    
+    /* Clock positioned at the right */
+    .header-right {
+      display: flex;
+      align-items: center;
+    }
+    .utc-clock {
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+    }
+    
+    /* Mobile menu button */
+    .menu-toggle {
+      display: none;
+      background: none;
+      border: none;
+      color: white;
+      font-size: 1.5rem;
+      cursor: pointer;
+      padding: 0 15px;
+    }
+    
+    /* Content container for page-specific content */
+    .content-wrapper {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    /* Footer styling */
+    footer {
+      background: #2c2c54;
+      color: white;
+      padding: 9px 18px;
+      text-align: center;
+      font-size: 0.8rem;
+    }
+    footer a {
+      color: #f1c40f;
+      text-decoration: none;
+    }
+    footer a:hover {
+      text-decoration: underline;
+    }
+    
+    /* Mobile Navigation */
+    @media (max-width: 992px) {
+      header {
+        height: auto;
+        padding: 8px 18px;
+        flex-wrap: wrap;
+      }
+      .header-left {
+        width: 100%;
+        justify-content: space-between;
+      }
+      .header-center {
+        width: 100%;
+        order: 3;
+      }
+      .header-right {
+        order: 2;
+      }
+      .nav-menu {
+        flex-direction: column;
+        position: absolute;
+        top: 60px;
+        left: 0;
+        width: 100%;
+        background: #2c2c54;
+        z-index: 100;
+        box-shadow: 0 5px 10px rgba(0,0,0,0.2);
+        display: none;
+      }
+      .nav-menu.active {
+        display: flex;
+      }
+      .nav-menu a {
+        height: 45px;
+      }
+      .menu-toggle {
+        display: block;
+      }
+      
+      /* Adjust footer for mobile */
+      .footer-container {
+        flex-direction: column-reverse;
+        align-items: center;
+      }
+      .footer-text {
+        text-align: center;
+        margin-top: 10px;
+      }
+    }
+    
+    @media (max-width: 600px) {
+      .utc-clock {
+        font-size: 0.75rem;
+      }
+    }
+    
+    /* Page-specific styles */
+.data-header { 
+  background: #2c2c54; 
+  color: white; 
+  padding: 10px 20px;
+  margin: 10px 0;
+  border-radius: 5px;
+}
+.header-info {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr); /* Changed from 3 to 4 to accommodate VIIRS375 */
+  gap: 10px;
+  margin-top: 0px;
+  font-size: 0.9rem;
+}
+.header-info div {
+  background: rgba(255,255,255,0.1);
+  padding: 5px 10px;
+  border-radius: 4px;
+}
+.time-box {
+  display: flex;
+  flex-direction: column;
+}
+.time-value {
+  font-weight: bold;
+  word-break: break-word; /* Prevent overflow on small screens */
+}
+.time-delay {
+  font-size: 0.8rem;
+  opacity: 0.9;
+  margin-top: 2px;
+}
+.table-container { 
+  width: 100%; 
+  max-width: 1200px;
+  margin: 0 auto 20px auto;
+  border-radius: 8px;
+  background: white; 
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  padding: 15px;
+  overflow-x: auto; /* Enables horizontal scrolling */
+}
+.table-container, .data-header {
+  max-width: 1200px;
+  margin: 0 auto 20px auto;
+  width: 100%;
+}
+
+/* Add sorting indicators */
+th.sorting {
+  position: relative;
+  padding-right: 20px !important;
+}
+th.sorting:after {
+  content: "↕";
+  position: absolute;
+  right: 8px;
+  opacity: 0.5;
+}
+th.sorting_asc:after {
+  content: "↑";
+  position: absolute;
+  right: 8px;
+  opacity: 0.8;
+}
+th.sorting_desc:after {
+  content: "↓";
+  position: absolute;
+  right: 8px;
+  opacity: 0.8;
+}
+
+/* Row color classes */
+tbody tr.extreme     { background-color: rgba(255, 0, 255, 0.5) !important; }
+tbody tr.very-high   { background-color: rgba(255, 0, 0, 0.5) !important; }
+tbody tr.high        { background-color: rgba(255, 165, 0, 0.5) !important; }
+tbody tr.moderate    { background-color: rgba(255, 255, 0, 0.5) !important; }
+tbody tr.low         { background-color: rgba(0, 128, 0, 0.5) !important; }
+tbody tr.very-low    { background-color: rgba(150, 180, 250, 0.5) !important; }
+tbody tr.none        { background-color: rgba(240, 240, 240, 0.5) !important; }
+
+/* Volcano link styling */
+.volcano-link { 
+  color: #2c3e50; 
+  font-weight: bold; 
+  text-decoration: none; 
+}
+.volcano-link:hover { text-decoration: underline; }
+
+/* Mobile-specific optimizations */
+@media (max-width: 992px) {
+  .dataTables_wrapper .dataTables_length,
+  .dataTables_wrapper .dataTables_filter {
+    float: none;
+    text-align: left;
+    margin-bottom: 10px;
+  }
+  
+  .dataTables_wrapper .dataTables_info,
+  .dataTables_wrapper .dataTables_paginate {
+    float: none;
+    text-align: center;
+    margin-top: 10px;
+  }
+  
+  .dataTables_wrapper .dataTables_paginate .paginate_button {
+    padding: 0.3em 0.8em;
+  }
+}
+
+@media (max-width: 768px) {
+  .header-info {
+    grid-template-columns: 1fr 1fr; /* Changed to 2 columns for mobile */
+    gap: 5px;
+  }
+
+  .data-header {
+    padding: 10px;
+  }
+  
+  /* Adjust table for better mobile display */
+  table.dataTable thead th {
+    padding: 8px 10px;
+    font-size: 0.9rem;
+  }
+  
+  table.dataTable tbody td {
+    padding: 6px 8px;
+    font-size: 0.85rem;
+    vertical-align: middle;
+  }
+  
+  /* Make the search input more mobile-friendly */
+  .dataTables_filter input {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    margin-left: 0 !important;
+    margin-top: 5px;
+    padding: 6px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+  }
+  
+  .dataTables_length select {
+    padding: 5px;
+    border-radius: 4px;
+  }
+  
+  /* Adjust pagination buttons */
+  .dataTables_paginate .paginate_button {
+    padding: 0.2em 0.5em !important;
+  }
+  
+  .table-container {
+    padding: 10px;
+  }
+}
+
+@media (max-width: 576px) {
+  /* Further optimize for very small screens */
+  /* On smallest screens, stack all info boxes */
+  .header-info {
+    grid-template-columns: 1fr;
+  }
+  
+  .table-container {
+    padding: 5px;
+  }
+  
+  table.dataTable thead th {
+    padding: 6px 8px;
+    font-size: 0.8rem;
+  }
+  
+  table.dataTable tbody td {
+    padding: 5px 6px;
+    font-size: 0.8rem;
+  }
+
+  /* Adjust pagination to ensure it doesn't overflow */
+  .dataTables_paginate {
+    font-size: 0.8rem;
+  }
+  
+  .dataTables_paginate .paginate_button {
+    padding: 0.1em 0.4em !important;
+  }
+  
+  /* Stack info and pagination for very small screens */
+  .dataTables_info,
+  .dataTables_paginate {
+    float: none;
+    text-align: center;
+    width: 100%;
+    margin-top: 8px;
+  }
+  
+  /* Fix search input appearance */
+  .dataTables_filter label {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .dataTables_filter input {
+    margin-top: 5px;
+  }
+  
+  /* Responsive table layout - optimize columns */
+  table.dataTable {
+    width: 100% !important;
+  }
+}
+
+/* Fix for touch devices */
+@media (hover: none) {
+  .volcano-link:hover {
+    text-decoration: none;
+  }
+  
+  .volcano-link:active {
+    background-color: rgba(0,0,0,0.05);
+    border-radius: 3px;
+  }
+}  </style>
+</head>
+<body>
+<header>
+  <div class="header-left">
+    <a href="index.php" class="brand-link">
+      <div class="logo-container">
+        <img src="https://www.mirovaweb.it/images/LogoMIROVA_trasparent.png" alt="MIROVA Logo">
+      </div>
+      <div class="title-container">
+        <h1>MIROVA</h1>
+        <p>Middle Infrared Observations of Volcanic Activity</p>
+      </div>
+    </a>
+    <button class="menu-toggle"><i class="fas fa-bars"></i></button>
+  </div>
+    <i class="fas fa-analytics"></i>
+  
+  <div class="header-center">
+    <nav class="main-nav">
+      <ul class="nav-menu">
+        <li><a href="index.php" ><i class="fas fa-home"></i> Home</a></li>
+        <li><a href="volcanoes.php" ><i class="fas fa-mountain"></i> Volcanoes</a></li>
+        <li><a href="latest.php" class="active"><i class="fas fa-clock"></i> Latest Measurements</a></li>
+		<!--
+		<li><a href="zscoretrend.php" ><i class="fas fa-chart-line"></i> Trend Analysis</a></li>
+        -->
+	   <li><a href="Volcano_Dashboard.php" ><i class="fa fa-bar-chart"></i> Explore Data</a></li>
+
+        <li><a href="about.php" ><i class="fas fa-info-circle"></i> About</a></li>
+        <li><a href="credits.php" ><i class="fas fa-award"></i> Credits</a></li>
+      </ul>
+    </nav>
+  </div>
+  
+  <div class="header-right">
+    <div class="utc-clock">
+      <i class="fas fa-clock"></i> <span id="utcClock"></span>
+    </div>
+  </div>
+</header>
+
+<!-- Content wrapper for page-specific content -->
+<div class="content-wrapper">
+  
+<!-- Page content starts here -->
+<div class="container" style="padding: 5px;">
+  <div class="data-header">
+    <div class="header-info">
+      <div class="time-box">
+        <span>Last MODIS:</span>
+        <span class="time-value" id="modis-time">No data available</span>
+        <span class="time-delay" id="modis-delay">N/A</span>
+      </div>
+      <div class="time-box">
+        <span>Last VIIRS:</span>
+        <span class="time-value" id="viirs-time">No data available</span>
+        <span class="time-delay" id="viirs-delay">N/A</span>
+      </div>
+      <!-- Added VIIRS375 sensor info -->
+      <div class="time-box">
+        <span>Last VIIRS375:</span>
+        <span class="time-value" id="viirs375-time">No data available</span>
+        <span class="time-delay" id="viirs375-delay">N/A</span>
+      </div>
+      <div class="time-box">
+        <span>Auto-refresh:</span>
+        <span class="time-value">Every 60 seconds</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="table-container">
+          <div class="error-message" style="color: red; padding: 15px;">Error: CSV does not contain enough data.</div>
+    
+    <table id="volcanoTable" class="display responsive nowrap" style="width:100%">
+      <thead>
+        <tr>
+          <th>Time (UTC)</th>
+          <th>ID Volc</th>
+          <th>Volcano</th>
+          <th>VRP MW</th>
+          <th>Distance km</th>
+          <th>Sensor</th>
+        </tr>
+      </thead>
+      <tbody>
+            </tbody>
+    </table>
+  </div>
+</div>
+<!-- Page content ends here -->
+
+</div>
+
+<footer>
+  <div class="footer-container" style="display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 15px; text-align: right;">
+    <div class="footer-text" style="flex: 1; font-size: 0.8rem;">
+      <p style="margin: 0;">&copy; 2026 MIROVA - Middle Infrared Observations of Volcanic Activity |
+        <a href="credits.php">Credits</a>
+      </p>
+      <p style="margin: 5px 0 0;">University of Turin, Italy | Department of Earth Science | Contact: <a href="mailto:diego.coppola@unito.it">diego.coppola@unito.it</a></p>
+    </div>
+    <div style="flex-shrink: 0;">
+      <img src="https://www.mirovaweb.it/images/Logo_DST.jpg" alt="DST Logo" style="height: 50px;">
+    </div>
+  </div>
+</footer>
+
+<!-- Replace external JS with local versions -->
+<script src="../assets/js/jquery-3.6.0.min.js"></script>
+<script src="../assets/js/jquery.dataTables.min.js"></script>
+<script src="../assets/js/leaflet.js"></script>
+
+<!-- Essential scripts 
+<script src="https://www.mirovaweb.it/js2/jquery-3.6.0.min.js"></script>
+<script src="https://www.mirovaweb.it/js2/jquery.dataTables.min.js"></script>
+<script src="https://www.mirovaweb.it/js2/leaflet.js"></script>
+-->
+
+<!--
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+ --> 
+<script>
+// Initialize mobile menu toggle
+$(document).ready(function() {
+  $('.menu-toggle').on('click', function() {
+    $('.nav-menu').toggleClass('active');
+  });
+  
+  // Initialize dynamic UTC clock
+  updateUTCClock();
+  setInterval(updateUTCClock, 1000);
+});
+
+/**
+ * Update the UTC clock display
+ */
+function updateUTCClock() {
+  const now = new Date();
+  const clockEl = document.getElementById('utcClock');
+  
+  // Format the date as "11 April 2025 13:06:42 UTC"
+  const options = { 
+    day: 'numeric', 
+    month: 'long', 
+    year: 'numeric',
+    hour: '2-digit', 
+    minute: '2-digit', 
+    second: '2-digit',
+    hour12: false,
+    timeZone: 'UTC'
+  };
+  
+  clockEl.textContent = now.toLocaleString('en-US', options) + ' UTC';
+}
+
+// Get row color class based on VRP value
+function getRowColorClass(vrp) {
+  if (vrp > 10000) return 'extreme';
+  if (vrp > 1000) return 'very-high';
+  if (vrp > 100) return 'high';
+  if (vrp > 10) return 'moderate';
+  if (vrp > 1) return 'low';
+  if (vrp > 0) return 'very-low';
+  return 'none';
+}
+
+// Calculate and format time difference
+function calculateTimeDifference(timestamp) {
+  if (!timestamp) return "N/A";
+  
+  const time = new Date(timestamp);
+  const now = new Date();
+  const diff = now - time;
+  
+  // Format the difference
+  if (diff < 60000) {
+    return "Just now";
+  } else if (diff < 3600000) {
+    const minutes = Math.floor(diff / 60000);
+    return minutes + " minute" + (minutes > 1 ? "s" : "") + " ago";
+  } else if (diff < 86400000) {
+    const hours = Math.floor(diff / 3600000);
+    return hours + " hour" + (hours > 1 ? "s" : "") + " ago";
+  } else {
+    const days = Math.floor(diff / 86400000);
+    return days + " day" + (days > 1 ? "s" : "") + " ago";
+  }
+}
+
+// Update sensor times and delays
+function updateSensorDelays() {
+  const modisTime = $('#modis-time').text();
+  const viirsTime = $('#viirs-time').text();
+  const viirs375Time = $('#viirs375-time').text(); // Added for VIIRS375
+  
+  if (modisTime !== "No data available") {
+    $('#modis-delay').text(calculateTimeDifference(modisTime));
+  }
+  
+  if (viirsTime !== "No data available") {
+    $('#viirs-delay').text(calculateTimeDifference(viirsTime));
+  }
+  
+  // Added for VIIRS375
+  if (viirs375Time !== "No data available") {
+    $('#viirs375-delay').text(calculateTimeDifference(viirs375Time));
+  }
+}
+
+// Check if we're on a mobile device
+function isMobileDevice() {
+  return (window.innerWidth <= 768);
+}
+
+// Configure DataTables based on device type
+function configureDataTable() {
+  const isMobile = isMobileDevice();
+  const defaultPageLength = isMobile ? 10 : 15;
+  
+  // Common options for all devices
+  const options = {
+    paging: true,
+    ordering: true,
+    order: [[0, 'desc']],
+    pageLength: defaultPageLength,
+    lengthMenu: [[5, 10, 15, 25, 50, -1], [5, 10, 15, 25, 50, "All"]],
+    info: true,
+    searching: true,
+    responsive: true,
+    language: {
+      search: "_INPUT_",
+      searchPlaceholder: "Search volcanoes...",
+      lengthMenu: "Show _MENU_ entries",
+      info: "Showing _START_ to _END_ of _TOTAL_ entries"
+    },
+    createdRow: function(row, data, dataIndex) {
+      const vrpText = $(row).find('td:eq(3)').attr('data-order');
+      const vrp = parseFloat(vrpText);
+      const className = getRowColorClass(vrp);
+      $(row).addClass(className);
+    }
+  };
+  
+  // Mobile-specific options
+  if (isMobile) {
+    options.dom = "<'row'<'col-sm-12'f>>" +
+                 "<'row'<'col-sm-12'tr>>" +
+                 "<'row'<'col-sm-12'<'d-flex justify-content-between'<'mt-2'l><'mt-2'i>>>>" +
+                 "<'row'<'col-sm-12'p>>";
+    
+    // On mobile, we can adjust column visibility for better display
+    options.columnDefs = [
+      { responsivePriority: 1, targets: [2, 3] }, // Volcano & VRP are most important
+      { responsivePriority: 2, targets: [0, 5] }, // Time & Sensor medium importance
+      { responsivePriority: 3, targets: [1, 4] }  // ID & Distance least important
+    ];
+  }
+  
+  // Initialize DataTable
+  return $('#volcanoTable').DataTable(options);
+}
+
+$(document).ready(function() {
+  // Initialize table with responsive settings
+  const table = configureDataTable();
+  
+  // Initial delay update
+  updateSensorDelays();
+  
+  // Update delay times every minute
+  setInterval(updateSensorDelays, 60000);
+  
+  // Add event listeners for touch-friendly experience on mobile
+  $('.volcano-link').on('touchstart', function() {
+    $(this).addClass('touching');
+  }).on('touchend', function() {
+    $(this).removeClass('touching');
+    // Small delay to allow the visual feedback before navigation
+    setTimeout(() => {
+      window.location = $(this).attr('href');
+    }, 50);
+  });
+  
+  // Add viewport meta tag for proper scaling
+  if (!$('meta[name="viewport"]').length) {
+    $('head').append('<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">');
+  }
+  
+  // Handle orientation change
+  window.addEventListener('orientationchange', function() {
+    // Give the browser a moment to adjust before redrawing the table
+    setTimeout(function() {
+      table.columns.adjust().draw();
+    }, 300);
+  });
+});</script>
+</body>
+</html>

@@ -40,14 +40,12 @@ def crear_grafico(df_v, v, modo_log=False):
     
     for z_min, z_max, label, color in niveles:
         fig.add_hrect(y0=z_min, y1=z_max, fillcolor=color, line_width=0, layer="below")
-        # SOLO agregar a la leyenda si hay datos en este rango
         hay_datos_en_rango = not df_v_30[(df_v_30['VRP_MW'] > z_min) & (df_v_30['VRP_MW'] <= z_max)].empty
         if hay_datos_en_rango:
             fig.add_trace(go.Scatter(x=[None], y=[None], mode='markers', name=label, 
                                      marker=dict(size=8, symbol='square', color=color.replace('0.15', '0.7').replace('0.12', '0.7')),
                                      showlegend=True))
 
-    # Sensores con datos
     for sensor, grupo in df_v_30.groupby('Sensor'):
         fig.add_trace(go.Scatter(x=grupo['Fecha_Chile'], y=grupo['VRP_MW'], mode='markers', name=sensor,
             marker=dict(symbol=MAPA_SIMBOLOS.get(sensor, "circle"), color=COLORES_SENSORES.get(sensor, "#C0C0C0"), size=9, line=dict(width=1, color='white')),
@@ -70,11 +68,13 @@ def crear_grafico(df_v, v, modo_log=False):
     else:
         fig.update_yaxes(range=[0, max(1.1, v_max * 1.3)], fixedrange=True, gridcolor='rgba(255,255,255,0.05)', tickfont=dict(size=9))
     
-    fig.add_annotation(xref="paper", yref="paper", x=0.02, y=1.05, text="<b>MW</b>", showarrow=False, 
+    # POSICIÓN CORREGIDA: x negativo pequeño y anclaje a la derecha para que no se mueva con el zoom
+    fig.add_annotation(xref="paper", yref="paper", x=-0.01, y=1.05, text="<b>MW</b>", showarrow=False, 
                        font=dict(size=10, color="rgba(255,255,255,0.8)"), xanchor="right", yanchor="middle")
     
     fig.update_layout(
-        template="plotly_dark", height=300, margin=dict(l=35, r=5, t=15, b=35),
+        template="plotly_dark", height=300, 
+        margin=dict(l=40, r=5, t=15, b=35), # l=40 asegura espacio suficiente para el MW a la izquierda
         paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
         showlegend=True,
         legend=dict(orientation="h", yanchor="bottom", y=1.03, xanchor="center", x=0.5, font=dict(size=9), entrywidth=0.2, entrywidthmode="fraction"),

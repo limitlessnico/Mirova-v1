@@ -15,7 +15,6 @@ MAPA_SIMBOLOS = {"MODIS": "triangle-up", "VIIRS375": "square", "VIIRS750": "circ
 COLORES_SENSORES = {"MODIS": "#FFA500", "VIIRS375": "#FF4500", "VIIRS750": "#FF0000", "VIIRS": "#C0C0C0"}
 MESES_ES = {1: "Ene", 2: "Feb", 3: "Mar", 4: "Abr", 5: "May", 6: "Jun", 7: "Jul", 8: "Ago", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dic"}
 
-# Definimos las bandas en Watts
 MIROVA_BANDS_W = [
     (0, 1e6, "Muy Bajo", "rgba(85, 85, 85, 0.2)"),
     (1e6, 1e7, "Bajo", "rgba(119, 119, 0, 0.15)"),
@@ -39,11 +38,9 @@ def crear_grafico(df_v, v, modo_log=False):
     fig = go.Figure()
     v_max_mw = df_v_30['VRP_MW'].max()
 
-    # --- LÓGICA DE TRANSFORMACIÓN ---
     def transform(val_mw):
         if modo_log:
             watts = val_mw * 1e6
-            # Evitamos log de 0
             return np.log10(max(watts, 10000)) 
         return val_mw
 
@@ -52,47 +49,48 @@ def crear_grafico(df_v, v, modo_log=False):
         y0_p = np.log10(max(y0_w, 1)) if modo_log else y0_w/1e6
         y1_p = np.log10(y1_w) if modo_log else y1_w/1e6
         fig.add_hrect(y0=y0_p, y1=y1_p, fillcolor=color, line_width=0, layer="below")
-        
         if (v_max_mw * 1e6 >= y0_w):
             fig.add_trace(go.Scatter(x=[None], y=[None], mode='markers', name=label, 
                 marker=dict(size=8, symbol='square', color=color.replace('0.2', '0.8').replace('0.15', '0.8')), showlegend=True))
 
-    # Dibujar Puntos
     for sensor, grupo in df_v_30.groupby('Sensor'):
         y_vals = [transform(v) for v in grupo['VRP_MW']]
         fig.add_trace(go.Scatter(x=grupo['Fecha_Chile'], y=y_vals, mode='markers', name=sensor,
             marker=dict(symbol=MAPA_SIMBOLOS.get(sensor, "circle"), color=COLORES_SENSORES.get(sensor, "#C0C0C0"), size=9, line=dict(width=1, color='white')),
-            customdata=grupo['VRP_MW'], # Guardamos MW crudos para el hover
+            customdata=grupo['VRP_MW'],
             hovertemplate="<b>%{customdata:.2f} MW</b><br>%{x|%d %b, %H:%M}<extra></extra>"))
 
-    # Anotación Máximo
-    max_idx = df_v_30['VRP_MW'].idxmax()
-    row_max = df_v_30.loc[max_idx]
-    fig.add_annotation(x=row_max['Fecha_Chile'], y=transform(row_max['VRP_MW']),
-        text=f"MÁX: {row_max['VRP_MW']:.2f} MW", showarrow=True, arrowhead=2,
-        bgcolor="rgba(0,0,0,0.8)", font=dict(color="white", size=9), ay=-40, ax=0)
+    if not df_v_30.empty:
+        max_idx = df_v_30['VRP_MW'].idxmax()
+        row_max = df_v_30.loc[max_idx]
+        fig.add_annotation(x=row_max['Fecha_Chile'], y=transform(row_max['VRP_MW']),
+            text=f"MÁX: {row_max['VRP_MW']:.2f} MW", showarrow=True, arrowhead=2,
+            bgcolor="rgba(0,0,0,0.8)", font=dict(color="white", size=9), ay=-40, ax=0)
 
-    # Eje X
+    # Eje X - Ajustado para ganar espacio lateral
     fig.update_xaxes(type="date", range=[hace_30_dias, ahora], dtick=5*24*60*60*1000, 
                      tickformat="%d %b", gridcolor='rgba(255,255,255,0.12)', tickfont=dict(size=9))
 
-    # Eje Y (Configuración "Radical": Siempre Linear para Plotly)
+    # Eje Y - Bloqueo de Autorange para Expansión
     if modo_log:
-        # Mostramos de 10^4 a 10^9 Watts
-        fig.update_yaxes(range=[4.7, 9], tickvals=[5, 6, 7, 8], 
-                         ticktext=["10⁵", "10⁶", "10⁷", "10⁸"], 
-                         gridcolor='rgba(255,255,255,0.05)', tickfont=dict(size=9))
+        fig.update_yaxes(type="linear", range=[4.7, 9], 
+                         tickvals=[5, 6, 7, 8], ticktext=["10⁵", "10⁶", "10⁷", "10⁸"], 
+                         gridcolor='rgba(255,255,255,0.05)', tickfont=dict(size=9),
+                         autorange=False, fixedrange=True) # <--- CLAVE: Bloqueo total
     else:
-        fig.update_yaxes(range=[0, max(1.1, v_max_mw * 1.5)], 
-                         gridcolor='rgba(255,255,255,0.05)', tickfont=dict(size=9))
+        fig.update_yaxes(type="linear", range=[0, max(1.1, v_max_mw * 1.5)], 
+                         gridcolor='rgba(255,255,255,0.05)', tickfont=dict(size=9),
+                         autorange=False, fixedrange=True)
 
-    # Unidad (Watt / MW)
     fig.add_annotation(xref="paper", yref="paper", x=-0.01, y=1.12, text=f"<b>{unidad}</b>", 
                        showarrow=False, font=dict(size=10, color="white"), xanchor="right")
 
-    fig.update_layout(template="plotly_dark", height=300, margin=dict(l=40, r=5, t=35, b=40),
+    # MÁRGENES MÍNIMOS: l=35 r=2 para usar todo el ancho de la tarjeta
+    fig.update_layout(template="plotly_dark", height=300, 
+                      margin=dict(l=35, r=2, t=35, b=40),
                       paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', showlegend=True,
-                      legend=dict(orientation="h", yanchor="bottom", y=1.03, xanchor="center", x=0.5, font=dict(size=9)))
+                      legend=dict(orientation="h", yanchor="bottom", y=1.03, xanchor="center", x=0.5, font=dict(size=9)),
+                      uirevision='constant') # <--- CLAVE 2: Persistencia de estado
     return fig
 
 def procesar():

@@ -28,18 +28,22 @@ def crear_grafico(df_v, v, modo_log=False):
     if df_v_30.empty:
         return None
 
+    # MULTIPLICADOR PARA LOG (MW -> Watt)
+    mult = 1000000 if modo_log else 1
+    unidad = "Watt" if modo_log else "MW"
+
     fig = go.Figure()
     ticks_x = [hace_30_dias + timedelta(days=x) for x in range(0, 31, 7)]
     labels_x = [f"{d.day} {MESES_ES[d.month]}" for d in ticks_x]
     v_max = df_v_30['VRP_MW'].max()
 
-    # Niveles MIROVA
+    # Niveles MIROVA (Convertidos si es Log)
     niveles = [(0, 1, "Muy Bajo", "rgba(100,100,100,0.15)"), 
                (1, 10, "Bajo", "rgba(150,150,0,0.12)"), 
                (10, 100, "Moderado", "rgba(255,165,0,0.12)")]
     
     for z_min, z_max, label, color in niveles:
-        fig.add_hrect(y0=z_min, y1=z_max, fillcolor=color, line_width=0, layer="below")
+        fig.add_hrect(y0=z_min * mult, y1=z_max * mult, fillcolor=color, line_width=0, layer="below")
         hay_datos_en_rango = not df_v_30[(df_v_30['VRP_MW'] > z_min) & (df_v_30['VRP_MW'] <= z_max)].empty
         if hay_datos_en_rango:
             fig.add_trace(go.Scatter(x=[None], y=[None], mode='markers', name=label, 
@@ -47,46 +51,44 @@ def crear_grafico(df_v, v, modo_log=False):
                                      showlegend=True))
 
     for sensor, grupo in df_v_30.groupby('Sensor'):
-        fig.add_trace(go.Scatter(x=grupo['Fecha_Chile'], y=grupo['VRP_MW'], mode='markers', name=sensor,
+        fig.add_trace(go.Scatter(x=grupo['Fecha_Chile'], y=grupo['VRP_MW'] * mult, mode='markers', name=sensor,
             marker=dict(symbol=MAPA_SIMBOLOS.get(sensor, "circle"), color=COLORES_SENSORES.get(sensor, "#C0C0C0"), size=9, line=dict(width=1, color='white')),
             customdata=grupo['Distancia_km'] if 'Distancia_km' in grupo.columns else [0]*len(grupo),
             hoverlabel=dict(bgcolor="rgba(20, 24, 33, 0.95)", font=dict(color="white", size=11), bordercolor="#58a6ff"),
-            hovertemplate="<b>%{y:.2f} MW</b><br>%{x|%d %b, %H:%M} | dist: %{customdata}km<extra></extra>",
+            hovertemplate=f"<b>%{{y:.2e}} {unidad}</b><br>%{{x|%d %b, %H:%M}} | dist: %{{customdata}}km<extra></extra>",
             showlegend=True))
 
-    # ANOTACIÓN MÁXIMO (Mejorada para Log y Lineal)
+    # ANOTACIÓN MÁXIMO CON PUNTERO RÍGIDO
     if not df_v_30.empty:
         max_r = df_v_30.loc[df_v_30['VRP_MW'].idxmax()]
-        fig.add_annotation(x=max_r['Fecha_Chile'], y=max_r['VRP_MW'], text=f"MÁX: {max_r['VRP_MW']:.2f}",
-                           showarrow=True, arrowhead=1, bgcolor="rgba(255,255,255,0.9)", 
-                           font=dict(color="black", size=9), ay=-30, ax=0)
+        val_display = max_r['VRP_MW'] * mult
+        fig.add_annotation(
+            x=max_r['Fecha_Chile'], y=val_display,
+            text=f"MÁX: {max_r['VRP_MW']:.2f} MW" if modo_log else f"MÁX: {max_r['VRP_MW']:.2f}",
+            showarrow=True, arrowhead=2, arrowsize=1, arrowwidth=1.5,
+            arrowcolor="white", bgcolor="rgba(0,0,0,0.8)", bordercolor="#58a6ff",
+            font=dict(color="white", size=9),
+            ay=-40, ax=0 # Flecha vertical rígida hacia abajo
+        )
 
     fig.update_xaxes(type="date", range=[hace_30_dias, ahora], tickvals=ticks_x, ticktext=labels_x, 
                      showgrid=True, gridcolor='rgba(255,255,255,0.08)', minor=dict(dtick=86400000.0, showgrid=True, gridcolor='rgba(255,255,255,0.03)'), 
                      tickangle=-45, fixedrange=True, tickfont=dict(size=9))
     
     if modo_log:
-        # Estilo MIROVA: Potencias de 10
-        y_min_log = 0.05
-        y_max_log = max(100, v_max * 5)
-        fig.update_yaxes(type="log", 
-                         range=[np.log10(y_min_log), np.log10(y_max_log)], 
-                         fixedrange=True, gridcolor='rgba(255,255,255,0.05)', 
-                         tickfont=dict(size=9),
-                         dtick=1, # Un tick principal por cada potencia de 10
-                         exponentformat="power", # Muestra 10^1, 10^2...
-                         showexponent="all")
+        y_min_log = 0.05 * mult
+        y_max_log = max(100 * mult, v_max * mult * 10)
+        fig.update_yaxes(type="log", range=[np.log10(y_min_log), np.log10(y_max_log)], 
+                         fixedrange=True, gridcolor='rgba(255,255,255,0.05)', tickfont=dict(size=9),
+                         dtick=1, exponentformat="power")
     else:
-        fig.update_yaxes(range=[0, max(1.1, v_max * 1.5)], 
-                         fixedrange=True, gridcolor='rgba(255,255,255,0.05)', 
-                         tickfont=dict(size=9))
+        fig.update_yaxes(range=[0, max(1.1, v_max * 1.5)], fixedrange=True, gridcolor='rgba(255,255,255,0.05)', tickfont=dict(size=9))
     
-    # MW Alineado perfectamente
-    fig.add_annotation(xref="paper", yref="paper", x=-0.01, y=1.05, text="<b>MW</b>", showarrow=False, 
+    fig.add_annotation(xref="paper", yref="paper", x=-0.01, y=1.05, text=f"<b>{unidad}</b>", showarrow=False, 
                        font=dict(size=10, color="rgba(255,255,255,0.8)"), xanchor="right", yanchor="middle")
     
     fig.update_layout(
-        template="plotly_dark", height=300, margin=dict(l=45, r=5, t=15, b=35),
+        template="plotly_dark", height=300, margin=dict(l=55, r=5, t=15, b=35),
         paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
         showlegend=True,
         legend=dict(orientation="h", yanchor="bottom", y=1.03, xanchor="center", x=0.5, font=dict(size=9), entrywidth=0.2, entrywidthmode="fraction"),

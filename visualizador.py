@@ -53,15 +53,15 @@ def crear_grafico(df_v, v, modo_log=False):
         fig.add_trace(go.Scatter(x=grupo['Fecha_Chile'], y=grupo['VRP_MW'] * mult, mode='markers', name=sensor,
             marker=dict(symbol=MAPA_SIMBOLOS.get(sensor, "circle"), color=COLORES_SENSORES.get(sensor, "#C0C0C0"), size=9, line=dict(width=1, color='white')),
             customdata=grupo['VRP_MW'],
-            hoverlabel=dict(bgcolor="rgba(20, 24, 33, 0.95)", font=dict(color="white", size=11)),
+            hoverlabel=dict(bgcolor="rgba(20, 24, 33, 0.95)", font=dict(color="white", size=11), bordercolor="#58a6ff"),
             hovertemplate="<b>%{customdata:.2f} MW</b><br>%{x|%d %b, %H:%M}<extra></extra>",
             showlegend=True))
 
-    # Anotación Máximo con Y posicionado según el modo
+    # Etiqueta MÁX - Fijada para no desaparecer en LOG
     if not df_v_30.empty:
         max_r = df_v_30.loc[df_v_30['VRP_MW'].idxmax()]
-        y_val_anno = max_r['VRP_MW'] * mult
-        fig.add_annotation(x=max_r['Fecha_Chile'], y=np.log10(y_val_anno) if modo_log else y_val_anno,
+        y_val_an = max_r['VRP_MW'] * mult
+        fig.add_annotation(x=max_r['Fecha_Chile'], y=np.log10(y_val_an) if modo_log else y_val_an,
             xref="x", yref="y", text=f"MÁX: {max_r['VRP_MW']:.2f} MW", showarrow=True,
             arrowhead=2, arrowsize=1, arrowwidth=1.5, arrowcolor="white",
             bgcolor="rgba(0,0,0,0.8)", bordercolor="#58a6ff", borderwidth=1,
@@ -74,14 +74,13 @@ def crear_grafico(df_v, v, modo_log=False):
                      minor=dict(dtick=86400000.0, showgrid=True, gridcolor='rgba(255,255,255,0.03)'),
                      tickangle=-45, fixedrange=True, tickfont=dict(size=9))
     
-    # Eje Y: Configuración de Layout Persistente para evitar reseteo en expansión
+    # Forzado de Escala Y en Layout
     if modo_log:
         y_min_v, y_max_v = 0.05 * 1e6, max(1e8, v_max_val * 10)
         fig.update_layout(yaxis=dict(
             type="log", range=[np.log10(y_min_v), np.log10(y_max_v)], 
             gridcolor='rgba(255,255,255,0.05)', tickfont=dict(size=9),
-            dtick=1, exponentformat="power", showexponent="all", fixedrange=True,
-            autorange=False # Impide que Plotly recalcule al expandir
+            dtick=1, exponentformat="power", showexponent="all", fixedrange=True, autorange=False
         ))
     else:
         fig.update_layout(yaxis=dict(
@@ -89,15 +88,15 @@ def crear_grafico(df_v, v, modo_log=False):
             gridcolor='rgba(255,255,255,0.05)', tickfont=dict(size=9), fixedrange=True
         ))
     
-    # Unidad Watt/MW (Posición superior externa despejada)
-    fig.add_annotation(xref="paper", yref="paper", x=-0.01, y=1.18, text=f"<b>{unidad}</b>", 
+    # Watt/MW arriba para aprovechar el ancho (y=1.16)
+    fig.add_annotation(xref="paper", yref="paper", x=-0.01, y=1.16, text=f"<b>{unidad}</b>", 
                        showarrow=False, font=dict(size=10, color="white"), xanchor="right")
     
     fig.update_layout(template="plotly_dark", height=300, 
-                      margin=dict(l=35, r=2, t=35, b=40), # l=35 aprovecha el lado izquierdo
+                      margin=dict(l=40, r=5, t=35, b=40), 
                       paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', showlegend=True,
                       legend=dict(orientation="h", yanchor="bottom", y=1.03, xanchor="center", x=0.5, font=dict(size=9)),
-                      uirevision='constant') # Mantiene el eje Y logarítmico al expandir
+                      uirevision='constant') # Esta instrucción bloquea el tipo de eje
     return fig
 
 def procesar():

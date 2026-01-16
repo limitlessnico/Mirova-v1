@@ -57,11 +57,11 @@ def crear_grafico(df_v, v, modo_log=False):
             hovertemplate=f"<b>%{{y:.2e}} {unidad}</b><br>%{{x|%d %b, %H:%M}}<extra></extra>",
             showlegend=True))
 
-    # Anotación Máximo - Forzada con yref="y"
+    # --- ANOTACIÓN MÁXIMO (RESTAURADA Y FIJA) ---
     if not df_v_30.empty:
         max_r = df_v_30.loc[df_v_30['VRP_MW'].idxmax()]
-        y_pos = max_r['VRP_MW'] * mult
-        fig.add_annotation(x=max_r['Fecha_Chile'], y=y_pos,
+        y_anno = max_r['VRP_MW'] * mult
+        fig.add_annotation(x=max_r['Fecha_Chile'], y=y_anno,
             xref="x", yref="y", text=f"MÁX: {max_r['VRP_MW']:.2f} MW", showarrow=True,
             arrowhead=2, arrowsize=1, arrowwidth=1.5, arrowcolor="white",
             bgcolor="rgba(0,0,0,0.8)", bordercolor="#58a6ff", borderwidth=1,
@@ -69,51 +69,35 @@ def crear_grafico(df_v, v, modo_log=False):
 
     # --- EJE X: Grilla cada 5 días ---
     fig.update_xaxes(
-        type="date", 
-        range=[hace_30_dias, ahora],
-        tickformat="%d %b",
-        dtick=5 * 24 * 60 * 60 * 1000, # 5 días en milisegundos
-        showgrid=True, 
-        gridcolor='rgba(255,255,255,0.12)', # Grilla principal más visible
-        minor=dict(dtick=86400000.0, showgrid=True, gridcolor='rgba(255,255,255,0.03)'), # Líneas diarias tenues
-        tickangle=-45, 
-        fixedrange=True, 
-        tickfont=dict(size=9)
+        type="date", range=[hace_30_dias, ahora],
+        dtick=5 * 24 * 60 * 60 * 1000, tickformat="%d %b",
+        showgrid=True, gridcolor='rgba(255,255,255,0.12)',
+        minor=dict(dtick=86400000.0, showgrid=True, gridcolor='rgba(255,255,255,0.03)'),
+        tickangle=-45, fixedrange=True, tickfont=dict(size=9)
     )
     
-    # --- EJE Y: Logaritmo Robusto ---
+    # --- EJE Y: Logaritmo Persistente ---
     if modo_log:
-        y_min_v = 0.05 * 1e6
-        y_max_v = max(1e8, v_max_val * 10)
+        y_min_v, y_max_v = 0.05 * 1e6, max(1e8, v_max_val * 10)
         fig.update_yaxes(
-            type="log", 
-            range=[np.log10(y_min_v), np.log10(y_max_v)], 
-            gridcolor='rgba(255,255,255,0.05)', 
-            tickfont=dict(size=9),
-            dtick=1, 
-            exponentformat="power", 
-            showexponent="all", 
-            fixedrange=True,
-            uirevision='constant' # Evita que se resetee la escala al interactuar/expandir
+            type="log", range=[np.log10(y_min_v), np.log10(y_max_v)], 
+            gridcolor='rgba(255,255,255,0.05)', tickfont=dict(size=9),
+            dtick=1, exponentformat="power", showexponent="all", fixedrange=True
         )
     else:
         fig.update_yaxes(
-            range=[0, max(1.1, v_max_val * 1.5)], 
-            gridcolor='rgba(255,255,255,0.05)', 
-            tickfont=dict(size=9), 
-            fixedrange=True
+            type="linear", range=[0, max(1.1, v_max_val * 1.5)], 
+            gridcolor='rgba(255,255,255,0.05)', tickfont=dict(size=9), fixedrange=True
         )
     
-    # Unidad Watt/MW
+    # --- UNIDAD (WATT/MW) ALINEADA AL EJE ---
     fig.add_annotation(xref="paper", yref="paper", x=-0.01, y=1.06, text=f"<b>{unidad}</b>", 
                        showarrow=False, font=dict(size=10, color="white"), xanchor="right")
     
     fig.update_layout(
-        template="plotly_dark", 
-        height=300, 
-        margin=dict(l=50, r=10, t=20, b=40), 
-        paper_bgcolor='rgba(0,0,0,0)', 
-        plot_bgcolor='rgba(0,0,0,0)', 
+        template="plotly_dark", height=300, 
+        margin=dict(l=60, r=10, t=20, b=40), # Margen l=60 para Watt y potencias de 10
+        paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
         showlegend=True,
         legend=dict(orientation="h", yanchor="bottom", y=1.03, xanchor="center", x=0.5, font=dict(size=9))
     )
@@ -125,9 +109,7 @@ def procesar():
     df = pd.read_csv(ARCHIVO_POSITIVOS) if os.path.exists(ARCHIVO_POSITIVOS) else pd.DataFrame()
     
     config_v = {
-        'displayModeBar': 'hover', 
-        'displaylogo': False,
-        'responsive': True,
+        'displayModeBar': 'hover', 'displaylogo': False,
         'modeBarButtonsToRemove': ['zoom2d', 'pan2d', 'select2d', 'lasso2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d'],
         'toImageButtonOptions': {'format': 'png', 'height': 500, 'width': 1400, 'scale': 2}
     }
@@ -139,10 +121,10 @@ def procesar():
             fig = crear_grafico(df_v, v, modo_log=es_log)
             path = os.path.join(carpeta, nombre_f)
             if fig is None:
-                # Restaurado el alto a 300px aquí también
                 with open(path, "w", encoding='utf-8') as f:
                     f.write("<body style='background:#0d1117; color:#8b949e; display:flex; align-items:center; justify-content:center; height:300px; font-family:sans-serif;'>SIN ANOMALÍA TÉRMICA</body>")
             else:
+                # LA CLAVE: Forzamos include_plotlyjs='cdn' para que las propiedades del eje viajen al HTML
                 fig.write_html(path, full_html=False, include_plotlyjs='cdn', config=config_v)
 
 if __name__ == "__main__":

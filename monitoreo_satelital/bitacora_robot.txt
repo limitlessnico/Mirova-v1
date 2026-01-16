@@ -2369,3 +2369,6 @@
 [2026-01-16 02:14:33] INICIO V109.1: SINCRONIZACIÓN TOTAL + DESCUBRIMIENTO
 [2026-01-16 02:14:35] Sincronizando archivos individuales por volcán...
 [2026-01-16 02:14:35] Proceso completado. Datos de descubrimiento preservados y CSVs individuales al día.
+[2026-01-16 02:21:44] INICIO V109.1: SINCRONIZACIÓN TOTAL + DESCUBRIMIENTO
+[2026-01-16 02:21:45] Sincronizando archivos individuales por volcán...
+[2026-01-16 02:21:45] Proceso completado. Datos de descubrimiento preservados y CSVs individuales al día.

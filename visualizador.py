@@ -33,6 +33,7 @@ def procesar():
             df_v_30 = df_v[df_v['Fecha_Chile'] >= hace_30_dias]
             v_max = df_v_30['VRP_MW'].max() if not df_v_30.empty else 0
 
+            # Niveles MIROVA
             niveles = [(0, 1, "Muy Bajo", "rgba(100,100,100,0.15)"), (1, 10, "Bajo", "rgba(150,150,0,0.12)"), (10, 100, "Moderado", "rgba(255,165,0,0.12)")]
             for z_min, z_max, label, color in niveles:
                 fig.add_hrect(y0=z_min, y1=z_max, fillcolor=color, line_width=0, layer="below")
@@ -62,8 +63,8 @@ def procesar():
         
         fig.update_yaxes(range=[0, max(1.1, v_max * 1.3)], fixedrange=True, gridcolor='rgba(255,255,255,0.05)', tickfont=dict(size=9))
         
-        # MW ALINEADO: x=0 en 'paper' lo pega al inicio de la cuadrícula
-        fig.add_annotation(xref="paper", yref="paper", x=0, y=1.05, text="<b>MW</b>", showarrow=False, 
+        # MW ALINEADO: x=0.02 con xanchor="right" lo pega milimétricamente al inicio de la cuadrícula
+        fig.add_annotation(xref="paper", yref="paper", x=0.02, y=1.05, text="<b>MW</b>", showarrow=False, 
                            font=dict(size=10, color="rgba(255,255,255,0.8)"), xanchor="right", yanchor="middle")
         
         fig.update_layout(

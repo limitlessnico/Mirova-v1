@@ -62,12 +62,13 @@ def procesar():
         
         fig.update_yaxes(range=[0, max(1.1, v_max * 1.3)], fixedrange=True, gridcolor='rgba(255,255,255,0.05)', tickfont=dict(size=9))
         
-        fig.add_annotation(xref="paper", yref="paper", x=0, y=1.05, text="<b>MW</b>", showarrow=False, 
+        # ALINEACIÓN SOLICITADA: x positivo pequeño y anclaje a la derecha
+        fig.add_annotation(xref="paper", yref="paper", x=0.02, y=1.05, text="<b>MW</b>", showarrow=False, 
                            font=dict(size=10, color="rgba(255,255,255,0.8)"), xanchor="right", yanchor="middle")
         
         fig.update_layout(
             template="plotly_dark", height=300, 
-            margin=dict(l=35, r=5, t=15, b=35),
+            margin=dict(l=30, r=5, t=15, b=35), # Reducido margen L a 30 para pegar números al borde
             paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
             legend=dict(orientation="h", yanchor="bottom", y=1.03, xanchor="center", x=0.5, font=dict(size=9), entrywidth=0.2, entrywidthmode="fraction"),
             hovermode="closest"

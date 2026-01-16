@@ -3226,3 +3226,6 @@
 [2026-01-16 15:22:33] INICIO SCRAPER: ESCANEO TOTAL DE TABLA (500+ REGISTROS)
 [2026-01-16 15:22:34] Páginas recibidas. Analizando 522 filas encontradas.
 [2026-01-16 15:22:34] Proceso completado. Escaneo profundo finalizado.
+[2026-01-16 15:24:35] INICIO SCRAPER: ESCANEO TOTAL DE TABLA (500+ REGISTROS)
+[2026-01-16 15:24:37] Páginas recibidas. Analizando 522 filas encontradas.
+[2026-01-16 15:24:37] Proceso completado. Escaneo profundo finalizado.

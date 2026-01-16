@@ -20,13 +20,11 @@ def crear_grafico(df_v, v, modo_log=False):
     ahora = datetime.now(tz_chile)
     hace_30_dias = (ahora - timedelta(days=30)).replace(hour=0, minute=0, second=0)
     
-    # Filtro crítico para el mensaje de "Sin Anomalía"
     df_v_30 = pd.DataFrame()
     if not df_v.empty:
         df_v['Fecha_Chile'] = pd.to_datetime(df_v['Fecha_Satelite_UTC']).dt.tz_localize('UTC').dt.tz_convert('America/Santiago')
         df_v_30 = df_v[df_v['Fecha_Chile'] >= hace_30_dias]
 
-    # SI NO HAY DATOS: Retornar None para disparar el mensaje de aviso
     if df_v_30.empty:
         return None
 
@@ -35,15 +33,21 @@ def crear_grafico(df_v, v, modo_log=False):
     labels_x = [f"{d.day} {MESES_ES[d.month]}" for d in ticks_x]
     v_max = df_v_30['VRP_MW'].max()
 
-    # Niveles MIROVA
-    niveles = [(0.1, 1, "Muy Bajo", "rgba(100,100,100,0.15)"), (1, 10, "Bajo", "rgba(150,150,0,0.12)"), (10, 100, "Moderado", "rgba(255,165,0,0.12)")]
+    # Niveles MIROVA: Lógica inteligente de aparición
+    niveles = [(0, 1, "Muy Bajo", "rgba(100,100,100,0.15)"), 
+               (1, 10, "Bajo", "rgba(150,150,0,0.12)"), 
+               (10, 100, "Moderado", "rgba(255,165,0,0.12)")]
+    
     for z_min, z_max, label, color in niveles:
         fig.add_hrect(y0=z_min, y1=z_max, fillcolor=color, line_width=0, layer="below")
-        # Forzamos la aparición en la leyenda aunque no haya datos en ese rango
-        fig.add_trace(go.Scatter(x=[None], y=[None], mode='markers', name=label, 
-                                 marker=dict(size=8, symbol='square', color=color.replace('0.15', '0.7').replace('0.12', '0.7')),
-                                 showlegend=True))
+        # SOLO agregar a la leyenda si hay datos en este rango
+        hay_datos_en_rango = not df_v_30[(df_v_30['VRP_MW'] > z_min) & (df_v_30['VRP_MW'] <= z_max)].empty
+        if hay_datos_en_rango:
+            fig.add_trace(go.Scatter(x=[None], y=[None], mode='markers', name=label, 
+                                     marker=dict(size=8, symbol='square', color=color.replace('0.15', '0.7').replace('0.12', '0.7')),
+                                     showlegend=True))
 
+    # Sensores con datos
     for sensor, grupo in df_v_30.groupby('Sensor'):
         fig.add_trace(go.Scatter(x=grupo['Fecha_Chile'], y=grupo['VRP_MW'], mode='markers', name=sensor,
             marker=dict(symbol=MAPA_SIMBOLOS.get(sensor, "circle"), color=COLORES_SENSORES.get(sensor, "#C0C0C0"), size=9, line=dict(width=1, color='white')),
@@ -72,7 +76,7 @@ def crear_grafico(df_v, v, modo_log=False):
     fig.update_layout(
         template="plotly_dark", height=300, margin=dict(l=35, r=5, t=15, b=35),
         paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-        showlegend=True, # FORZAR LEYENDA
+        showlegend=True,
         legend=dict(orientation="h", yanchor="bottom", y=1.03, xanchor="center", x=0.5, font=dict(size=9), entrywidth=0.2, entrywidthmode="fraction"),
         hovermode="closest"
     )
@@ -84,8 +88,7 @@ def procesar():
     df = pd.read_csv(ARCHIVO_POSITIVOS) if os.path.exists(ARCHIVO_POSITIVOS) else pd.DataFrame()
 
     config_visual = {
-        'displayModeBar': True,
-        'displaylogo': False,
+        'displayModeBar': True, 'displaylogo': False,
         'modeBarButtonsToRemove': ['select2d', 'lasso2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d'],
         'toImageButtonOptions': {'format': 'png', 'filename': 'monitor_vrp_export', 'height': 600, 'width': 1000, 'scale': 2}
     }
@@ -99,7 +102,6 @@ def procesar():
             ruta_final = os.path.join(carpeta, nombre_file)
             
             if fig is None:
-                # REINSTAURAR MENSAJE DE SIN ANOMALÍA
                 with open(ruta_final, "w", encoding='utf-8') as f:
                     f.write(f"<body style='background:#0d1117; display:flex; align-items:center; justify-content:center; height:300px; margin:0; overflow:hidden;'><div style='color:#8b949e; font-family:sans-serif; border: 1px dashed #30363d; padding: 20px; border-radius:8px; text-align:center;'>SIN ANOMALÍA TÉRMICA</div></body>")
             else:

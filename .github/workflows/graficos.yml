@@ -25,14 +25,18 @@ jobs:
         with:
           python-version: '3.9'
 
-      - name: Instalar librerías
-        run: pip install pandas plotly pytz
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
       - name: Preparar entorno
         run: |
-          # Creamos la carpeta por si no existe y la vaciamos para evitar basura de runs anteriores
+          # Creamos y limpiamos ambas carpetas de gráficos
           mkdir -p monitoreo_satelital/v_html/
+          mkdir -p monitoreo_satelital/v_html_log/
           rm -rf monitoreo_satelital/v_html/*
+          rm -rf monitoreo_satelital/v_html_log/*
 
       - name: Ejecutar el Visualizador
         run: python visualizador.py
@@ -42,12 +46,13 @@ jobs:
           git config --global user.name "VolcanoVisualizer"
           git config --global user.email "viz@volcano.com"
           
-          # Añadimos específicamente la carpeta de tarjetas y el estado
+          # Añadimos ambas carpetas y el estado
           git add monitoreo_satelital/v_html/*.html
+          git add monitoreo_satelital/v_html_log/*.html
           git add monitoreo_satelital/estado_sistema.json
           
           if ! git diff --quiet --staged; then
-            git commit -m "📊 Actualización: Tarjetas interactivas (Look Día 13)"
+            git commit -m "📊 Actualización: Escala Dual Lineal/Log"
             git pull origin main --rebase -X ours
             git push origin main
           else

@@ -49,18 +49,18 @@ def crear_grafico(df_v, v, modo_log=False):
                 marker=dict(size=8, symbol='square', color=color.replace('0.2', '0.8').replace('0.15', '0.8')), showlegend=True))
 
     for sensor, grupo in df_v_30.groupby('Sensor'):
+        # Siempre mostramos MW en el hover (customdata recibe el valor MW crudo)
         fig.add_trace(go.Scatter(x=grupo['Fecha_Chile'], y=grupo['VRP_MW'] * mult, mode='markers', name=sensor,
             marker=dict(symbol=MAPA_SIMBOLOS.get(sensor, "circle"), color=COLORES_SENSORES.get(sensor, "#C0C0C0"), size=9, line=dict(width=1, color='white')),
-            customdata=grupo['Distancia_km'],
+            customdata=grupo['VRP_MW'],
             hoverlabel=dict(bgcolor="rgba(20, 24, 33, 0.95)", font=dict(color="white", size=11)),
-            hovertemplate=f"<b>%{{y:.2e}} {unidad}</b><br>%{{x|%d %b, %H:%M}}<extra></extra>",
+            hovertemplate="<b>%{customdata:.2f} MW</b><br>%{x|%d %b, %H:%M}<extra></extra>",
             showlegend=True))
 
     if not df_v_30.empty:
         max_r = df_v_30.loc[df_v_30['VRP_MW'].idxmax()]
-        y_anno = max_r['VRP_MW'] * mult
-        # Importante: para log, y debe ser el valor real, no el log10, si yaxis_type es log
-        fig.add_annotation(x=max_r['Fecha_Chile'], y=y_anno,
+        # Corregido: La posición Y debe ser absoluta para que no vuele en expansión
+        fig.add_annotation(x=max_r['Fecha_Chile'], y=max_r['VRP_MW'] * mult,
             xref="x", yref="y", text=f"MÁX: {max_r['VRP_MW']:.2f} MW", showarrow=True,
             arrowhead=2, arrowsize=1, arrowwidth=1.5, arrowcolor="white",
             bgcolor="rgba(0,0,0,0.8)", bordercolor="#58a6ff", borderwidth=1,
@@ -72,8 +72,7 @@ def crear_grafico(df_v, v, modo_log=False):
                      minor=dict(dtick=86400000.0, showgrid=True, gridcolor='rgba(255,255,255,0.03)'),
                      tickangle=-45, fixedrange=True, tickfont=dict(size=9))
     
-    # Eje Y: Forzamos el tipo explícitamente en el layout
-    tipo_eje = "log" if modo_log else "linear"
+    # Eje Y: Configuración robusta para expansión
     if modo_log:
         y_min_v, y_max_v = 0.05 * 1e6, max(1e8, v_max_val * 10)
         fig.update_yaxes(type="log", range=[np.log10(y_min_v), np.log10(y_max_v)], 
@@ -83,14 +82,15 @@ def crear_grafico(df_v, v, modo_log=False):
         fig.update_yaxes(type="linear", range=[0, max(1.1, v_max_val * 1.5)], 
                          gridcolor='rgba(255,255,255,0.05)', tickfont=dict(size=9), fixedrange=True)
     
-    # Watt/MW más alto (y=1.12) para que libre el 10^8
+    # Unidad Watt/MW (Posición despejada y=1.12)
     fig.add_annotation(xref="paper", yref="paper", x=-0.01, y=1.12, text=f"<b>{unidad}</b>", 
                        showarrow=False, font=dict(size=10, color="white"), xanchor="right")
     
-    fig.update_layout(template="plotly_dark", height=300, margin=dict(l=65, r=10, t=35, b=40),
+    fig.update_layout(template="plotly_dark", height=300, 
+                      margin=dict(l=65, r=5, t=35, b=40), # r=5 para aprovechar el lado derecho
                       paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', showlegend=True,
                       legend=dict(orientation="h", yanchor="bottom", y=1.03, xanchor="center", x=0.5, font=dict(size=9)),
-                      uirevision=True) # Mantiene el estado del eje al redimensionar
+                      uirevision=True) # Clave para que la expansión mantenga el modo log
     return fig
 
 def procesar():
@@ -115,7 +115,7 @@ def procesar():
                 with open(path, "w", encoding='utf-8') as f:
                     f.write("<body style='background:#0d1117; color:#8b949e; display:flex; align-items:center; justify-content:center; height:300px; font-family:sans-serif;'>SIN ANOMALÍA TÉRMICA</body>")
             else:
-                # Escribimos el HTML. Plotly por defecto maneja bien el resize si 'responsive' es True.
+                # Generamos el HTML con el bundle completo para asegurar expansión estable
                 fig.write_html(path, full_html=False, include_plotlyjs='cdn', config=config_v)
 
 if __name__ == "__main__":

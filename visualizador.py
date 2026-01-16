@@ -15,7 +15,6 @@ MAPA_SIMBOLOS = {"MODIS": "triangle-up", "VIIRS375": "square", "VIIRS750": "circ
 COLORES_SENSORES = {"MODIS": "#FFA500", "VIIRS375": "#FF4500", "VIIRS750": "#FF0000", "VIIRS": "#C0C0C0"}
 MESES_ES = {1: "Ene", 2: "Feb", 3: "Mar", 4: "Abr", 5: "May", 6: "Jun", 7: "Jul", 8: "Ago", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dic"}
 
-# COLORES OFICIALES MIROVA
 MIROVA_BANDS = [
     (0, 1e6, "Muy Bajo", "rgba(85, 85, 85, 0.2)"),
     (1e6, 1e7, "Bajo", "rgba(119, 119, 0, 0.15)"),
@@ -39,7 +38,6 @@ def crear_grafico(df_v, v, modo_log=False):
     unidad = "Watt" if modo_log else "MW"
     fig = go.Figure()
 
-    # Trazar bandas de fondo
     v_max_val = df_v_30['VRP_MW'].max() * mult
     for y0, y1, label, color in MIROVA_BANDS:
         l_y0 = y0 if modo_log else y0/1e6
@@ -49,7 +47,6 @@ def crear_grafico(df_v, v, modo_log=False):
             fig.add_trace(go.Scatter(x=[None], y=[None], mode='markers', name=label, 
                 marker=dict(size=8, symbol='square', color=color.replace('0.2', '0.8').replace('0.15', '0.8')), showlegend=True))
 
-    # Trazar datos
     for sensor, grupo in df_v_30.groupby('Sensor'):
         fig.add_trace(go.Scatter(x=grupo['Fecha_Chile'], y=grupo['VRP_MW'] * mult, mode='markers', name=sensor,
             marker=dict(symbol=MAPA_SIMBOLOS.get(sensor, "circle"), color=COLORES_SENSORES.get(sensor, "#C0C0C0"), size=9, line=dict(width=1, color='white')),
@@ -58,16 +55,18 @@ def crear_grafico(df_v, v, modo_log=False):
             hovertemplate=f"<b>%{{y:.2e}} {unidad}</b><br>%{{x|%d %b, %H:%M}}<extra></extra>",
             showlegend=True))
 
-    # ANOTACIÓN MÁXIMO (Restaurada para Log)
+    # ANOTACIÓN MÁXIMO CORREGIDA PARA LOG
     if not df_v_30.empty:
         max_r = df_v_30.loc[df_v_30['VRP_MW'].idxmax()]
-        fig.add_annotation(x=max_r['Fecha_Chile'], y=max_r['VRP_MW'] * mult,
+        y_pos = max_r['VRP_MW'] * mult
+        # En escala logarítmica, el anclaje de la anotación funciona mejor con xref/yref específicos
+        fig.add_annotation(x=max_r['Fecha_Chile'], y=y_pos,
+            xref="x", yref="y",
             text=f"MÁX: {max_r['VRP_MW']:.2f} MW", showarrow=True,
             arrowhead=2, arrowsize=1, arrowwidth=1.5, arrowcolor="white",
             bgcolor="rgba(0,0,0,0.8)", bordercolor="#58a6ff", borderwidth=1,
             font=dict(color="white", size=9), ay=-40, ax=0)
 
-    # RESTAURACIÓN DE EJES (Grilla y Fechas)
     ticks_x = [hace_30_dias + timedelta(days=x) for x in range(0, 31, 7)]
     labels_x = [f"{d.day} {MESES_ES[d.month]}" for d in ticks_x]
 
@@ -86,11 +85,12 @@ def crear_grafico(df_v, v, modo_log=False):
         fig.update_yaxes(range=[0, max(1.1, v_max_val * 1.5)], 
                          gridcolor='rgba(255,255,255,0.05)', tickfont=dict(size=9), fixedrange=True)
     
-    # ETIQUETA Y ALINEADA (Evita sobreposición)
-    fig.add_annotation(xref="paper", yref="paper", x=-0.02, y=1.05, text=f"<b>{unidad}</b>", 
+    # POSICIÓN DE UNIDAD DESPLAZADA A LA IZQUIERDA
+    fig.add_annotation(xref="paper", yref="paper", x=-0.05, y=1.05, text=f"<b>{unidad}</b>", 
                        showarrow=False, font=dict(size=10, color="white"), xanchor="right")
     
-    fig.update_layout(template="plotly_dark", height=300, margin=dict(l=65, r=5, t=15, b=35),
+    fig.update_layout(template="plotly_dark", height=300, 
+                      margin=dict(l=75, r=5, t=15, b=35), # l=75 da espacio a Watt y 10^x
                       paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', showlegend=True,
                       legend=dict(orientation="h", yanchor="bottom", y=1.03, xanchor="center", x=0.5, font=dict(size=9)))
     return fig
@@ -100,7 +100,6 @@ def procesar():
     os.makedirs(CARPETA_LOG, exist_ok=True)
     df = pd.read_csv(ARCHIVO_POSITIVOS) if os.path.exists(ARCHIVO_POSITIVOS) else pd.DataFrame()
     
-    # SOLO CÁMARA AL PASAR EL MOUSE
     config_v = {
         'displayModeBar': 'hover', 
         'displaylogo': False,

@@ -1,9 +1,13 @@
 name: Generador de Graficos
 
 on:
-  workflow_run:
-    workflows: ["Monitor Volcanico VRP"]
-    types: [completed]
+  # Comentamos el disparador automático para pausar la generación
+  # workflow_run:
+  #   workflows: ["Monitor Volcanico VRP"]
+  #   types: [completed]
+  
+  # Mantenemos esto para poder ejecutarlo manualmente desde la pestaña Actions si es necesario
+  workflow_dispatch:
 
 concurrency:
   group: generador-graficos
@@ -11,7 +15,8 @@ concurrency:
 
 jobs:
   pintar_y_publicar:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    # Eliminamos o comentamos la condición del if para que el job sea procesable manualmente
+    # if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -52,9 +57,9 @@ jobs:
           git add monitoreo_satelital/estado_sistema.json
           
           if ! git diff --quiet --staged; then
-            git commit -m "📊 Actualización: Escala Dual Lineal/Log"
+            git commit -m "📊 Pausado: Generación manual de gráficos"
             git pull origin main --rebase -X ours
             git push origin main
           else
-            echo "Sin cambios en los gráficos."
+            echo "No hay cambios nuevos para subir."
           fi

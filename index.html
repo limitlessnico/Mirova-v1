@@ -26,7 +26,13 @@
 
         iframe { width: 100%; height: 310px; border: none; background: #0d1117; border-radius: 2px; overflow: hidden; display: block; margin-top: 2px; }
 
-        footer { background: #0d1117; padding: 10px; text-align: center; color: #8b949e; border-top: 1px solid #30363d; font-size: 0.7em; }
+        #modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 2000; justify-content: center; align-items: center; }
+        .modal-content { width: 98%; height: 95%; background: #161b22; border: 1px solid #58a6ff; border-radius: 4px; position: relative; }
+        .close-modal { position: absolute; top: -10px; right: -10px; background: #ff4500; color: white; border: none; border-radius: 50%; width: 25px; height: 25px; cursor: pointer; z-index: 2100; }
+        
+        /* FOOTER CON CRÉDITOS */
+        footer { background: #0d1117; padding: 15px; text-align: center; color: #8b949e; border-top: 1px solid #30363d; font-size: 0.75em; line-height: 1.5; }
+        footer b { color: #c9d1d9; }
     </style>
 </head>
 <body>
@@ -40,8 +46,20 @@
         <p>Análisis Térmico Satelital - MIROVA / OVDAS Chile</p>
     </header>
     <div class="grid" id="galeria"></div>
-    <div id="modal-overlay"><div class="modal-content"><button class="close-modal" onclick="closeModal()">X</button><iframe id="modal-iframe" src=""></iframe></div></div>
-    <footer><p>Datos: <b>MIROVA</b> (UNITO) | NASA | OVDAS Chile</p></footer>
+
+    <div id="modal-overlay">
+        <div class="modal-content">
+            <button class="close-modal" onclick="closeModal()">X</button>
+            <iframe id="modal-iframe" src=""></iframe>
+        </div>
+    </div>
+
+    <footer>
+        <p>Datos y Procesamiento: <b>SISTEMA MIROVA</b> (University of Turin, IT) | <b>NASA FIRMS</b> | <b>VIIRS/MODIS Sensors</b></p>
+        <p>Referencia Geográfica: <b>OVDAS - SERNAGEOMIN Chile</b></p>
+        <p>&copy; 2024 - Visualizador de Anomalías Térmicas VRP</p>
+    </footer>
+
     <script>
         const volcanes = [{n: "Isluga", r: "Tarapacá"}, {n: "Lascar", r: "Antofagasta"}, {n: "Lastarria", r: "Antofagasta"}, {n: "Peteroa", r: "Maule"}, {n: "Nevados de Chillan", r: "Ñuble"}, {n: "Copahue", r: "Biobío"}, {n: "Llaima", r: "Araucanía"}, {n: "Villarrica", r: "Araucanía"}, {n: "Puyehue-Cordon Caulle", r: "Los Ríos"}, {n: "Chaiten", r: "Los Lagos"}];
         let baseDatosCSV = "";

@@ -5,7 +5,7 @@ import os
 import pytz
 from datetime import datetime, timedelta
 
-# --- CONFIGURACIÓN ---
+# ... (Configuraciones iniciales iguales a las anteriores) ...
 ARCHIVO_POSITIVOS = "monitoreo_satelital/registro_vrp_positivos.csv"
 CARPETA_LINEAL = "monitoreo_satelital/v_html"
 CARPETA_LOG = "monitoreo_satelital/v_html_log"
@@ -40,63 +40,39 @@ def crear_grafico(df_v, v, modo_log=False):
 
     v_max_val = df_v_30['VRP_MW'].max() * mult
     
-    # Bandas y Simbología
+    # Bandas y Datos
     for y0, y1, label, color in MIROVA_BANDS:
         l_y0 = y0 if modo_log else y0/1e6
         l_y1 = y1 if modo_log else y1/1e6
         fig.add_hrect(y0=l_y0, y1=l_y1, fillcolor=color, line_width=0, layer="below")
-        if (v_max_val >= y0):
-            fig.add_trace(go.Scatter(x=[None], y=[None], mode='markers', name=label, 
-                marker=dict(size=8, symbol='square', color=color.replace('0.2', '0.8').replace('0.15', '0.8')), showlegend=True))
 
     for sensor, grupo in df_v_30.groupby('Sensor'):
         fig.add_trace(go.Scatter(x=grupo['Fecha_Chile'], y=grupo['VRP_MW'] * mult, mode='markers', name=sensor,
             marker=dict(symbol=MAPA_SIMBOLOS.get(sensor, "circle"), color=COLORES_SENSORES.get(sensor, "#C0C0C0"), size=9, line=dict(width=1, color='white')),
             customdata=grupo['VRP_MW'],
-            hoverlabel=dict(bgcolor="rgba(20, 24, 33, 0.95)", font=dict(color="white", size=11), bordercolor="#58a6ff"),
-            hovertemplate="<b>%{customdata:.2f} MW</b><br>%{x|%d %b, %H:%M}<extra></extra>",
-            showlegend=True))
+            hovertemplate="<b>%{customdata:.2f} MW</b><br>%{x|%d %b, %H:%M}<extra></extra>"))
 
-    # Etiqueta MÁX - Fijada para no desaparecer en LOG
+    # Anotación Máximo
     if not df_v_30.empty:
         max_r = df_v_30.loc[df_v_30['VRP_MW'].idxmax()]
         y_val_an = max_r['VRP_MW'] * mult
         fig.add_annotation(x=max_r['Fecha_Chile'], y=np.log10(y_val_an) if modo_log else y_val_an,
             xref="x", yref="y", text=f"MÁX: {max_r['VRP_MW']:.2f} MW", showarrow=True,
-            arrowhead=2, arrowsize=1, arrowwidth=1.5, arrowcolor="white",
-            bgcolor="rgba(0,0,0,0.8)", bordercolor="#58a6ff", borderwidth=1,
-            font=dict(color="white", size=9), ay=-40, ax=0)
+            arrowhead=2, bgcolor="rgba(0,0,0,0.8)", font=dict(color="white", size=9), ay=-40, ax=0)
 
-    # Eje X con grilla cada 5 días
-    fig.update_xaxes(type="date", range=[hace_30_dias, ahora],
-                     dtick=5 * 24 * 60 * 60 * 1000, tickformat="%d %b",
-                     showgrid=True, gridcolor='rgba(255,255,255,0.12)',
-                     minor=dict(dtick=86400000.0, showgrid=True, gridcolor='rgba(255,255,255,0.03)'),
-                     tickangle=-45, fixedrange=True, tickfont=dict(size=9))
+    # Configuración de Ejes
+    fig.update_xaxes(type="date", range=[hace_30_dias, ahora], dtick=5 * 24 * 60 * 60 * 1000, tickformat="%d %b")
     
-    # Forzado de Escala Y en Layout
     if modo_log:
         y_min_v, y_max_v = 0.05 * 1e6, max(1e8, v_max_val * 10)
-        fig.update_layout(yaxis=dict(
-            type="log", range=[np.log10(y_min_v), np.log10(y_max_v)], 
-            gridcolor='rgba(255,255,255,0.05)', tickfont=dict(size=9),
-            dtick=1, exponentformat="power", showexponent="all", fixedrange=True, autorange=False
-        ))
+        fig.update_layout(yaxis=dict(type="log", range=[np.log10(y_min_v), np.log10(y_max_v)], dtick=1, exponentformat="power"))
     else:
-        fig.update_layout(yaxis=dict(
-            type="linear", range=[0, max(1.1, v_max_val * 1.5)], 
-            gridcolor='rgba(255,255,255,0.05)', tickfont=dict(size=9), fixedrange=True
-        ))
+        fig.update_layout(yaxis=dict(type="linear", range=[0, max(1.1, v_max_val * 1.5)]))
     
-    # Watt/MW arriba para aprovechar el ancho (y=1.16)
-    fig.add_annotation(xref="paper", yref="paper", x=-0.01, y=1.16, text=f"<b>{unidad}</b>", 
-                       showarrow=False, font=dict(size=10, color="white"), xanchor="right")
+    # Unidad Watt/MW
+    fig.add_annotation(xref="paper", yref="paper", x=-0.01, y=1.16, text=f"<b>{unidad}</b>", showarrow=False, xanchor="right")
     
-    fig.update_layout(template="plotly_dark", height=300, 
-                      margin=dict(l=40, r=5, t=35, b=40), 
-                      paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', showlegend=True,
-                      legend=dict(orientation="h", yanchor="bottom", y=1.03, xanchor="center", x=0.5, font=dict(size=9)),
-                      uirevision='constant') # Esta instrucción bloquea el tipo de eje
+    fig.update_layout(template="plotly_dark", height=300, margin=dict(l=40, r=5, t=35, b=40), uirevision='constant')
     return fig
 
 def procesar():
@@ -104,24 +80,35 @@ def procesar():
     os.makedirs(CARPETA_LOG, exist_ok=True)
     df = pd.read_csv(ARCHIVO_POSITIVOS) if os.path.exists(ARCHIVO_POSITIVOS) else pd.DataFrame()
     
-    config_v = {
-        'displayModeBar': 'hover', 'displaylogo': False,
-        'responsive': True,
-        'modeBarButtonsToRemove': ['zoom2d', 'pan2d', 'select2d', 'lasso2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d'],
-        'toImageButtonOptions': {'format': 'png', 'height': 500, 'width': 1400, 'scale': 2}
-    }
-
     for v in VOLCANES:
         df_v = df[df['Volcan'] == v].copy()
         nombre_f = f"{v.replace(' ', '_')}.html"
         for carpeta, es_log in [(CARPETA_LINEAL, False), (CARPETA_LOG, True)]:
             fig = crear_grafico(df_v, v, modo_log=es_log)
             path = os.path.join(carpeta, nombre_f)
-            if fig is None:
+            if fig:
+                # CREAMOS EL HTML CON UN SCRIPT DE REPARACIÓN DE RESIZE
+                html_str = fig.to_html(full_html=False, include_plotlyjs='cdn', config={'responsive': True})
+                
+                if es_log:
+                    # Inyectamos un script que monitorea el cambio de tamaño y fuerza el logaritmo
+                    reparador_js = """
+                    <script>
+                    var graphDiv = document.getElementsByClassName('plotly-graph-div')[0];
+                    graphDiv.on('plotly_relayout', function(){
+                        if(graphDiv.layout.yaxis.type !== 'log'){
+                            Plotly.relayout(graphDiv, {'yaxis.type': 'log'});
+                        }
+                    });
+                    window.onresize = function() {
+                        Plotly.Plots.resize(graphDiv);
+                    };
+                    </script>
+                    """
+                    html_str += reparador_js
+                
                 with open(path, "w", encoding='utf-8') as f:
-                    f.write("<body style='background:#0d1117; color:#8b949e; display:flex; align-items:center; justify-content:center; height:300px; font-family:sans-serif;'>SIN ANOMALÍA TÉRMICA</body>")
-            else:
-                fig.write_html(path, full_html=False, include_plotlyjs='cdn', config=config_v)
+                    f.write(html_str)
 
 if __name__ == "__main__":
     procesar()

@@ -40,7 +40,7 @@ def crear_grafico(df_v, v, modo_log=False):
 
     v_max_val = df_v_30['VRP_MW'].max() * mult
     
-    # Bandas y Simbología
+    # Bandas de fondo
     for y0, y1, label, color in MIROVA_BANDS:
         l_y0 = y0 if modo_log else y0/1e6
         l_y1 = y1 if modo_log else y1/1e6
@@ -49,6 +49,7 @@ def crear_grafico(df_v, v, modo_log=False):
             fig.add_trace(go.Scatter(x=[None], y=[None], mode='markers', name=label, 
                 marker=dict(size=8, symbol='square', color=color.replace('0.2', '0.8').replace('0.15', '0.8')), showlegend=True))
 
+    # Datos
     for sensor, grupo in df_v_30.groupby('Sensor'):
         fig.add_trace(go.Scatter(x=grupo['Fecha_Chile'], y=grupo['VRP_MW'] * mult, mode='markers', name=sensor,
             marker=dict(symbol=MAPA_SIMBOLOS.get(sensor, "circle"), color=COLORES_SENSORES.get(sensor, "#C0C0C0"), size=9, line=dict(width=1, color='white')),
@@ -57,50 +58,44 @@ def crear_grafico(df_v, v, modo_log=False):
             hovertemplate=f"<b>%{{y:.2e}} {unidad}</b><br>%{{x|%d %b, %H:%M}}<extra></extra>",
             showlegend=True))
 
-    # --- ANOTACIÓN MÁXIMO (RESTAURADA Y FIJA) ---
+    # --- ANOTACIÓN MÁXIMO (Forzada para aparecer en ambos modos) ---
     if not df_v_30.empty:
         max_r = df_v_30.loc[df_v_30['VRP_MW'].idxmax()]
-        y_anno = max_r['VRP_MW'] * mult
-        fig.add_annotation(x=max_r['Fecha_Chile'], y=y_anno,
+        y_val = max_r['VRP_MW'] * mult
+        fig.add_annotation(x=max_r['Fecha_Chile'], y=np.log10(y_val) if modo_log else y_val,
             xref="x", yref="y", text=f"MÁX: {max_r['VRP_MW']:.2f} MW", showarrow=True,
             arrowhead=2, arrowsize=1, arrowwidth=1.5, arrowcolor="white",
             bgcolor="rgba(0,0,0,0.8)", bordercolor="#58a6ff", borderwidth=1,
             font=dict(color="white", size=9), ay=-40, ax=0)
 
-    # --- EJE X: Grilla cada 5 días ---
-    fig.update_xaxes(
-        type="date", range=[hace_30_dias, ahora],
-        dtick=5 * 24 * 60 * 60 * 1000, tickformat="%d %b",
-        showgrid=True, gridcolor='rgba(255,255,255,0.12)',
-        minor=dict(dtick=86400000.0, showgrid=True, gridcolor='rgba(255,255,255,0.03)'),
-        tickangle=-45, fixedrange=True, tickfont=dict(size=9)
-    )
+    # Eje X
+    fig.update_xaxes(type="date", range=[hace_30_dias, ahora],
+                     dtick=5 * 24 * 60 * 60 * 1000, tickformat="%d %b",
+                     showgrid=True, gridcolor='rgba(255,255,255,0.12)',
+                     minor=dict(dtick=86400000.0, showgrid=True, gridcolor='rgba(255,255,255,0.03)'),
+                     tickangle=-45, fixedrange=True, tickfont=dict(size=9))
     
-    # --- EJE Y: Logaritmo Persistente ---
+    # --- CONFIGURACIÓN DE EJES EN LAYOUT (Para expansión persistente) ---
     if modo_log:
         y_min_v, y_max_v = 0.05 * 1e6, max(1e8, v_max_val * 10)
-        fig.update_yaxes(
-            type="log", range=[np.log10(y_min_v), np.log10(y_max_v)], 
+        fig.update_layout(yaxis=dict(
+            type="log", range=[np.log10(y_min_v), np.log10(y_max_v)],
             gridcolor='rgba(255,255,255,0.05)', tickfont=dict(size=9),
             dtick=1, exponentformat="power", showexponent="all", fixedrange=True
-        )
+        ))
     else:
-        fig.update_yaxes(
-            type="linear", range=[0, max(1.1, v_max_val * 1.5)], 
+        fig.update_layout(yaxis=dict(
+            type="linear", range=[0, max(1.1, v_max_val * 1.5)],
             gridcolor='rgba(255,255,255,0.05)', tickfont=dict(size=9), fixedrange=True
-        )
+        ))
     
-    # --- UNIDAD (WATT/MW) ALINEADA AL EJE ---
-    fig.add_annotation(xref="paper", yref="paper", x=-0.01, y=1.06, text=f"<b>{unidad}</b>", 
+    # --- UNIDAD (Subida a y=1.08 para no chocar con 10^8) ---
+    fig.add_annotation(xref="paper", yref="paper", x=-0.01, y=1.08, text=f"<b>{unidad}</b>", 
                        showarrow=False, font=dict(size=10, color="white"), xanchor="right")
     
-    fig.update_layout(
-        template="plotly_dark", height=300, 
-        margin=dict(l=60, r=10, t=20, b=40), # Margen l=60 para Watt y potencias de 10
-        paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
-        showlegend=True,
-        legend=dict(orientation="h", yanchor="bottom", y=1.03, xanchor="center", x=0.5, font=dict(size=9))
-    )
+    fig.update_layout(template="plotly_dark", height=300, margin=dict(l=65, r=10, t=25, b=40),
+                      paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', showlegend=True,
+                      legend=dict(orientation="h", yanchor="bottom", y=1.03, xanchor="center", x=0.5, font=dict(size=9)))
     return fig
 
 def procesar():
@@ -124,7 +119,7 @@ def procesar():
                 with open(path, "w", encoding='utf-8') as f:
                     f.write("<body style='background:#0d1117; color:#8b949e; display:flex; align-items:center; justify-content:center; height:300px; font-family:sans-serif;'>SIN ANOMALÍA TÉRMICA</body>")
             else:
-                # LA CLAVE: Forzamos include_plotlyjs='cdn' para que las propiedades del eje viajen al HTML
+                # El parámetro include_plotlyjs='cdn' es crítico aquí
                 fig.write_html(path, full_html=False, include_plotlyjs='cdn', config=config_v)
 
 if __name__ == "__main__":

@@ -8,7 +8,9 @@
         body { background-color: #0b0e14; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; margin: 0; overflow-x: hidden; }
         #audit-bar { background: #161b22; padding: 6px 15px; border-bottom: 1px solid #30363d; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; font-size: 0.8em; }
         .status-badge { padding: 3px 10px; border-radius: 15px; font-weight: bold; border: 1px solid #30363d; background: #0d1117; }
-        .btn-ui { background: #30363d; color: white; border: 1px solid #444; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.8em; }
+        .btn-ui { background: #30363d; color: white; border: 1px solid #444; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.8em; margin-left: 5px; }
+        .btn-ui:hover { background: #444c56; }
+        .btn-active { background: #238636 !important; border-color: #2ea043; }
 
         header { text-align: center; padding: 10px; background: #0d1117; border-bottom: 1px solid #30363d; }
         header h1 { margin: 0; color: #58a6ff; font-size: 1.5em; }
@@ -16,11 +18,9 @@
         
         .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 5px; padding: 5px; max-width: 99.5%; margin: 0 auto; }
         .card { background-color: #161b22; border: 1px solid #21262d; border-radius: 4px; padding: 0px; position: relative; }
-        
         .card-header-box { text-align: center; padding: 8px 0 4px 0; }
         .card h2 { margin: 0; font-size: 1.1em; color: #58a6ff; display: inline-block; }
         .region-tag { font-size: 0.75em; color: #8b949e; margin-left: 6px; font-style: italic; }
-        
         .card-controls { position: absolute; top: 8px; right: 8px; display: flex; gap: 4px; z-index: 10; }
         .mini-btn { background: rgba(33, 38, 45, 0.9); color: #8b949e; border: 1px solid #30363d; border-radius: 2px; padding: 1px 5px; cursor: pointer; font-size: 9px; }
 
@@ -29,8 +29,6 @@
         #modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 2000; justify-content: center; align-items: center; }
         .modal-content { width: 98%; height: 95%; background: #161b22; border: 1px solid #58a6ff; border-radius: 4px; position: relative; }
         .close-modal { position: absolute; top: -10px; right: -10px; background: #ff4500; color: white; border: none; border-radius: 50%; width: 25px; height: 25px; cursor: pointer; z-index: 2100; }
-        
-        /* FOOTER CON CRÉDITOS RESTAURADOS */
         footer { background: #0d1117; padding: 15px; text-align: center; color: #8b949e; border-top: 1px solid #30363d; font-size: 0.75em; line-height: 1.5; }
         footer b { color: #c9d1d9; }
     </style>
@@ -38,7 +36,10 @@
 <body>
     <div id="audit-bar">
         <div><strong>SISTEMA:</strong> <span id="sys-status" class="status-badge">...</span></div>
-        <button class="btn-ui" onclick="toggleFullScreen()">🖥️ Fullscreen</button>
+        <div style="display: flex;">
+            <button id="btn-scale" class="btn-ui" onclick="toggleScale()">📈 Escala: Lineal</button>
+            <button class="btn-ui" onclick="toggleFullScreen()">🖥️ Fullscreen</button>
+        </div>
         <div>ACTUALIZACIÓN: <span id="last-sync">--:--</span></div>
     </div>
     <header>
@@ -47,12 +48,7 @@
     </header>
     <div class="grid" id="galeria"></div>
 
-    <div id="modal-overlay">
-        <div class="modal-content">
-            <button class="close-modal" onclick="closeModal()">X</button>
-            <iframe id="modal-iframe" src=""></iframe>
-        </div>
-    </div>
+    <div id="modal-overlay"><div class="modal-content"><button class="close-modal" onclick="closeModal()">X</button><iframe id="modal-iframe" src=""></iframe></div></div>
 
     <footer>
         <p>Datos y Procesamiento: <b>SISTEMA MIROVA</b> (University of Turin, IT) | <b>NASA FIRMS</b> | <b>VIIRS/MODIS Sensors</b></p>
@@ -63,10 +59,35 @@
     <script>
         const volcanes = [{n: "Isluga", r: "Tarapacá"}, {n: "Lascar", r: "Antofagasta"}, {n: "Lastarria", r: "Antofagasta"}, {n: "Peteroa", r: "Maule"}, {n: "Nevados de Chillan", r: "Ñuble"}, {n: "Copahue", r: "Biobío"}, {n: "Llaima", r: "Araucanía"}, {n: "Villarrica", r: "Araucanía"}, {n: "Puyehue-Cordon Caulle", r: "Los Ríos"}, {n: "Chaiten", r: "Los Lagos"}];
         let baseDatosCSV = "";
+        let currentScale = "linear"; // linear o log
+
+        function toggleScale() {
+            const btn = document.getElementById('btn-scale');
+            const iframes = document.querySelectorAll('iframe:not(#modal-iframe)');
+            const ts = new Date().getTime();
+            
+            if (currentScale === "linear") {
+                currentScale = "log";
+                btn.innerText = "📉 Escala: Log";
+                btn.classList.add('btn-active');
+                iframes.forEach(iframe => {
+                    iframe.src = iframe.src.replace('/v_html/', '/v_html_log/');
+                });
+            } else {
+                currentScale = "linear";
+                btn.innerText = "📈 Escala: Lineal";
+                btn.classList.remove('btn-active');
+                iframes.forEach(iframe => {
+                    iframe.src = iframe.src.replace('/v_html_log/', '/v_html/');
+                });
+            }
+        }
+
         function toggleFullScreen() { if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); }
         function openModal(url) { document.getElementById('modal-iframe').src = url; document.getElementById('modal-overlay').style.display = 'flex'; }
         function closeModal() { document.getElementById('modal-overlay').style.display = 'none'; document.getElementById('modal-iframe').src = ''; }
         function descargarCSV(nombre) { if (!baseDatosCSV) return alert("Cargando..."); const lineas = baseDatosCSV.split('\n'); const cabecera = lineas[0]; const filtrados = lineas.filter(l => l.includes(nombre)); const blob = new Blob([cabecera + "\n" + filtrados.join("\n")], { type: 'text/csv' }); const url = window.URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `Historial_${nombre.replace(/ /g,'_')}.csv`; a.click(); }
+        
         async function init() {
             const container = document.getElementById('galeria'); const ts = new Date().getTime();
             fetch('monitoreo_satelital/registro_vrp_positivos.csv?t=' + ts).then(r => r.text()).then(t => baseDatosCSV = t);

@@ -6,7 +6,6 @@ on:
     types:
       - completed
 
-# --- SOLUCIÓN A LA ACUMULACIÓN ---
 concurrency:
   group: pages-deploy
   cancel-in-progress: true

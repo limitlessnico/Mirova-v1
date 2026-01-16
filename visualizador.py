@@ -23,17 +23,21 @@ def crear_grafico(df_v, v, modo_log=False):
     df_v_30 = pd.DataFrame()
     if not df_v.empty:
         df_v['Fecha_Chile'] = pd.to_datetime(df_v['Fecha_Satelite_UTC']).dt.tz_localize('UTC').dt.tz_convert('America/Santiago')
-        df_v_30 = df_v[df_v['Fecha_Chile'] >= hace_30_dias]
+        df_v_30 = df_v[df_v['Fecha_Chile'] >= hace_30_dias].copy()
 
     if df_v_30.empty:
         return None
+
+    # CORRECCIÓN PARA LOG: Asegurar que no haya valores <= 0 que rompan el gráfico
+    if modo_log:
+        df_v_30.loc[df_v_30['VRP_MW'] < 0.1, 'VRP_MW'] = 0.11 
 
     fig = go.Figure()
     ticks_x = [hace_30_dias + timedelta(days=x) for x in range(0, 31, 7)]
     labels_x = [f"{d.day} {MESES_ES[d.month]}" for d in ticks_x]
     v_max = df_v_30['VRP_MW'].max()
 
-    # Niveles MIROVA
+    # Niveles MIROVA Dinámicos
     niveles = [(0, 1, "Muy Bajo", "rgba(100,100,100,0.15)"), 
                (1, 10, "Bajo", "rgba(150,150,0,0.12)"), 
                (10, 100, "Moderado", "rgba(255,165,0,0.12)")]
@@ -54,17 +58,24 @@ def crear_grafico(df_v, v, modo_log=False):
             hovertemplate="<b>%{y:.2f} MW</b><br>%{x|%d %b, %H:%M} | dist: %{customdata}km<extra></extra>",
             showlegend=True))
 
+    # ANOTACIÓN MÁXIMO (Mejorada para Log)
     if not df_v_30.empty:
         max_r = df_v_30.loc[df_v_30['VRP_MW'].idxmax()]
-        fig.add_annotation(x=max_r['Fecha_Chile'], y=max_r['VRP_MW'], text=f"MÁX: {max_r['VRP_MW']:.2f}", showarrow=True, arrowhead=1, bgcolor="white", font=dict(color="black", size=9))
+        fig.add_annotation(x=max_r['Fecha_Chile'], y=max_r['VRP_MW'], text=f"MÁX: {max_r['VRP_MW']:.2f}",
+                           showarrow=True, arrowhead=1, bgcolor="white", font=dict(color="black", size=9),
+                           ay=-30, # Desplazamiento fijo
+                           cliponaxis=False) # Evita que desaparezca en los bordes
 
     fig.update_xaxes(type="date", range=[hace_30_dias, ahora], tickvals=ticks_x, ticktext=labels_x, 
                      showgrid=True, gridcolor='rgba(255,255,255,0.08)', minor=dict(dtick=86400000.0, showgrid=True, gridcolor='rgba(255,255,255,0.03)'), 
                      tickangle=-45, fixedrange=True, tickfont=dict(size=9))
     
     if modo_log:
-        log_max = np.log10(v_max * 1.5) if v_max > 1 else 1
-        fig.update_yaxes(type="log", range=[-1, max(1, log_max)], fixedrange=True, gridcolor='rgba(255,255,255,0.05)', tickfont=dict(size=9))
+        # Rango logarítmico estable: de 0.1 a un poco más del máximo
+        y_max_range = np.log10(max(10, v_max * 2))
+        fig.update_yaxes(type="log", range=[np.log10(0.1), y_max_range], 
+                         fixedrange=True, gridcolor='rgba(255,255,255,0.05)', tickfont=dict(size=9),
+                         dtick="D1") # Muestra ticks en potencias de 10
     else:
         fig.update_yaxes(range=[0, max(1.1, v_max * 1.3)], fixedrange=True, gridcolor='rgba(255,255,255,0.05)', tickfont=dict(size=9))
     
@@ -72,8 +83,7 @@ def crear_grafico(df_v, v, modo_log=False):
                        font=dict(size=10, color="rgba(255,255,255,0.8)"), xanchor="right", yanchor="middle")
     
     fig.update_layout(
-        template="plotly_dark", height=300, 
-        margin=dict(l=40, r=5, t=15, b=35),
+        template="plotly_dark", height=300, margin=dict(l=40, r=5, t=15, b=35),
         paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
         showlegend=True,
         legend=dict(orientation="h", yanchor="bottom", y=1.03, xanchor="center", x=0.5, font=dict(size=9), entrywidth=0.2, entrywidthmode="fraction"),
@@ -86,18 +96,10 @@ def procesar():
     os.makedirs(CARPETA_LOG, exist_ok=True)
     df = pd.read_csv(ARCHIVO_POSITIVOS) if os.path.exists(ARCHIVO_POSITIVOS) else pd.DataFrame()
 
-    # CONFIGURACIÓN CON MODO 'HOVER'
     config_visual = {
-        'displayModeBar': 'hover', # <--- CAMBIO CLAVE: Solo aparece al pasar el mouse
-        'displaylogo': False,
+        'displayModeBar': 'hover', 'displaylogo': False,
         'modeBarButtonsToRemove': ['select2d', 'lasso2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d'],
-        'toImageButtonOptions': {
-            'format': 'png', 
-            'filename': 'monitor_vrp_export', 
-            'height': 500, 
-            'width': 1400, 
-            'scale': 2
-        }
+        'toImageButtonOptions': {'format': 'png', 'filename': 'monitor_vrp_export', 'height': 500, 'width': 1400, 'scale': 2}
     }
 
     for v in VOLCANES:

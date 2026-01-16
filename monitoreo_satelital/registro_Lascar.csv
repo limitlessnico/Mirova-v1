@@ -1,5 +1,5 @@
 timestamp,Fecha_Satelite_UTC,Fecha_Captura_Chile,Volcan,Sensor,VRP_MW,Distancia_km,Tipo_Registro,Clasificacion Mirova,Ruta Foto,Fecha_Proceso_GitHub,Ultima_Actualizacion,Editado
-1768454641,2026-01-15 05:24:01,2026-01-15 02:24:01,Lascar,VIIRS375,0.85,1.19,ALERTA_TERMICA,Muy Bajo,imagenes_satelitales/Lascar/2026-01-15/05-24-01_Lascar_VIIRS375_Latest.png,2026-01-15 06:07:26,2026-01-16 06:10:34,NO
+1768454641,2026-01-15 05:24:01,2026-01-15 02:24:01,Lascar,VIIRS375,0.85,1.19,ALERTA_TERMICA,Muy Bajo,imagenes_satelitales/Lascar/2026-01-15/05-24-01_Lascar_VIIRS375_Latest.png,2026-01-15 06:07:26,2026-01-16 06:12:31,NO
 1768454641,2026-01-15 05:24:01,2026-01-15 02:24:01,Lascar,VIIRS,1.31,1.68,ALERTA_TERMICA,Bajo,imagenes_satelitales/Lascar/2026-01-15/05-24-01_Lascar_VIIRS750_Latest.png,2026-01-15 05:35:40,2026-01-15 17:28:19,NO
 1768441500,2026-01-15 01:45:00,2026-01-14 22:45:00,Lascar,MODIS,0.89,1.0,ALERTA_TERMICA,Bajo,imagenes_satelitales/Lascar/2026-01-15/01-45-00_Lascar_MODIS_Latest.png,2026-01-15 01:07:33,2026-01-15 07:00:26,NO
 1768369681,2026-01-14 05:48:01,2026-01-14 02:48:01,Lascar,VIIRS,1.21,1.68,ALERTA_TERMICA,Bajo,imagenes_satelitales/Lascar/2026-01-14/05-48-01_Lascar_VIIRS750_Latest.png,2026-01-14 18:14:26,2026-01-14 18:14:26,NO

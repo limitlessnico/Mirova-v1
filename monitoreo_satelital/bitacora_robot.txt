@@ -2504,3 +2504,5 @@
 [2026-01-16 04:48:31] INICIO V109.1: SINCRONIZACIÓN TOTAL + DESCUBRIMIENTO
 [2026-01-16 04:48:32] Sincronizando archivos individuales por volcán...
 [2026-01-16 04:48:32] Proceso completado. Datos de descubrimiento preservados y CSVs individuales al día.
+[2026-01-16 04:52:50] INICIO SCRAPER: SINCRONIZACIÓN Y CLASIFICACIÓN
+[2026-01-16 04:52:51] Proceso completado con clasificaciones y falsos positivos.

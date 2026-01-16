@@ -2776,3 +2776,5 @@
 [2026-01-16 09:20:35] Proceso completado con clasificaciones y falsos positivos.
 [2026-01-16 09:22:31] INICIO SCRAPER: SINCRONIZACIÓN Y CLASIFICACIÓN
 [2026-01-16 09:22:32] Proceso completado con clasificaciones y falsos positivos.
+[2026-01-16 09:24:29] INICIO SCRAPER: SINCRONIZACIÓN Y CLASIFICACIÓN
+[2026-01-16 09:24:30] Proceso completado con clasificaciones y falsos positivos.

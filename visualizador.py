@@ -68,7 +68,6 @@ def crear_grafico(df_v, v, modo_log=False):
     else:
         fig.update_yaxes(range=[0, max(1.1, v_max * 1.3)], fixedrange=True, gridcolor='rgba(255,255,255,0.05)', tickfont=dict(size=9))
     
-    # MW Alineado perfectamente a la izquierda del eje Y
     fig.add_annotation(xref="paper", yref="paper", x=-0.01, y=1.05, text="<b>MW</b>", showarrow=False, 
                        font=dict(size=10, color="rgba(255,255,255,0.8)"), xanchor="right", yanchor="middle")
     
@@ -87,16 +86,16 @@ def procesar():
     os.makedirs(CARPETA_LOG, exist_ok=True)
     df = pd.read_csv(ARCHIVO_POSITIVOS) if os.path.exists(ARCHIVO_POSITIVOS) else pd.DataFrame()
 
-    # CONFIGURACIÓN DE EXPORTACIÓN CORREGIDA (Relación de aspecto alargada)
+    # CONFIGURACIÓN CON MODO 'HOVER'
     config_visual = {
-        'displayModeBar': True, 
+        'displayModeBar': 'hover', # <--- CAMBIO CLAVE: Solo aparece al pasar el mouse
         'displaylogo': False,
         'modeBarButtonsToRemove': ['select2d', 'lasso2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d'],
         'toImageButtonOptions': {
             'format': 'png', 
             'filename': 'monitor_vrp_export', 
-            'height': 500, # Menor altura para que se vea estirado
-            'width': 1400, # Mayor ancho para emular el modo expandido
+            'height': 500, 
+            'width': 1400, 
             'scale': 2
         }
     }

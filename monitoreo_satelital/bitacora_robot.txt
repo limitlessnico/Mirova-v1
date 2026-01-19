@@ -15583,3 +15583,6 @@
 [2026-01-19 12:58:37] INICIO SCRAPER + BLACK BOX
 [2026-01-19 12:58:39] Filas leídas desde latest.php: 521
 [2026-01-19 12:58:39] Proceso completado correctamente.
+[2026-01-19 13:00:40] INICIO SCRAPER + BLACK BOX
+[2026-01-19 13:00:41] Filas leídas desde latest.php: 521
+[2026-01-19 13:00:41] Proceso completado correctamente.

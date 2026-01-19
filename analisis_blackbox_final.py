@@ -7,7 +7,7 @@ import glob
 from collections import defaultdict
 
 # ============================================================================
-# ANÁLISIS BLACK BOX DEFINITIVO - 20 ENERO 2026 12:00 CLT
+# ANÁLISIS BLACK BOX v3 - SOLO VOLCANES CHILENOS
 # ============================================================================
 
 CARPETA_BLACKBOX = "monitoreo_satelital/blackbox_latest"
@@ -15,21 +15,45 @@ DB_MASTER = "monitoreo_satelital/registro_vrp_consolidado.csv"
 REPORTE_FINAL = "monitoreo_satelital/analisis_blackbox_20260120.csv"
 REPORTE_PERDIDOS = "monitoreo_satelital/eventos_perdidos_confirmados.csv"
 
-VOLCANES_MONITOREADOS = [
-    "Isluga", "Lascar", "Lastarria", "Peteroa", 
+# ⭐ CRÍTICO: SOLO ESTOS 10 VOLCANES CHILENOS
+VOLCANES_CHILENOS = {
+    "Isluga", "Lascar", "Lastarria", "PlanchonPeteroa", 
     "Nevados de Chillan", "Copahue", "Llaima", 
     "Villarrica", "Puyehue-Cordon Caulle", "Chaiten"
-]
+}
+
+# Mapeo de posibles variaciones de nombres en MIROVA
+MAPEO_NOMBRES = {
+    "Peteroa": "PlanchonPeteroa",
+    "Planchon-Peteroa": "PlanchonPeteroa",
+    "ChillanNevadosde": "Nevados de Chillan",
+    "Nevados de Chillán": "Nevados de Chillan",
+    "PuyehueCordonCaulle": "Puyehue-Cordon Caulle",
+    "Puyehue": "Puyehue-Cordon Caulle"
+}
 
 def log_info(mensaje):
     """Logger con timestamp"""
     ahora = datetime.now(pytz.timezone('America/Santiago'))
     print(f"[{ahora.strftime('%H:%M:%S')}] {mensaje}")
 
+def normalizar_nombre_volcan(nombre):
+    """
+    Normaliza nombres de volcanes para comparación
+    Retorna None si no es un volcán chileno
+    """
+    # Aplicar mapeo si existe
+    nombre_norm = MAPEO_NOMBRES.get(nombre, nombre)
+    
+    # Verificar si es volcán chileno
+    if nombre_norm in VOLCANES_CHILENOS:
+        return nombre_norm
+    
+    return None
+
 def cargar_snapshots_blackbox():
     """
-    Carga todos los archivos HTML de Black Box
-    Extrae eventos únicos de cada snapshot
+    Carga SOLO eventos de volcanes chilenos de Black Box
     """
     log_info("📂 Cargando snapshots Black Box...")
     
@@ -41,20 +65,20 @@ def cargar_snapshots_blackbox():
     
     log_info(f"   Encontrados: {len(archivos_html)} archivos HTML")
     
-    # Diccionario: event_key -> {info del evento + lista de snapshots donde aparece}
-    eventos_en_blackbox = {}
+    # Diccionario: event_key -> {info del evento}
+    eventos_chilenos = {}
     snapshots_procesados = 0
+    eventos_descartados = 0
     errores = 0
     
     for archivo_html in archivos_html:
-        # Extraer timestamp del nombre: latest_20260116_191635.html
+        # Extraer timestamp del nombre
         nombre = os.path.basename(archivo_html)
         try:
             partes = nombre.replace('latest_', '').replace('.html', '').split('_')
             fecha_snap = datetime.strptime(f"{partes[0]}_{partes[1]}", "%Y%m%d_%H%M%S")
             fecha_snap = fecha_snap.replace(tzinfo=pytz.utc)
         except:
-            log_info(f"⚠️ No se pudo parsear timestamp de: {nombre}")
             continue
         
         # Parsear HTML
@@ -79,10 +103,17 @@ def cargar_snapshots_blackbox():
                 try:
                     fecha_evento_str = cols[0].text.strip()
                     volcan_id = cols[1].text.strip()
-                    volcan_nombre = cols[2].text.strip()
+                    volcan_nombre_raw = cols[2].text.strip()
                     vrp_mw = float(cols[3].text.strip())
                     distancia_km = float(cols[4].text.strip())
                     sensor = cols[5].text.strip()
+                    
+                    # ⭐ FILTRO CRÍTICO: Solo volcanes chilenos
+                    volcan_nombre = normalizar_nombre_volcan(volcan_nombre_raw)
+                    
+                    if volcan_nombre is None:
+                        eventos_descartados += 1
+                        continue  # Saltar volcanes no chilenos
                     
                     # Parsear fecha del evento
                     dt_evento = datetime.strptime(fecha_evento_str, "%d-%b-%Y %H:%M:%S")
@@ -93,8 +124,8 @@ def cargar_snapshots_blackbox():
                     event_key = (ts_evento, volcan_nombre, sensor)
                     
                     # Registrar evento
-                    if event_key not in eventos_en_blackbox:
-                        eventos_en_blackbox[event_key] = {
+                    if event_key not in eventos_chilenos:
+                        eventos_chilenos[event_key] = {
                             'timestamp': ts_evento,
                             'fecha_evento_utc': dt_evento,
                             'volcan': volcan_nombre,
@@ -109,9 +140,9 @@ def cargar_snapshots_blackbox():
                         }
                     else:
                         # Actualizar registro existente
-                        eventos_en_blackbox[event_key]['ultima_aparicion'] = fecha_snap
-                        eventos_en_blackbox[event_key]['veces_visto'] += 1
-                        eventos_en_blackbox[event_key]['snapshots'].append(fecha_snap)
+                        eventos_chilenos[event_key]['ultima_aparicion'] = fecha_snap
+                        eventos_chilenos[event_key]['veces_visto'] += 1
+                        eventos_chilenos[event_key]['snapshots'].append(fecha_snap)
                 
                 except Exception as e:
                     continue
@@ -127,10 +158,11 @@ def cargar_snapshots_blackbox():
             continue
     
     log_info(f"✅ Snapshots procesados: {snapshots_procesados}")
+    log_info(f"   Eventos volcanes chilenos: {len(eventos_chilenos)}")
+    log_info(f"   Eventos descartados (internacionales): {eventos_descartados}")
     log_info(f"   Errores de parsing: {errores}")
-    log_info(f"   Eventos únicos encontrados: {len(eventos_en_blackbox)}")
     
-    return eventos_en_blackbox
+    return eventos_chilenos
 
 def cargar_eventos_capturados():
     """
@@ -152,18 +184,14 @@ def cargar_eventos_capturados():
 def comparar_blackbox_vs_capturados(eventos_blackbox, df_capturados):
     """
     Compara eventos vistos en Black Box vs eventos capturados
-    Identifica eventos PERDIDOS confirmados
+    SOLO volcanes chilenos
     """
     log_info("🔍 Comparando Black Box vs Registros Capturados...")
     
     eventos_perdidos = []
     eventos_capturados_ok = []
     
-    # FILTRAR SOLO VOLCANES CHILENOS QUE MONITOREAMOS
     for event_key, info in eventos_blackbox.items():
-        # IMPORTANTE: Solo analizar volcanes que estamos monitoreando
-        if info['volcan'] not in VOLCANES_MONITOREADOS:
-            continue  # Saltar volcanes que no son de Chile
         ts_evento = event_key[0]
         volcan = event_key[1]
         sensor = event_key[2]
@@ -234,7 +262,7 @@ def generar_estadisticas(eventos_perdidos, eventos_capturados):
     Genera estadísticas detalladas del análisis
     """
     log_info("\n" + "="*80)
-    log_info("📊 ESTADÍSTICAS FINALES BLACK BOX")
+    log_info("📊 ESTADÍSTICAS FINALES - SOLO VOLCANES CHILENOS")
     log_info("="*80)
     
     total_eventos = len(eventos_perdidos) + len(eventos_capturados)
@@ -279,6 +307,8 @@ def generar_estadisticas(eventos_perdidos, eventos_capturados):
         print(f"{'Mediana:':<40} {df_perdidos['Tiempo_En_Buffer_Minutos'].median():>14.2f}")
         print(f"{'Mínimo:':<40} {df_perdidos['Tiempo_En_Buffer_Minutos'].min():>14.2f}")
         print(f"{'Máximo:':<40} {df_perdidos['Tiempo_En_Buffer_Minutos'].max():>14.2f}")
+    else:
+        print("\n✅ NO SE PERDIERON EVENTOS DE VOLCANES CHILENOS")
     
     print("\n" + "="*80)
 
@@ -287,12 +317,12 @@ def ejecutar_analisis_completo():
     Función principal que ejecuta todo el análisis
     """
     print("\n" + "="*80)
-    print("🔬 ANÁLISIS BLACK BOX DEFINITIVO - 20 ENERO 2026")
+    print("🔬 ANÁLISIS BLACK BOX v3 - SOLO VOLCANES CHILENOS")
     print("="*80)
     print(f"Hora inicio: {datetime.now(pytz.timezone('America/Santiago')).strftime('%Y-%m-%d %H:%M:%S CLT')}")
     print("="*80 + "\n")
     
-    # 1. Cargar eventos de Black Box
+    # 1. Cargar eventos de Black Box (solo chilenos)
     eventos_blackbox = cargar_snapshots_blackbox()
     
     if not eventos_blackbox:
@@ -312,10 +342,15 @@ def ejecutar_analisis_completo():
         df_perdidos = pd.DataFrame(eventos_perdidos)
         df_perdidos.to_csv(REPORTE_PERDIDOS, index=False)
         log_info(f"\n💾 Eventos perdidos guardados en: {REPORTE_PERDIDOS}")
-    
-    if eventos_capturados:
-        df_capturados_ok = pd.DataFrame(eventos_capturados)
-        # Opcional: guardar también los capturados para análisis
+    else:
+        # Crear CSV vacío con headers
+        pd.DataFrame(columns=[
+            'timestamp', 'Fecha_Evento_UTC', 'Volcan', 'Volcan_ID', 'Sensor',
+            'VRP_MW', 'Distancia_km', 'Primera_Aparicion_Snapshot',
+            'Ultima_Aparicion_Snapshot', 'Tiempo_En_Buffer_Minutos',
+            'Veces_Visto_BlackBox', 'Estado', 'Razon_Probable'
+        ]).to_csv(REPORTE_PERDIDOS, index=False)
+        log_info(f"\n💾 CSV vacío creado (sin pérdidas): {REPORTE_PERDIDOS}")
     
     # 5. Generar estadísticas
     generar_estadisticas(eventos_perdidos, eventos_capturados)
@@ -330,10 +365,10 @@ def ejecutar_analisis_completo():
         tasa = (len(eventos_capturados) / total * 100)
         
         if tasa >= 99:
-            print("✅ EXCELENTE: Tasa de captura >99%")
+            print("✅ EXCELENTE: Tasa de captura ≥99%")
             print("   El scraper cada 1 minuto está funcionando perfectamente.")
         elif tasa >= 95:
-            print("✅ BUENO: Tasa de captura >95%")
+            print("✅ BUENO: Tasa de captura ≥95%")
             print("   El scraper funciona bien, pérdidas mínimas aceptables.")
         elif tasa >= 90:
             print("⚠️ ACEPTABLE: Tasa de captura 90-95%")
@@ -357,6 +392,9 @@ def ejecutar_analisis_completo():
                 print("   La mayoría de pérdidas NO son por expulsión rápida")
                 print("   CAUSA PROBABLE: Error en scraper o GitHub Actions")
                 print("   SOLUCIÓN: Revisar logs de GitHub Actions")
+    else:
+        print("⚠️ No se detectaron eventos en Black Box")
+        print("   Verificar que Black Box esté funcionando correctamente")
     
     print("="*80)
     print(f"\nHora fin: {datetime.now(pytz.timezone('America/Santiago')).strftime('%Y-%m-%d %H:%M:%S CLT')}")

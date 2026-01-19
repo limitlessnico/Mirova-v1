@@ -1,0 +1,213 @@
+name: Análisis Imagen vs Tabla
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  analizar_imagenes:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests pandas pillow numpy pytz
+
+      - name: Crear script de análisis
+        run: |
+          cat > analisis_imagenes.py << 'ENDOFFILE'
+          import requests
+          import pandas as pd
+          from datetime import datetime, timedelta
+          import pytz
+          import time
+          from PIL import Image
+          import numpy as np
+          import io
+          import os
+
+          VOLCANES_CONFIG = {
+              "Isluga": "Isluga",
+              "Lascar": "Lascar",
+              "Lastarria": "Lastarria",
+              "PlanchonPeteroa": "PlanchonPeteroa",
+              "Nevados de Chillan": "ChillanNevadosde",
+              "Copahue": "Copahue",
+              "Llaima": "Llaima",
+              "Villarrica": "Villarrica",
+              "Puyehue-Cordon Caulle": "PuyehueCordonCaulle",
+              "Chaiten": "Chaiten"
+          }
+
+          DB_MASTER = "monitoreo_satelital/registro_vrp_consolidado.csv"
+
+          def analizar_imagen_latest(volcan_nombre, id_mirova):
+              url = f"https://www.mirovaweb.it/OUTPUTweb/MIROVA/VIIRS750/VOLCANOES/{id_mirova}/{id_mirova}_VIIRS750_Latest10NTI.png"
+              
+              try:
+                  response = requests.get(url, timeout=20)
+                  if response.status_code != 200:
+                      return False, 0, "Error descarga"
+                  
+                  img = Image.open(io.BytesIO(response.content))
+                  img_array = np.array(img)
+                  
+                  if len(img_array.shape) == 3:
+                      red = img_array[:, :, 0]
+                      green = img_array[:, :, 1]
+                      blue = img_array[:, :, 2]
+                      
+                      hotspot_mask = (red > 200) & (green < 100) & (blue < 100)
+                      num_pixeles = np.sum(hotspot_mask)
+                      
+                      tiene_hotspot = num_pixeles > 10
+                      return tiene_hotspot, int(num_pixeles), "OK"
+                  else:
+                      return False, 0, "Imagen no RGB"
+              
+              except Exception as e:
+                  return False, 0, f"Error: {str(e)}"
+
+          def verificar_eventos_recientes(volcan_nombre, df_master, ventana_horas=24):
+              if df_master.empty:
+                  return False, 0
+              
+              ahora = datetime.now(pytz.utc)
+              inicio_ventana = ahora - timedelta(hours=ventana_horas)
+              
+              df_volcan = df_master[
+                  (df_master['Volcan'] == volcan_nombre) &
+                  (pd.to_datetime(df_master['Fecha_Satelite_UTC']) >= inicio_ventana)
+              ]
+              
+              return len(df_volcan) > 0, len(df_volcan)
+
+          def main():
+              print("="*80)
+              print("🔬 ANÁLISIS IMAGEN VS TABLA - DETECCIÓN DE OMISIONES MIROVA")
+              print("="*80)
+              print(f"Fecha: {datetime.now(pytz.timezone('America/Santiago')).strftime('%Y-%m-%d %H:%M:%S CLT')}")
+              print("="*80 + "\n")
+              
+              # Cargar CSV
+              if os.path.exists(DB_MASTER):
+                  df_master = pd.read_csv(DB_MASTER)
+                  df_master['Fecha_Satelite_UTC'] = pd.to_datetime(df_master['Fecha_Satelite_UTC'])
+                  print(f"📋 CSV Consolidado cargado: {len(df_master)} registros totales\n")
+              else:
+                  df_master = pd.DataFrame()
+                  print("⚠️ No existe CSV consolidado\n")
+              
+              # Analizar cada volcán
+              resultados = []
+              discrepancias = []
+              
+              for volcan_nombre, id_mirova in VOLCANES_CONFIG.items():
+                  print(f"🌋 Analizando: {volcan_nombre}")
+                  print("-" * 60)
+                  
+                  # Analizar imagen
+                  tiene_hotspot, num_pixeles, status = analizar_imagen_latest(volcan_nombre, id_mirova)
+                  
+                  # Verificar CSV
+                  tiene_eventos, num_eventos = verificar_eventos_recientes(volcan_nombre, df_master, 24)
+                  
+                  # Mostrar resultados
+                  if tiene_hotspot:
+                      print(f"   🔥 IMAGEN: Hotspot detectado ({num_pixeles} píxeles rojos)")
+                  else:
+                      print(f"   ✅ IMAGEN: Sin hotspots")
+                  
+                  if tiene_eventos:
+                      print(f"   📊 CSV: {num_eventos} eventos (últimas 24h)")
+                  else:
+                      print(f"   📊 CSV: Sin eventos (últimas 24h)")
+                  
+                  # Detectar discrepancia
+                  if tiene_hotspot and not tiene_eventos:
+                      print(f"   ⚠️ DISCREPANCIA: Hotspot visible pero SIN eventos en CSV")
+                      discrepancias.append({
+                          'volcan': volcan_nombre,
+                          'pixeles': num_pixeles,
+                          'eventos_csv': num_eventos
+                      })
+                  else:
+                      print(f"   ✅ Consistente")
+                  
+                  resultados.append({
+                      'Volcan': volcan_nombre,
+                      'Hotspot_En_Imagen': 'SI' if tiene_hotspot else 'NO',
+                      'Num_Pixeles': num_pixeles,
+                      'Eventos_CSV_24h': num_eventos,
+                      'Estado': 'DISCREPANCIA' if (tiene_hotspot and not tiene_eventos) else 'OK'
+                  })
+                  
+                  print()
+                  time.sleep(1)
+              
+              # Resumen
+              print("="*80)
+              print("📊 RESUMEN FINAL")
+              print("="*80 + "\n")
+              
+              df_res = pd.DataFrame(resultados)
+              print(df_res.to_string(index=False))
+              
+              print("\n" + "="*80)
+              print("🎯 CONCLUSIÓN")
+              print("="*80 + "\n")
+              
+              if len(discrepancias) == 0:
+                  print("✅ NO SE DETECTARON DISCREPANCIAS")
+                  print("\n   • Todos los hotspots visibles tienen eventos en CSV")
+                  print("   • MIROVA está publicando todos los datos en latest.php")
+                  print("   • Tu sistema de captura funciona perfectamente")
+              else:
+                  print(f"⚠️ SE DETECTARON {len(discrepancias)} DISCREPANCIAS:\n")
+                  for disc in discrepancias:
+                      print(f"   • {disc['volcan']}: Hotspot ({disc['pixeles']} px) pero 0 eventos en CSV")
+                  print("\n💡 INTERPRETACIÓN:")
+                  print("   → Hay eventos visibles en imágenes pero NO en latest.php")
+                  print("   → MIROVA está OMITIENDO datos de la tabla")
+                  print("\n🔧 SOLUCIÓN RECOMENDADA:")
+                  print("   → Implementar scraper híbrido (tabla + análisis de imágenes)")
+              
+              print("\n" + "="*80)
+              
+              # Guardar CSV
+              df_res.to_csv('monitoreo_satelital/analisis_imagen_vs_tabla.csv', index=False)
+              print("\n💾 Resultados guardados en: monitoreo_satelital/analisis_imagen_vs_tabla.csv")
+
+          if __name__ == "__main__":
+              main()
+          ENDOFFILE
+
+      - name: Ejecutar Análisis de Imágenes
+        run: |
+          python analisis_imagenes.py
+
+      - name: Guardar resultados
+        run: |
+          git config --global user.name "ImageAnalyzer"
+          git config --global user.email "analyzer@volcano.com"
+          
+          git add monitoreo_satelital/analisis_imagen_vs_tabla.csv 2>/dev/null || true
+          
+          if ! git diff --quiet --staged; then
+            git commit -m "📸 Análisis Imagen vs Tabla completado"
+            git pull origin main --rebase -X ours
+            git push origin main
+          else
+            echo "No hay cambios para guardar"
+          fi

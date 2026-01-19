@@ -86,9 +86,12 @@ jobs:
               ahora = datetime.now(pytz.utc)
               inicio_ventana = ahora - timedelta(hours=ventana_horas)
               
+              # FIX: Asegurar que ambas fechas tengan timezone
+              df_master['Fecha_Satelite_UTC'] = pd.to_datetime(df_master['Fecha_Satelite_UTC'], utc=True)
+              
               df_volcan = df_master[
                   (df_master['Volcan'] == volcan_nombre) &
-                  (pd.to_datetime(df_master['Fecha_Satelite_UTC']) >= inicio_ventana)
+                  (df_master['Fecha_Satelite_UTC'] >= inicio_ventana)
               ]
               
               return len(df_volcan) > 0, len(df_volcan)

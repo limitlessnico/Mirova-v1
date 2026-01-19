@@ -123,8 +123,8 @@ jobs:
                   # Analizar imagen
                   tiene_hotspot, num_pixeles, status = analizar_imagen_latest(volcan_nombre, id_mirova)
                   
-                  # Verificar CSV
-                  tiene_eventos, num_eventos = verificar_eventos_recientes(volcan_nombre, df_master, 24)
+                  # Verificar CSV (72 horas = 3 días para cubrir "últimas 10 detecciones")
+                  tiene_eventos, num_eventos = verificar_eventos_recientes(volcan_nombre, df_master, 72)
                   
                   # Mostrar resultados
                   if tiene_hotspot:
@@ -133,9 +133,9 @@ jobs:
                       print(f"   ✅ IMAGEN: Sin hotspots")
                   
                   if tiene_eventos:
-                      print(f"   📊 CSV: {num_eventos} eventos (últimas 24h)")
+                      print(f"   📊 CSV: {num_eventos} eventos VIIRS750 (últimas 72h)")
                   else:
-                      print(f"   📊 CSV: Sin eventos (últimas 24h)")
+                      print(f"   📊 CSV: Sin eventos VIIRS750 (últimas 72h)")
                   
                   # Detectar discrepancia
                   if tiene_hotspot and not tiene_eventos:
@@ -152,7 +152,7 @@ jobs:
                       'Volcan': volcan_nombre,
                       'Hotspot_En_Imagen': 'SI' if tiene_hotspot else 'NO',
                       'Num_Pixeles': num_pixeles,
-                      'Eventos_CSV_24h': num_eventos,
+                      'Eventos_CSV_72h': num_eventos,
                       'Estado': 'DISCREPANCIA' if (tiene_hotspot and not tiene_eventos) else 'OK'
                   })
                   

@@ -1,0 +1,4930 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Latest Measurements - MIROVA</title>
+  
+  <!--
+  <link rel="stylesheet" href="https://www.mirovaweb.it/css2/leaflet.css" />
+  <link rel="stylesheet" href="https://www.mirovaweb.it/css2/jquery.dataTables.min.css" />
+  <link rel="stylesheet" href="https://www.mirovaweb.it/css2/all.min.css" />
+  
+  
+   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+  -->
+  
+    <!-- Replace external CSS with local versions -->
+  <link rel="stylesheet" href="../assets/css/leaflet.css" />
+  <link rel="stylesheet" href="../assets/css/jquery.dataTables.min.css" />
+  <link rel="stylesheet" href="../assets/css/all.min.css" />
+  
+  <style>
+    /* Base styles */
+    html, body { 
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+    body { 
+      font-family: Arial, sans-serif; 
+      background: #f4f4f4; 
+      color: #333;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    /* Single line header with nav merged */
+    header { 
+      background: #2c2c54; 
+      color: white; 
+      padding: 0 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      height: 60px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    
+    /* Logo and title in compact format */
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .logo-container {
+      height: 45px;
+    }
+    .logo-container img {
+      height: 100%;
+      width: auto;
+    }
+    .title-container {
+      display: flex;
+      flex-direction: column;
+    }
+    .title-container h1 {
+      margin: 0;
+      font-size: 1.5rem;
+      line-height: 1.1;
+    }
+    .title-container p {
+      margin: 0;
+      font-size: 0.7rem;
+      opacity: 0.9;
+    }
+    
+    /* Header logo and title link styling */
+    .brand-link {
+      text-decoration: none;
+      color: white;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand-link:hover {
+      opacity: 0.9;
+    }
+    
+    /* Combined navigation and clock */
+    .header-center {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+    }
+    
+    /* Navigation integrated in header */
+    .main-nav {
+      display: flex;
+      justify-content: center;
+    }
+    .nav-menu {
+      display: flex;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .nav-menu li {
+      position: relative;
+    }
+    .nav-menu a {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      color: white;
+      text-decoration: none;
+      padding: 0 15px;
+      height: 60px;
+      font-size: 0.9rem;
+      transition: background-color 0.2s;
+    }
+    .nav-menu a:hover {
+      background-color: #3a3a68;
+    }
+    .nav-menu a.active {
+      background-color: #f1c40f;
+      color: #1d1d38;
+      font-weight: bold;
+    }
+    
+    /* Clock positioned at the right */
+    .header-right {
+      display: flex;
+      align-items: center;
+    }
+    .utc-clock {
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+    }
+    
+    /* Mobile menu button */
+    .menu-toggle {
+      display: none;
+      background: none;
+      border: none;
+      color: white;
+      font-size: 1.5rem;
+      cursor: pointer;
+      padding: 0 15px;
+    }
+    
+    /* Content container for page-specific content */
+    .content-wrapper {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    /* Footer styling */
+    footer {
+      background: #2c2c54;
+      color: white;
+      padding: 9px 18px;
+      text-align: center;
+      font-size: 0.8rem;
+    }
+    footer a {
+      color: #f1c40f;
+      text-decoration: none;
+    }
+    footer a:hover {
+      text-decoration: underline;
+    }
+    
+    /* Mobile Navigation */
+    @media (max-width: 992px) {
+      header {
+        height: auto;
+        padding: 8px 18px;
+        flex-wrap: wrap;
+      }
+      .header-left {
+        width: 100%;
+        justify-content: space-between;
+      }
+      .header-center {
+        width: 100%;
+        order: 3;
+      }
+      .header-right {
+        order: 2;
+      }
+      .nav-menu {
+        flex-direction: column;
+        position: absolute;
+        top: 60px;
+        left: 0;
+        width: 100%;
+        background: #2c2c54;
+        z-index: 100;
+        box-shadow: 0 5px 10px rgba(0,0,0,0.2);
+        display: none;
+      }
+      .nav-menu.active {
+        display: flex;
+      }
+      .nav-menu a {
+        height: 45px;
+      }
+      .menu-toggle {
+        display: block;
+      }
+      
+      /* Adjust footer for mobile */
+      .footer-container {
+        flex-direction: column-reverse;
+        align-items: center;
+      }
+      .footer-text {
+        text-align: center;
+        margin-top: 10px;
+      }
+    }
+    
+    @media (max-width: 600px) {
+      .utc-clock {
+        font-size: 0.75rem;
+      }
+    }
+    
+    /* Page-specific styles */
+.data-header { 
+  background: #2c2c54; 
+  color: white; 
+  padding: 10px 20px;
+  margin: 10px 0;
+  border-radius: 5px;
+}
+.header-info {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr); /* Changed from 3 to 4 to accommodate VIIRS375 */
+  gap: 10px;
+  margin-top: 0px;
+  font-size: 0.9rem;
+}
+.header-info div {
+  background: rgba(255,255,255,0.1);
+  padding: 5px 10px;
+  border-radius: 4px;
+}
+.time-box {
+  display: flex;
+  flex-direction: column;
+}
+.time-value {
+  font-weight: bold;
+  word-break: break-word; /* Prevent overflow on small screens */
+}
+.time-delay {
+  font-size: 0.8rem;
+  opacity: 0.9;
+  margin-top: 2px;
+}
+.table-container { 
+  width: 100%; 
+  max-width: 1200px;
+  margin: 0 auto 20px auto;
+  border-radius: 8px;
+  background: white; 
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  padding: 15px;
+  overflow-x: auto; /* Enables horizontal scrolling */
+}
+.table-container, .data-header {
+  max-width: 1200px;
+  margin: 0 auto 20px auto;
+  width: 100%;
+}
+
+/* Add sorting indicators */
+th.sorting {
+  position: relative;
+  padding-right: 20px !important;
+}
+th.sorting:after {
+  content: "↕";
+  position: absolute;
+  right: 8px;
+  opacity: 0.5;
+}
+th.sorting_asc:after {
+  content: "↑";
+  position: absolute;
+  right: 8px;
+  opacity: 0.8;
+}
+th.sorting_desc:after {
+  content: "↓";
+  position: absolute;
+  right: 8px;
+  opacity: 0.8;
+}
+
+/* Row color classes */
+tbody tr.extreme     { background-color: rgba(255, 0, 255, 0.5) !important; }
+tbody tr.very-high   { background-color: rgba(255, 0, 0, 0.5) !important; }
+tbody tr.high        { background-color: rgba(255, 165, 0, 0.5) !important; }
+tbody tr.moderate    { background-color: rgba(255, 255, 0, 0.5) !important; }
+tbody tr.low         { background-color: rgba(0, 128, 0, 0.5) !important; }
+tbody tr.very-low    { background-color: rgba(150, 180, 250, 0.5) !important; }
+tbody tr.none        { background-color: rgba(240, 240, 240, 0.5) !important; }
+
+/* Volcano link styling */
+.volcano-link { 
+  color: #2c3e50; 
+  font-weight: bold; 
+  text-decoration: none; 
+}
+.volcano-link:hover { text-decoration: underline; }
+
+/* Mobile-specific optimizations */
+@media (max-width: 992px) {
+  .dataTables_wrapper .dataTables_length,
+  .dataTables_wrapper .dataTables_filter {
+    float: none;
+    text-align: left;
+    margin-bottom: 10px;
+  }
+  
+  .dataTables_wrapper .dataTables_info,
+  .dataTables_wrapper .dataTables_paginate {
+    float: none;
+    text-align: center;
+    margin-top: 10px;
+  }
+  
+  .dataTables_wrapper .dataTables_paginate .paginate_button {
+    padding: 0.3em 0.8em;
+  }
+}
+
+@media (max-width: 768px) {
+  .header-info {
+    grid-template-columns: 1fr 1fr; /* Changed to 2 columns for mobile */
+    gap: 5px;
+  }
+
+  .data-header {
+    padding: 10px;
+  }
+  
+  /* Adjust table for better mobile display */
+  table.dataTable thead th {
+    padding: 8px 10px;
+    font-size: 0.9rem;
+  }
+  
+  table.dataTable tbody td {
+    padding: 6px 8px;
+    font-size: 0.85rem;
+    vertical-align: middle;
+  }
+  
+  /* Make the search input more mobile-friendly */
+  .dataTables_filter input {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    margin-left: 0 !important;
+    margin-top: 5px;
+    padding: 6px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+  }
+  
+  .dataTables_length select {
+    padding: 5px;
+    border-radius: 4px;
+  }
+  
+  /* Adjust pagination buttons */
+  .dataTables_paginate .paginate_button {
+    padding: 0.2em 0.5em !important;
+  }
+  
+  .table-container {
+    padding: 10px;
+  }
+}
+
+@media (max-width: 576px) {
+  /* Further optimize for very small screens */
+  /* On smallest screens, stack all info boxes */
+  .header-info {
+    grid-template-columns: 1fr;
+  }
+  
+  .table-container {
+    padding: 5px;
+  }
+  
+  table.dataTable thead th {
+    padding: 6px 8px;
+    font-size: 0.8rem;
+  }
+  
+  table.dataTable tbody td {
+    padding: 5px 6px;
+    font-size: 0.8rem;
+  }
+
+  /* Adjust pagination to ensure it doesn't overflow */
+  .dataTables_paginate {
+    font-size: 0.8rem;
+  }
+  
+  .dataTables_paginate .paginate_button {
+    padding: 0.1em 0.4em !important;
+  }
+  
+  /* Stack info and pagination for very small screens */
+  .dataTables_info,
+  .dataTables_paginate {
+    float: none;
+    text-align: center;
+    width: 100%;
+    margin-top: 8px;
+  }
+  
+  /* Fix search input appearance */
+  .dataTables_filter label {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .dataTables_filter input {
+    margin-top: 5px;
+  }
+  
+  /* Responsive table layout - optimize columns */
+  table.dataTable {
+    width: 100% !important;
+  }
+}
+
+/* Fix for touch devices */
+@media (hover: none) {
+  .volcano-link:hover {
+    text-decoration: none;
+  }
+  
+  .volcano-link:active {
+    background-color: rgba(0,0,0,0.05);
+    border-radius: 3px;
+  }
+}  </style>
+</head>
+<body>
+<header>
+  <div class="header-left">
+    <a href="index.php" class="brand-link">
+      <div class="logo-container">
+        <img src="https://www.mirovaweb.it/images/LogoMIROVA_trasparent.png" alt="MIROVA Logo">
+      </div>
+      <div class="title-container">
+        <h1>MIROVA</h1>
+        <p>Middle Infrared Observations of Volcanic Activity</p>
+      </div>
+    </a>
+    <button class="menu-toggle"><i class="fas fa-bars"></i></button>
+  </div>
+    <i class="fas fa-analytics"></i>
+  
+  <div class="header-center">
+    <nav class="main-nav">
+      <ul class="nav-menu">
+        <li><a href="index.php" ><i class="fas fa-home"></i> Home</a></li>
+        <li><a href="volcanoes.php" ><i class="fas fa-mountain"></i> Volcanoes</a></li>
+        <li><a href="latest.php" class="active"><i class="fas fa-clock"></i> Latest Measurements</a></li>
+		<!--
+		<li><a href="zscoretrend.php" ><i class="fas fa-chart-line"></i> Trend Analysis</a></li>
+        -->
+	   <li><a href="Volcano_Dashboard.php" ><i class="fa fa-bar-chart"></i> Explore Data</a></li>
+
+        <li><a href="about.php" ><i class="fas fa-info-circle"></i> About</a></li>
+        <li><a href="credits.php" ><i class="fas fa-award"></i> Credits</a></li>
+      </ul>
+    </nav>
+  </div>
+  
+  <div class="header-right">
+    <div class="utc-clock">
+      <i class="fas fa-clock"></i> <span id="utcClock"></span>
+    </div>
+  </div>
+</header>
+
+<!-- Content wrapper for page-specific content -->
+<div class="content-wrapper">
+  
+<!-- Page content starts here -->
+<div class="container" style="padding: 5px;">
+  <div class="data-header">
+    <div class="header-info">
+      <div class="time-box">
+        <span>Last MODIS:</span>
+        <span class="time-value" id="modis-time">18-Jan-2026 23:50:00 UTC</span>
+        <span class="time-delay" id="modis-delay">10 hours ago</span>
+      </div>
+      <div class="time-box">
+        <span>Last VIIRS:</span>
+        <span class="time-value" id="viirs-time">18-Jan-2026 22:24:01 UTC</span>
+        <span class="time-delay" id="viirs-delay">11 hours ago</span>
+      </div>
+      <!-- Added VIIRS375 sensor info -->
+      <div class="time-box">
+        <span>Last VIIRS375:</span>
+        <span class="time-value" id="viirs375-time">19-Jan-2026 05:00:01 UTC</span>
+        <span class="time-delay" id="viirs375-delay">4 hours ago</span>
+      </div>
+      <div class="time-box">
+        <span>Auto-refresh:</span>
+        <span class="time-value">Every 60 seconds</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="table-container">
+    
+    <table id="volcanoTable" class="display responsive nowrap" style="width:100%">
+      <thead>
+        <tr>
+          <th>Time (UTC)</th>
+          <th>ID Volc</th>
+          <th>Volcano</th>
+          <th>VRP MW</th>
+          <th>Distance km</th>
+          <th>Sensor</th>
+        </tr>
+      </thead>
+      <tbody>
+              <tr class="none">
+          <td>19-Jan-2026 05:00:01</td>
+          <td>273030</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=273030">Mayon</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 04:54:01</td>
+          <td>266030</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=266030">Soputan</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 04:54:01</td>
+          <td>264020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=264020">Agung</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 04:54:01</td>
+          <td>267040</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=267040">Awu</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 04:54:01</td>
+          <td>268010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=268010">Dukono</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 04:54:01</td>
+          <td>268030</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=268030">Ibu</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 04:54:01</td>
+          <td>267020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=267020">Karangetang</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 04:54:01</td>
+          <td>264180</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=264180">Lewotobi</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 04:54:01</td>
+          <td>264230</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=264230">Lewotolo</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 04:54:01</td>
+          <td>264150</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=264150">Paluweh</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 04:54:01</td>
+          <td>264030</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=264030">Rinjani</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 04:54:01</td>
+          <td>267010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=267010">Ruang</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 04:54:01</td>
+          <td>264050</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=264050">SangeangApi</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 04:54:01</td>
+          <td>264260</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=264260">TaraBatu</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 04:30:00</td>
+          <td>252010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=252010">Langila</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="moderate">
+          <td>19-Jan-2026 04:30:00</td>
+          <td>251020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=251020">Manam</a></td>
+          <td data-order="10.052249464739">10.05</td>
+          <td data-order="1.6770509831248">1.68</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 04:30:00</td>
+          <td>251050</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=251050">LongIsland</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 04:30:00</td>
+          <td>253010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=253010">Lamington</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 04:30:00</td>
+          <td>251002</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=251002">Kadovar</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 04:00:01</td>
+          <td>384010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=384010">Fogo</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 03:54:01</td>
+          <td>383020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=383020">Hierro</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 03:54:01</td>
+          <td>383010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=383010">LaPalma</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 03:54:01</td>
+          <td>382030</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=382030">SanJorge</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 03:24:01</td>
+          <td>282090</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=282090">Kirishimayama</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 03:24:01</td>
+          <td>282100</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=282100">Unzendake</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 03:24:01</td>
+          <td>282030</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=282030">Suwanosejima</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 03:24:01</td>
+          <td>290240</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=290240">SarychevPeak</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 03:24:01</td>
+          <td>284096</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=284096">Nishinoshima</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 03:24:01</td>
+          <td>290150</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=290150">Chirpoi</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 03:24:01</td>
+          <td>282060</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=282060">Kikai</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 03:24:01</td>
+          <td>290260</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=290260">Chirinkotan</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 03:24:01</td>
+          <td>282110</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=282110">Asosan</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 03:24:01</td>
+          <td>283110</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=283110">Asamayama</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 03:24:01</td>
+          <td>282080</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=282080">Aira</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 03:18:01</td>
+          <td>284200</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=284200">Anatahan</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 03:18:01</td>
+          <td>284170</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=284170">Pagan</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 03:12:01</td>
+          <td>255020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=255020">Bagana</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 03:12:01</td>
+          <td>252080</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=252080">Pago</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 03:12:01</td>
+          <td>252140</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=252140">Rabaul</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 03:12:01</td>
+          <td>255070</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=255070">Savo</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 03:12:01</td>
+          <td>256010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=256010">Tinakula</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 03:12:01</td>
+          <td>252120</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=252120">Ulawun</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 03:06:01</td>
+          <td>257050</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=257050">Lopevi</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 03:06:01</td>
+          <td>257100</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=257100">Yasur</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 03:06:01</td>
+          <td>257040</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=257040">Ambrym</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 03:06:01</td>
+          <td>257020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=257020">Gaua</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 03:06:01</td>
+          <td>257030</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=257030">Aoba</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 03:06:00</td>
+          <td>300240</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=300240">Tolbachik</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 03:06:00</td>
+          <td>290390</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=290390">Alaid</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 03:06:00</td>
+          <td>300100</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=300100">Avachinsky</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="low">
+          <td>19-Jan-2026 03:06:00</td>
+          <td>300250</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=300250">Bezymianny</a></td>
+          <td data-order="0.90063109193694">0.90</td>
+          <td data-order="16.02000702247">16.02</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 03:06:00</td>
+          <td>290380</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=290380">Ebeko</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 03:06:00</td>
+          <td>300070</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=300070">Gorely</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 03:06:00</td>
+          <td>300130</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=300130">Karymsky</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 03:06:00</td>
+          <td>300230</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=300230">Kizimen</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 03:06:00</td>
+          <td>300190</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=300190">Krasheninnikov</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 03:06:00</td>
+          <td>300270</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=300270">Shiveluch</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="low">
+          <td>19-Jan-2026 03:06:00</td>
+          <td>300260</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=300260">Kliuchevskoi</a></td>
+          <td data-order="0.43153203592764">0.43</td>
+          <td data-order="8.224392074798">8.22</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 03:00:01</td>
+          <td>241080</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=241080">Tongariro</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 03:00:01</td>
+          <td>241040</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=241040">WhiteIsland</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 03:00:01</td>
+          <td>241100</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=241100">Ruapehu</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 02:42:01</td>
+          <td>390080</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=390080">BristolIsland</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 02:18:00</td>
+          <td>390130</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=390130">Zavodovski</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 02:18:00</td>
+          <td>390081</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=390081">MontaguIsland</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 02:18:00</td>
+          <td>390090</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=390090">Michael</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 02:12:01</td>
+          <td>211020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=211020">Vesuvius</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 02:12:01</td>
+          <td>211010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=211010">CampiFlegrei</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 02:12:01</td>
+          <td>383030</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=383030">Tenerife</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 02:06:01</td>
+          <td>372030</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=372030">Katla</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 02:06:01</td>
+          <td>371020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=371020">Reykjanes</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 02:06:01</td>
+          <td>371030</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=371030">Krisuvik</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 02:06:01</td>
+          <td>373080</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=373080">Krafla</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 02:06:01</td>
+          <td>374010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=374010">Oraefajokull</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 02:06:01</td>
+          <td>372070</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=372070">Hekla</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 02:06:01</td>
+          <td>373010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=373010">Grimsvotn</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 02:06:01</td>
+          <td>372020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=372020">Eyjafjallajokull</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 02:06:01</td>
+          <td>373030</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=373030">Bardarbunga</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 02:06:01</td>
+          <td>373060</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=373060">Askja</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 01:48:01</td>
+          <td>311120</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=311120">GreatSitkin</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 01:48:01</td>
+          <td>311060</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=311060">Semisopochnoi</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 01:48:00</td>
+          <td>211060</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=211060">Etna</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 01:48:00</td>
+          <td>211040</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=211040">Stromboli</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 01:48:00</td>
+          <td>211050</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=211050">Vulcano</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 01:24:01</td>
+          <td>243060</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=243060">Tofua</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 01:24:01</td>
+          <td>243040</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=243040">HungaTonga</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 01:24:01</td>
+          <td>243080</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=243080">HomeReef</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 01:24:00</td>
+          <td>311300</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=311300">Bogoslof</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 01:24:00</td>
+          <td>311240</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=311240">Cleveland</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 00:42:01</td>
+          <td>224010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=224010">Cameroon</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 00:30:01</td>
+          <td>212040</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=212040">Santorini</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="high">
+          <td>19-Jan-2026 00:18:00</td>
+          <td>223020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=223020">Nyamuragira</a></td>
+          <td data-order="646.23111751791">646.23</td>
+          <td data-order="8.9451453314074">8.95</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="low">
+          <td>19-Jan-2026 00:18:00</td>
+          <td>223030</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=223030">Nyiragongo</a></td>
+          <td data-order="1.5467486374496">1.55</td>
+          <td data-order="1.875">1.88</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 00:06:01</td>
+          <td>312070</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=312070">Veniaminof</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 00:06:01</td>
+          <td>313010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=313010">Augustine</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 00:06:01</td>
+          <td>312030</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=312030">Pavlof</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 00:06:01</td>
+          <td>313030</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=313030">Redoubt</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 00:06:01</td>
+          <td>311360</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=311360">Shishaldin</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>19-Jan-2026 00:06:01</td>
+          <td>313040</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=313040">Spurr</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 23:54:01</td>
+          <td>332020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=332020">MaunaLoa</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 23:54:01</td>
+          <td>332010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=332010">Kilauea</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 23:50:00</td>
+          <td>313010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=313010">Augustine</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 23:50:00</td>
+          <td>313030</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=313030">Redoubt</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 23:50:00</td>
+          <td>313040</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=313040">Spurr</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 23:50:00</td>
+          <td>312070</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=312070">Veniaminof</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 23:50:00</td>
+          <td>312030</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=312030">Pavlof</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 23:15:00</td>
+          <td>390080</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=390080">BristolIsland</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 23:15:00</td>
+          <td>390130</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=390130">Zavodovski</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 23:15:00</td>
+          <td>390081</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=390081">MontaguIsland</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 23:15:00</td>
+          <td>390090</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=390090">Michael</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 23:00:01</td>
+          <td>233010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=233010">Karthala</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 23:00:01</td>
+          <td>233005</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=233005">MayotteIsland</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 23:00:01</td>
+          <td>222120</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=222120">LengaiOlDoinyo</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="low">
+          <td>18-Jan-2026 22:54:01</td>
+          <td>221080</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=221080">ErtaAle</a></td>
+          <td data-order="0.14255557774795">0.14</td>
+          <td data-order="1.352081728299">1.35</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 22:54:01</td>
+          <td>221041</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=221041">Dallol</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 22:54:01</td>
+          <td>221180</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=221180">Dofen</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="low">
+          <td>18-Jan-2026 22:54:01</td>
+          <td>221101</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=221101">Nabro</a></td>
+          <td data-order="0.29134429670759">0.29</td>
+          <td data-order="0.83852549156242">0.84</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="low">
+          <td>18-Jan-2026 22:54:01</td>
+          <td>221190</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=221190">Fentale</a></td>
+          <td data-order="1.7292511218482">1.73</td>
+          <td data-order="2.0194368026754">2.02</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="very-high">
+          <td>18-Jan-2026 22:50:00</td>
+          <td>233020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=233020">FournaisePitondela</a></td>
+          <td data-order="2198.9334868288">2,198.93</td>
+          <td data-order="5.0990195135928">5.10</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 22:45:00</td>
+          <td>252010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=252010">Langila</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 22:45:00</td>
+          <td>251050</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=251050">LongIsland</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 22:45:00</td>
+          <td>251020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=251020">Manam</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 22:45:00</td>
+          <td>252080</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=252080">Pago</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 22:45:00</td>
+          <td>252140</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=252140">Rabaul</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 22:45:00</td>
+          <td>255020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=255020">Bagana</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 22:45:00</td>
+          <td>253010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=253010">Lamington</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 22:45:00</td>
+          <td>255070</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=255070">Savo</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 22:45:00</td>
+          <td>252120</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=252120">Ulawun</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 22:45:00</td>
+          <td>251002</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=251002">Kadovar</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 22:30:00</td>
+          <td>290380</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=290380">Ebeko</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 22:30:00</td>
+          <td>290390</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=290390">Alaid</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 22:30:00</td>
+          <td>290260</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=290260">Chirinkotan</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 22:30:00</td>
+          <td>290240</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=290240">SarychevPeak</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="low">
+          <td>18-Jan-2026 22:25:00</td>
+          <td>300270</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=300270">Shiveluch</a></td>
+          <td data-order="1.2514532502903">1.25</td>
+          <td data-order="2.2360679774998">2.24</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 22:25:00</td>
+          <td>300240</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=300240">Tolbachik</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 22:25:00</td>
+          <td>311060</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=311060">Semisopochnoi</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 22:25:00</td>
+          <td>300190</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=300190">Krasheninnikov</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 22:25:00</td>
+          <td>300230</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=300230">Kizimen</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 22:25:00</td>
+          <td>300130</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=300130">Karymsky</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 22:25:00</td>
+          <td>311120</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=311120">GreatSitkin</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 22:25:00</td>
+          <td>300070</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=300070">Gorely</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 22:25:00</td>
+          <td>300250</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=300250">Bezymianny</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 22:25:00</td>
+          <td>300100</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=300100">Avachinsky</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 22:25:00</td>
+          <td>300260</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=300260">Kliuchevskoi</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 22:24:01</td>
+          <td>313010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=313010">Augustine</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 22:24:01</td>
+          <td>311240</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=311240">Cleveland</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 22:24:01</td>
+          <td>311300</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=311300">Bogoslof</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 22:24:01</td>
+          <td>312070</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=312070">Veniaminof</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 22:24:01</td>
+          <td>311360</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=311360">Shishaldin</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 22:24:01</td>
+          <td>313030</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=313030">Redoubt</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 22:24:01</td>
+          <td>312030</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=312030">Pavlof</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 22:10:00</td>
+          <td>373010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=373010">Grimsvotn</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 22:10:00</td>
+          <td>373080</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=373080">Krafla</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 22:10:00</td>
+          <td>372030</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=372030">Katla</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 22:10:00</td>
+          <td>372070</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=372070">Hekla</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 22:10:00</td>
+          <td>371020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=371020">Reykjanes</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 22:10:00</td>
+          <td>372020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=372020">Eyjafjallajokull</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 22:10:00</td>
+          <td>373030</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=373030">Bardarbunga</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 22:10:00</td>
+          <td>373060</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=373060">Askja</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 22:10:00</td>
+          <td>374010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=374010">Oraefajokull</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 22:10:00</td>
+          <td>371030</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=371030">Krisuvik</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 22:05:00</td>
+          <td>382030</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=382030">SanJorge</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 22:05:00</td>
+          <td>321050</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=321050">StHelens</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 22:00:00</td>
+          <td>383030</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=383030">Tenerife</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 22:00:00</td>
+          <td>341090</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=341090">Popocatepetl</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 22:00:00</td>
+          <td>383010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=383010">LaPalma</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 22:00:00</td>
+          <td>383020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=383020">Hierro</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 22:00:00</td>
+          <td>341040</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=341040">Colima</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 22:00:00</td>
+          <td>321050</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=321050">StHelens</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 21:55:00</td>
+          <td>384010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=384010">Fogo</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 21:55:00</td>
+          <td>353010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=353010">Fernandina</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 21:24:01</td>
+          <td>233005</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=233005">MayotteIsland</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="moderate">
+          <td>18-Jan-2026 21:24:01</td>
+          <td>233020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=233020">FournaisePitondela</a></td>
+          <td data-order="89.888389279431">89.89</td>
+          <td data-order="4.3892624665199">4.39</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="very-high">
+          <td>18-Jan-2026 21:24:01</td>
+          <td>233020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=233020">FournaisePitondela</a></td>
+          <td data-order="3410.6345068873">3,410.63</td>
+          <td data-order="4.0388736053509">4.04</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 21:20:00</td>
+          <td>234010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=234010">Heard</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 21:15:00</td>
+          <td>241100</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=241100">Ruapehu</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 21:15:00</td>
+          <td>241040</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=241040">WhiteIsland</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 21:15:00</td>
+          <td>241080</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=241080">Tongariro</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 21:12:00</td>
+          <td>234010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=234010">Heard</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 21:10:00</td>
+          <td>243080</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=243080">HomeReef</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 21:10:00</td>
+          <td>243040</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=243040">HungaTonga</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 21:10:00</td>
+          <td>257050</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=257050">Lopevi</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 21:10:00</td>
+          <td>243060</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=243060">Tofua</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 21:10:00</td>
+          <td>257100</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=257100">Yasur</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 21:10:00</td>
+          <td>257040</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=257040">Ambrym</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 21:05:00</td>
+          <td>257030</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=257030">Aoba</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 21:05:00</td>
+          <td>261080</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=261080">Sinabung</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 21:05:00</td>
+          <td>261140</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=261140">Marapi</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 21:05:00</td>
+          <td>257020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=257020">Gaua</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 21:00:00</td>
+          <td>260010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=260010">BarrenIsland</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:50:00</td>
+          <td>311300</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=311300">Bogoslof</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:50:00</td>
+          <td>311240</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=311240">Cleveland</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:48:01</td>
+          <td>313040</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=313040">Spurr</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:45:00</td>
+          <td>311360</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=311360">Shishaldin</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:42:01</td>
+          <td>321050</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=321050">StHelens</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:30:01</td>
+          <td>341040</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=341040">Colima</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:30:01</td>
+          <td>341040</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=341040">Colima</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:30:01</td>
+          <td>341090</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=341090">Popocatepetl</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:30:01</td>
+          <td>341090</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=341090">Popocatepetl</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:25:00</td>
+          <td>211060</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=211060">Etna</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:25:00</td>
+          <td>211010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=211010">CampiFlegrei</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:25:00</td>
+          <td>211040</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=211040">Stromboli</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:25:00</td>
+          <td>211020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=211020">Vesuvius</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:25:00</td>
+          <td>211050</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=211050">Vulcano</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:20:00</td>
+          <td>344100</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=344100">Masaya</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:20:00</td>
+          <td>345033</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=345033">Arenal</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:20:00</td>
+          <td>344120</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=344120">Concepcion</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:20:00</td>
+          <td>342090</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=342090">Fuego</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:20:00</td>
+          <td>345070</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=345070">Turrialba</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:20:00</td>
+          <td>344040</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=344040">Telica</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:20:00</td>
+          <td>344090</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=344090">Momotombo</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:20:00</td>
+          <td>342110</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=342110">Pacaya</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:20:00</td>
+          <td>345040</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=345040">Poas</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:20:00</td>
+          <td>345020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=345020">RincondelaVieja</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:20:00</td>
+          <td>343100</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=343100">SanMiguel</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:20:00</td>
+          <td>343020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=343020">SantaAna</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:20:00</td>
+          <td>342030</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=342030">SantaMaria</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:20:00</td>
+          <td>344110</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=344110">Mombacho</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="moderate">
+          <td>18-Jan-2026 20:20:00</td>
+          <td>344020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=344020">SanCristobal</a></td>
+          <td data-order="39.061439783347">39.06</td>
+          <td data-order="26.400757564888">26.40</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:15:00</td>
+          <td>352080</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=352080">Tungurahua</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:15:00</td>
+          <td>351050</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=351050">HuilaNevadodel</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:15:00</td>
+          <td>224010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=224010">Cameroon</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:15:00</td>
+          <td>352050</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=352050">Cotopaxi</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:15:00</td>
+          <td>351080</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=351080">Galeras</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:15:00</td>
+          <td>352020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=352020">GuaguaPichincha</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:15:00</td>
+          <td>351110</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=351110">NegrodeMayasquerCerro</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:15:00</td>
+          <td>351060</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=351060">Purace</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:15:00</td>
+          <td>352010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=352010">Reventador</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:15:00</td>
+          <td>351020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=351020">RuizNevadodel</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="moderate">
+          <td>18-Jan-2026 20:15:00</td>
+          <td>352090</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=352090">Sangay</a></td>
+          <td data-order="54.328488740877">54.33</td>
+          <td data-order="1.4142135623731">1.41</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:12:00</td>
+          <td>341120</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=341120">ChichonEl</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:12:00</td>
+          <td>342030</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=342030">SantaMaria</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="low">
+          <td>18-Jan-2026 20:12:00</td>
+          <td>343020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=343020">SantaAna</a></td>
+          <td data-order="4.9496864515241">4.95</td>
+          <td data-order="25.225545088263">25.23</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:12:00</td>
+          <td>342110</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=342110">Pacaya</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="moderate">
+          <td>18-Jan-2026 20:12:00</td>
+          <td>342090</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=342090">Fuego</a></td>
+          <td data-order="35.409828713813">35.41</td>
+          <td data-order="23.651770546832">23.65</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:10:00</td>
+          <td>355030</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=355030">Isluga</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:10:00</td>
+          <td>354020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=354020">Ubinas</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:10:00</td>
+          <td>354006</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=354006">Sabancaya</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:10:00</td>
+          <td>354010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=354010">MistiEl</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:10:00</td>
+          <td>355100</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=355100">Lascar</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:10:00</td>
+          <td>355120</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=355120">Lastarria</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:06:00</td>
+          <td>353010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=353010">Fernandina</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:06:00</td>
+          <td>353050</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=353050">NegraSierra</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:06:00</td>
+          <td>353020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=353020">Wolf</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="moderate">
+          <td>18-Jan-2026 20:05:00</td>
+          <td>357070</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=357070">ChillanNevadosde</a></td>
+          <td data-order="70.427972139595">70.43</td>
+          <td data-order="8.0622577482985">8.06</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:05:00</td>
+          <td>358041</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=358041">Chaiten</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:05:00</td>
+          <td>357120</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=357120">Villarrica</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:05:00</td>
+          <td>357090</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=357090">Copahue</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:05:00</td>
+          <td>357110</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=357110">Llaima</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:05:00</td>
+          <td>357040</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=357040">PlanchonPeteroa</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 20:05:00</td>
+          <td>357150</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=357150">PuyehueCordonCaulle</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 19:54:01</td>
+          <td>234010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=234010">Heard</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 19:54:00</td>
+          <td>357090</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=357090">Copahue</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 19:54:00</td>
+          <td>357120</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=357120">Villarrica</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 19:54:00</td>
+          <td>357150</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=357150">PuyehueCordonCaulle</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 19:54:00</td>
+          <td>357110</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=357110">Llaima</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 19:54:00</td>
+          <td>358041</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=358041">Chaiten</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 19:36:01</td>
+          <td>261080</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=261080">Sinabung</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 19:36:01</td>
+          <td>261140</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=261140">Marapi</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 19:36:01</td>
+          <td>261140</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=261140">Marapi</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 19:36:01</td>
+          <td>261080</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=261080">Sinabung</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="low">
+          <td>18-Jan-2026 19:30:01</td>
+          <td>260010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=260010">BarrenIsland</a></td>
+          <td data-order="1.1767989740414">1.18</td>
+          <td data-order="2.2810359488618">2.28</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="low">
+          <td>18-Jan-2026 19:30:01</td>
+          <td>260010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=260010">BarrenIsland</a></td>
+          <td data-order="0.53827029156592">0.54</td>
+          <td data-order="1.6770509831248">1.68</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 19:30:00</td>
+          <td>264020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=264020">Agung</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 19:30:00</td>
+          <td>263350</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=263350">Ijen</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 19:30:00</td>
+          <td>263280</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=263280">Kelut</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 19:30:00</td>
+          <td>264180</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=264180">Lewotobi</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 19:30:00</td>
+          <td>264230</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=264230">Lewotolo</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 19:30:00</td>
+          <td>264150</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=264150">Paluweh</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 19:30:00</td>
+          <td>263340</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=263340">Raung</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 19:30:00</td>
+          <td>264030</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=264030">Rinjani</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 19:30:00</td>
+          <td>264050</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=264050">SangeangApi</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 19:30:00</td>
+          <td>263300</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=263300">Semeru</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 19:30:00</td>
+          <td>263180</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=263180">Slamet</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 19:30:00</td>
+          <td>264260</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=264260">TaraBatu</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 19:30:00</td>
+          <td>263310</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=263310">TenggerCaldera</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 19:30:00</td>
+          <td>262000</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=262000">Krakatau</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 19:30:00</td>
+          <td>263250</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=263250">Merapi</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 19:25:00</td>
+          <td>266030</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=266030">Soputan</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 19:25:00</td>
+          <td>267010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=267010">Ruang</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 19:25:00</td>
+          <td>267020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=267020">Karangetang</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 19:25:00</td>
+          <td>272020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=272020">Kanlaon</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 19:25:00</td>
+          <td>267040</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=267040">Awu</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 19:20:00</td>
+          <td>332020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=332020">MaunaLoa</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="moderate">
+          <td>18-Jan-2026 19:20:00</td>
+          <td>273030</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=273030">Mayon</a></td>
+          <td data-order="18.019285882929">18.02</td>
+          <td data-order="3">3.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="moderate">
+          <td>18-Jan-2026 19:20:00</td>
+          <td>332010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=332010">Kilauea</a></td>
+          <td data-order="22.679855254202">22.68</td>
+          <td data-order="10.198039027186">10.20</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 19:20:00</td>
+          <td>273083</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=273083">Pinatubo</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="low">
+          <td>18-Jan-2026 19:20:00</td>
+          <td>273070</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=273070">Taal</a></td>
+          <td data-order="1.1856575194992">1.19</td>
+          <td data-order="2">2.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 19:18:00</td>
+          <td>262000</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=262000">Krakatau</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 19:18:00</td>
+          <td>261170</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=261170">Kerinci</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 19:15:00</td>
+          <td>282030</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=282030">Suwanosejima</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 19:15:00</td>
+          <td>282080</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=282080">Aira</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 19:15:00</td>
+          <td>282110</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=282110">Asosan</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 19:15:00</td>
+          <td>282090</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=282090">Kirishimayama</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 19:15:00</td>
+          <td>282100</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=282100">Unzendake</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:54:01</td>
+          <td>341120</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=341120">ChichonEl</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:48:01</td>
+          <td>344110</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=344110">Mombacho</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:48:01</td>
+          <td>351110</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=351110">NegrodeMayasquerCerro</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:48:01</td>
+          <td>353050</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=353050">NegraSierra</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:48:01</td>
+          <td>344090</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=344090">Momotombo</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:48:01</td>
+          <td>352020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=352020">GuaguaPichincha</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:48:01</td>
+          <td>344100</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=344100">Masaya</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:48:01</td>
+          <td>351050</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=351050">HuilaNevadodel</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:48:01</td>
+          <td>351080</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=351080">Galeras</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="high">
+          <td>18-Jan-2026 18:48:01</td>
+          <td>342090</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=342090">Fuego</a></td>
+          <td data-order="180.43168255305">180.43</td>
+          <td data-order="2.25">2.25</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:48:01</td>
+          <td>352050</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=352050">Cotopaxi</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:48:01</td>
+          <td>344120</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=344120">Concepcion</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:48:01</td>
+          <td>345033</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=345033">Arenal</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:48:01</td>
+          <td>351060</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=351060">Purace</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:48:01</td>
+          <td>352010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=352010">Reventador</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:48:01</td>
+          <td>353010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=353010">Fernandina</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:48:01</td>
+          <td>345020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=345020">RincondelaVieja</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:48:01</td>
+          <td>345040</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=345040">Poas</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:48:01</td>
+          <td>352080</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=352080">Tungurahua</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:48:01</td>
+          <td>345040</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=345040">Poas</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:48:01</td>
+          <td>351060</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=351060">Purace</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:48:01</td>
+          <td>345033</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=345033">Arenal</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:48:01</td>
+          <td>345020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=345020">RincondelaVieja</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="low">
+          <td>18-Jan-2026 18:48:01</td>
+          <td>351020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=351020">RuizNevadodel</a></td>
+          <td data-order="2.6217748698885">2.62</td>
+          <td data-order="0.375">0.38</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:48:01</td>
+          <td>343100</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=343100">SanMiguel</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:48:01</td>
+          <td>344020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=344020">SanCristobal</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:48:01</td>
+          <td>344040</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=344040">Telica</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:48:01</td>
+          <td>345070</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=345070">Turrialba</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:48:01</td>
+          <td>344090</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=344090">Momotombo</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:48:01</td>
+          <td>353020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=353020">Wolf</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:48:01</td>
+          <td>345070</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=345070">Turrialba</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:48:01</td>
+          <td>352080</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=352080">Tungurahua</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:48:01</td>
+          <td>344040</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=344040">Telica</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:48:01</td>
+          <td>342030</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=342030">SantaMaria</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:48:01</td>
+          <td>343020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=343020">SantaAna</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="moderate">
+          <td>18-Jan-2026 18:48:01</td>
+          <td>344020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=344020">SanCristobal</a></td>
+          <td data-order="77.841415982951">77.84</td>
+          <td data-order="26.25">26.25</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:48:01</td>
+          <td>343100</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=343100">SanMiguel</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:48:01</td>
+          <td>351020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=351020">RuizNevadodel</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:48:01</td>
+          <td>351110</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=351110">NegrodeMayasquerCerro</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:48:01</td>
+          <td>352010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=352010">Reventador</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:48:01</td>
+          <td>342110</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=342110">Pacaya</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:48:01</td>
+          <td>344120</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=344120">Concepcion</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:48:01</td>
+          <td>352050</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=352050">Cotopaxi</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:48:01</td>
+          <td>351080</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=351080">Galeras</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:48:01</td>
+          <td>352020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=352020">GuaguaPichincha</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:48:01</td>
+          <td>351050</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=351050">HuilaNevadodel</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="low">
+          <td>18-Jan-2026 18:48:01</td>
+          <td>344100</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=344100">Masaya</a></td>
+          <td data-order="2.1469867494853">2.15</td>
+          <td data-order="26.00240373504">26.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:48:01</td>
+          <td>344110</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=344110">Mombacho</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:45:00</td>
+          <td>212040</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=212040">Santorini</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:42:01</td>
+          <td>354010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=354010">MistiEl</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:42:01</td>
+          <td>355030</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=355030">Isluga</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:42:01</td>
+          <td>354010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=354010">MistiEl</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="low">
+          <td>18-Jan-2026 18:42:01</td>
+          <td>354006</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=354006">Sabancaya</a></td>
+          <td data-order="2.9446261501047">2.94</td>
+          <td data-order="6.451743950282">6.45</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:42:01</td>
+          <td>352090</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=352090">Sangay</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:42:01</td>
+          <td>354020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=354020">Ubinas</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:42:01</td>
+          <td>354006</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=354006">Sabancaya</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:42:01</td>
+          <td>352090</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=352090">Sangay</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:42:01</td>
+          <td>355030</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=355030">Isluga</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:42:01</td>
+          <td>354020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=354020">Ubinas</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:40:00</td>
+          <td>360060</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=360060">SoufriereGuadeloupe</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:40:00</td>
+          <td>221080</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=221080">ErtaAle</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:40:00</td>
+          <td>360050</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=360050">SoufriereHills</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:40:00</td>
+          <td>360150</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=360150">SoufriereStVincent</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:40:00</td>
+          <td>221101</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=221101">Nabro</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:40:00</td>
+          <td>360010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=360010">Saba</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:40:00</td>
+          <td>221041</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=221041">Dallol</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:36:01</td>
+          <td>357090</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=357090">Copahue</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:36:01</td>
+          <td>357150</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=357150">PuyehueCordonCaulle</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:36:01</td>
+          <td>357120</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=357120">Villarrica</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:36:01</td>
+          <td>357110</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=357110">Llaima</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:36:01</td>
+          <td>355120</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=355120">Lastarria</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:36:01</td>
+          <td>357040</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=357040">PlanchonPeteroa</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="moderate">
+          <td>18-Jan-2026 18:36:01</td>
+          <td>357070</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=357070">ChillanNevadosde</a></td>
+          <td data-order="72.695772955534">72.70</td>
+          <td data-order="8.25">8.25</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:36:01</td>
+          <td>358041</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=358041">Chaiten</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:36:01</td>
+          <td>357040</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=357040">PlanchonPeteroa</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:36:01</td>
+          <td>355100</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=355100">Lascar</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:36:01</td>
+          <td>355120</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=355120">Lastarria</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:36:01</td>
+          <td>357070</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=357070">ChillanNevadosde</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:36:01</td>
+          <td>355100</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=355100">Lascar</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="low">
+          <td>18-Jan-2026 18:35:00</td>
+          <td>221190</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=221190">Fentale</a></td>
+          <td data-order="1.917569650852">1.92</td>
+          <td data-order="2.2360679774998">2.24</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:35:00</td>
+          <td>221180</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=221180">Dofen</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:35:00</td>
+          <td>222120</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=222120">LengaiOlDoinyo</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="very-high">
+          <td>18-Jan-2026 18:35:00</td>
+          <td>223020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=223020">Nyamuragira</a></td>
+          <td data-order="1199.4558073862">1,199.46</td>
+          <td data-order="10.295630140987">10.30</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:35:00</td>
+          <td>223030</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=223030">Nyiragongo</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:30:00</td>
+          <td>233010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=233010">Karthala</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:30:00</td>
+          <td>233005</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=233005">MayotteIsland</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:00:01</td>
+          <td>263350</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=263350">Ijen</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:00:01</td>
+          <td>264020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=264020">Agung</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:00:01</td>
+          <td>263350</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=263350">Ijen</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:00:01</td>
+          <td>263280</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=263280">Kelut</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:00:01</td>
+          <td>263250</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=263250">Merapi</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:00:01</td>
+          <td>263340</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=263340">Raung</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:00:01</td>
+          <td>264030</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=264030">Rinjani</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:00:01</td>
+          <td>263300</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=263300">Semeru</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:00:01</td>
+          <td>263280</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=263280">Kelut</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:00:01</td>
+          <td>263310</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=263310">TenggerCaldera</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:00:01</td>
+          <td>263340</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=263340">Raung</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:00:01</td>
+          <td>263250</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=263250">Merapi</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:00:01</td>
+          <td>263300</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=263300">Semeru</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:00:01</td>
+          <td>263180</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=263180">Slamet</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 18:00:01</td>
+          <td>263310</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=263310">TenggerCaldera</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 17:54:01</td>
+          <td>272020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=272020">Kanlaon</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 17:54:01</td>
+          <td>267040</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=267040">Awu</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 17:54:01</td>
+          <td>272020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=272020">Kanlaon</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 17:54:01</td>
+          <td>267020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=267020">Karangetang</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 17:54:01</td>
+          <td>261170</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=261170">Kerinci</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 17:54:01</td>
+          <td>264230</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=264230">Lewotolo</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 17:54:01</td>
+          <td>262000</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=262000">Krakatau</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 17:54:01</td>
+          <td>264150</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=264150">Paluweh</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 17:54:01</td>
+          <td>267010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=267010">Ruang</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 17:54:01</td>
+          <td>264050</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=264050">SangeangApi</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 17:54:01</td>
+          <td>263180</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=263180">Slamet</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 17:54:01</td>
+          <td>266030</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=266030">Soputan</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 17:54:01</td>
+          <td>264260</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=264260">TaraBatu</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 17:54:01</td>
+          <td>264180</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=264180">Lewotobi</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 17:48:01</td>
+          <td>273083</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=273083">Pinatubo</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="low">
+          <td>18-Jan-2026 17:48:01</td>
+          <td>273070</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=273070">Taal</a></td>
+          <td data-order="0.6568163598819">0.66</td>
+          <td data-order="1.1858541225631">1.19</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="low">
+          <td>18-Jan-2026 17:48:01</td>
+          <td>273030</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=273030">Mayon</a></td>
+          <td data-order="0.64260447726891">0.64</td>
+          <td data-order="2.3717082451263">2.37</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 17:48:01</td>
+          <td>282030</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=282030">Suwanosejima</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 17:48:01</td>
+          <td>282060</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=282060">Kikai</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 17:48:01</td>
+          <td>273083</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=273083">Pinatubo</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 17:48:01</td>
+          <td>282080</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=282080">Aira</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="low">
+          <td>18-Jan-2026 17:48:01</td>
+          <td>273070</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=273070">Taal</a></td>
+          <td data-order="4.4129372797465">4.41</td>
+          <td data-order="1.6770509831248">1.68</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 17:45:00</td>
+          <td>284200</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=284200">Anatahan</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 17:42:01</td>
+          <td>282100</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=282100">Unzendake</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 17:42:01</td>
+          <td>282110</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=282110">Asosan</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 17:42:01</td>
+          <td>283110</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=283110">Asamayama</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 17:40:00</td>
+          <td>284170</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=284170">Pagan</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 17:40:00</td>
+          <td>284096</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=284096">Nishinoshima</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 17:40:00</td>
+          <td>283110</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=283110">Asamayama</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 17:35:00</td>
+          <td>290150</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=290150">Chirpoi</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 17:12:01</td>
+          <td>360010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=360010">Saba</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 17:12:01</td>
+          <td>360050</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=360050">SoufriereHills</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 17:12:01</td>
+          <td>360010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=360010">Saba</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 17:12:01</td>
+          <td>360050</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=360050">SoufriereHills</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 17:06:01</td>
+          <td>360060</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=360060">SoufriereGuadeloupe</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 17:06:01</td>
+          <td>360150</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=360150">SoufriereStVincent</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 17:06:01</td>
+          <td>360060</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=360060">SoufriereGuadeloupe</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 17:06:01</td>
+          <td>360060</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR375.php?volcano_id=360060">SoufriereGuadeloupe</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS375</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 16:48:01</td>
+          <td>390080</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=390080">BristolIsland</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 16:48:01</td>
+          <td>390090</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=390090">Michael</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 16:48:01</td>
+          <td>390081</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=390081">MontaguIsland</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 16:48:01</td>
+          <td>390130</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=390130">Zavodovski</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 16:18:01</td>
+          <td>253010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=253010">Lamington</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 16:12:01</td>
+          <td>251020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=251020">Manam</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 16:12:01</td>
+          <td>268010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=268010">Dukono</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 16:12:01</td>
+          <td>268030</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=268030">Ibu</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 16:12:01</td>
+          <td>251002</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=251002">Kadovar</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 16:12:01</td>
+          <td>252010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=252010">Langila</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 16:12:01</td>
+          <td>251050</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=251050">LongIsland</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 16:10:00</td>
+          <td>256010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=256010">Tinakula</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 16:06:01</td>
+          <td>284200</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=284200">Anatahan</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 16:06:01</td>
+          <td>282090</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=282090">Kirishimayama</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 16:06:01</td>
+          <td>284096</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=284096">Nishinoshima</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 16:06:01</td>
+          <td>284170</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=284170">Pagan</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="low">
+          <td>18-Jan-2026 16:00:01</td>
+          <td>290390</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=290390">Alaid</a></td>
+          <td data-order="0.082708386801647">0.08</td>
+          <td data-order="0.75">0.75</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 16:00:01</td>
+          <td>300100</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=300100">Avachinsky</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 16:00:01</td>
+          <td>290260</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=290260">Chirinkotan</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 16:00:01</td>
+          <td>290150</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=290150">Chirpoi</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 16:00:01</td>
+          <td>290380</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=290380">Ebeko</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 16:00:01</td>
+          <td>300070</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=300070">Gorely</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 16:00:01</td>
+          <td>290240</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=290240">SarychevPeak</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 16:00:00</td>
+          <td>341120</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=341120">ChichonEl</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 15:54:01</td>
+          <td>300240</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=300240">Tolbachik</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 15:54:01</td>
+          <td>300270</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=300270">Shiveluch</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="low">
+          <td>18-Jan-2026 15:54:01</td>
+          <td>300260</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=300260">Kliuchevskoi</a></td>
+          <td data-order="3.3649192929026">3.36</td>
+          <td data-order="2.3717082451263">2.37</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 15:54:01</td>
+          <td>300250</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=300250">Bezymianny</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 15:42:01</td>
+          <td>371030</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=371030">Krisuvik</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 15:42:01</td>
+          <td>371020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=371020">Reykjanes</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 15:36:01</td>
+          <td>382030</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=382030">SanJorge</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 15:24:01</td>
+          <td>384010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=384010">Fogo</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 15:12:00</td>
+          <td>383010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=383010">LaPalma</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 14:36:01</td>
+          <td>252120</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=252120">Ulawun</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 14:36:01</td>
+          <td>257100</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=257100">Yasur</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 14:36:01</td>
+          <td>252140</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=252140">Rabaul</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 14:36:01</td>
+          <td>252080</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=252080">Pago</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 14:36:01</td>
+          <td>257050</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=257050">Lopevi</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 14:36:01</td>
+          <td>257020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=257020">Gaua</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 14:36:01</td>
+          <td>255020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=255020">Bagana</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 14:36:01</td>
+          <td>255070</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=255070">Savo</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 14:36:01</td>
+          <td>257030</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=257030">Aoba</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 14:36:01</td>
+          <td>257040</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=257040">Ambrym</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 14:30:00</td>
+          <td>353050</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=353050">NegraSierra</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 14:30:00</td>
+          <td>353020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=353020">Wolf</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 14:24:00</td>
+          <td>241040</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=241040">WhiteIsland</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 14:24:00</td>
+          <td>241100</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=241100">Ruapehu</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 14:24:00</td>
+          <td>241080</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=241080">Tongariro</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="high">
+          <td>18-Jan-2026 14:18:01</td>
+          <td>300190</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=300190">Krasheninnikov</a></td>
+          <td data-order="136.55093124135">136.55</td>
+          <td data-order="4.373213921134">4.37</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 14:18:01</td>
+          <td>300230</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=300230">Kizimen</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 14:18:01</td>
+          <td>300130</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=300130">Karymsky</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 14:18:01</td>
+          <td>311120</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=311120">GreatSitkin</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 14:18:01</td>
+          <td>311060</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=311060">Semisopochnoi</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 14:00:01</td>
+          <td>372020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=372020">Eyjafjallajokull</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 14:00:01</td>
+          <td>372070</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=372070">Hekla</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 14:00:01</td>
+          <td>372030</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=372030">Katla</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 14:00:01</td>
+          <td>374010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=374010">Oraefajokull</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 14:00:01</td>
+          <td>373010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=373010">Grimsvotn</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 14:00:01</td>
+          <td>373080</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=373080">Krafla</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 14:00:01</td>
+          <td>373030</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=373030">Bardarbunga</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 14:00:01</td>
+          <td>373060</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=373060">Askja</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 13:48:01</td>
+          <td>383020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=383020">Hierro</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 13:48:01</td>
+          <td>383030</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=383030">Tenerife</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 13:40:00</td>
+          <td>261170</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=261170">Kerinci</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 13:24:00</td>
+          <td>224010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=224010">Cameroon</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="moderate">
+          <td>18-Jan-2026 12:54:01</td>
+          <td>243080</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=243080">HomeReef</a></td>
+          <td data-order="89.05457511248">89.05</td>
+          <td data-order="1.6770509831248">1.68</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 12:54:01</td>
+          <td>243060</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=243060">Tofua</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 12:54:01</td>
+          <td>243040</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=243040">HungaTonga</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="moderate">
+          <td>18-Jan-2026 12:42:01</td>
+          <td>332010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=332010">Kilauea</a></td>
+          <td data-order="61.305341821039">61.31</td>
+          <td data-order="11.349559462816">11.35</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 12:42:01</td>
+          <td>332020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=332020">MaunaLoa</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 12:12:01</td>
+          <td>211050</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=211050">Vulcano</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 12:12:01</td>
+          <td>212040</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=212040">Santorini</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 12:12:01</td>
+          <td>211020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=211020">Vesuvius</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 12:12:01</td>
+          <td>211040</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=211040">Stromboli</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 12:12:01</td>
+          <td>211010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=211010">CampiFlegrei</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 12:12:01</td>
+          <td>211060</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=211060">Etna</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 12:10:00</td>
+          <td>282060</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=282060">Kikai</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="high">
+          <td>18-Jan-2026 12:00:01</td>
+          <td>223020</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=223020">Nyamuragira</a></td>
+          <td data-order="253.70225809219">253.70</td>
+          <td data-order="3.0923292192133">3.09</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 12:00:01</td>
+          <td>223030</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=223030">Nyiragongo</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 12:00:00</td>
+          <td>268030</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=268030">Ibu</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 12:00:00</td>
+          <td>268010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_MOD.php?volcano_id=268010">Dukono</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>MODIS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 11:36:00</td>
+          <td>233010</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=233010">Karthala</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 11:36:00</td>
+          <td>222120</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=222120">LengaiOlDoinyo</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 10:24:01</td>
+          <td>221101</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=221101">Nabro</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 10:24:01</td>
+          <td>221041</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=221041">Dallol</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 10:24:01</td>
+          <td>221180</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=221180">Dofen</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 10:24:01</td>
+          <td>221080</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=221080">ErtaAle</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+              <tr class="none">
+          <td>18-Jan-2026 10:18:01</td>
+          <td>221190</td>
+          <td><a class="volcano-link" href="../NRT/volcanoDetails_VIR.php?volcano_id=221190">Fentale</a></td>
+          <td data-order="0">0.00</td>
+          <td data-order="0">0.00</td>
+          <td>VIIRS</td>
+        </tr>
+            </tbody>
+    </table>
+  </div>
+</div>
+<!-- Page content ends here -->
+
+</div>
+
+<footer>
+  <div class="footer-container" style="display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 15px; text-align: right;">
+    <div class="footer-text" style="flex: 1; font-size: 0.8rem;">
+      <p style="margin: 0;">&copy; 2026 MIROVA - Middle Infrared Observations of Volcanic Activity |
+        <a href="credits.php">Credits</a>
+      </p>
+      <p style="margin: 5px 0 0;">University of Turin, Italy | Department of Earth Science | Contact: <a href="mailto:diego.coppola@unito.it">diego.coppola@unito.it</a></p>
+    </div>
+    <div style="flex-shrink: 0;">
+      <img src="https://www.mirovaweb.it/images/Logo_DST.jpg" alt="DST Logo" style="height: 50px;">
+    </div>
+  </div>
+</footer>
+
+<!-- Replace external JS with local versions -->
+<script src="../assets/js/jquery-3.6.0.min.js"></script>
+<script src="../assets/js/jquery.dataTables.min.js"></script>
+<script src="../assets/js/leaflet.js"></script>
+
+<!-- Essential scripts 
+<script src="https://www.mirovaweb.it/js2/jquery-3.6.0.min.js"></script>
+<script src="https://www.mirovaweb.it/js2/jquery.dataTables.min.js"></script>
+<script src="https://www.mirovaweb.it/js2/leaflet.js"></script>
+-->
+
+<!--
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+ --> 
+<script>
+// Initialize mobile menu toggle
+$(document).ready(function() {
+  $('.menu-toggle').on('click', function() {
+    $('.nav-menu').toggleClass('active');
+  });
+  
+  // Initialize dynamic UTC clock
+  updateUTCClock();
+  setInterval(updateUTCClock, 1000);
+});
+
+/**
+ * Update the UTC clock display
+ */
+function updateUTCClock() {
+  const now = new Date();
+  const clockEl = document.getElementById('utcClock');
+  
+  // Format the date as "11 April 2025 13:06:42 UTC"
+  const options = { 
+    day: 'numeric', 
+    month: 'long', 
+    year: 'numeric',
+    hour: '2-digit', 
+    minute: '2-digit', 
+    second: '2-digit',
+    hour12: false,
+    timeZone: 'UTC'
+  };
+  
+  clockEl.textContent = now.toLocaleString('en-US', options) + ' UTC';
+}
+
+// Get row color class based on VRP value
+function getRowColorClass(vrp) {
+  if (vrp > 10000) return 'extreme';
+  if (vrp > 1000) return 'very-high';
+  if (vrp > 100) return 'high';
+  if (vrp > 10) return 'moderate';
+  if (vrp > 1) return 'low';
+  if (vrp > 0) return 'very-low';
+  return 'none';
+}
+
+// Calculate and format time difference
+function calculateTimeDifference(timestamp) {
+  if (!timestamp) return "N/A";
+  
+  const time = new Date(timestamp);
+  const now = new Date();
+  const diff = now - time;
+  
+  // Format the difference
+  if (diff < 60000) {
+    return "Just now";
+  } else if (diff < 3600000) {
+    const minutes = Math.floor(diff / 60000);
+    return minutes + " minute" + (minutes > 1 ? "s" : "") + " ago";
+  } else if (diff < 86400000) {
+    const hours = Math.floor(diff / 3600000);
+    return hours + " hour" + (hours > 1 ? "s" : "") + " ago";
+  } else {
+    const days = Math.floor(diff / 86400000);
+    return days + " day" + (days > 1 ? "s" : "") + " ago";
+  }
+}
+
+// Update sensor times and delays
+function updateSensorDelays() {
+  const modisTime = $('#modis-time').text();
+  const viirsTime = $('#viirs-time').text();
+  const viirs375Time = $('#viirs375-time').text(); // Added for VIIRS375
+  
+  if (modisTime !== "No data available") {
+    $('#modis-delay').text(calculateTimeDifference(modisTime));
+  }
+  
+  if (viirsTime !== "No data available") {
+    $('#viirs-delay').text(calculateTimeDifference(viirsTime));
+  }
+  
+  // Added for VIIRS375
+  if (viirs375Time !== "No data available") {
+    $('#viirs375-delay').text(calculateTimeDifference(viirs375Time));
+  }
+}
+
+// Check if we're on a mobile device
+function isMobileDevice() {
+  return (window.innerWidth <= 768);
+}
+
+// Configure DataTables based on device type
+function configureDataTable() {
+  const isMobile = isMobileDevice();
+  const defaultPageLength = isMobile ? 10 : 15;
+  
+  // Common options for all devices
+  const options = {
+    paging: true,
+    ordering: true,
+    order: [[0, 'desc']],
+    pageLength: defaultPageLength,
+    lengthMenu: [[5, 10, 15, 25, 50, -1], [5, 10, 15, 25, 50, "All"]],
+    info: true,
+    searching: true,
+    responsive: true,
+    language: {
+      search: "_INPUT_",
+      searchPlaceholder: "Search volcanoes...",
+      lengthMenu: "Show _MENU_ entries",
+      info: "Showing _START_ to _END_ of _TOTAL_ entries"
+    },
+    createdRow: function(row, data, dataIndex) {
+      const vrpText = $(row).find('td:eq(3)').attr('data-order');
+      const vrp = parseFloat(vrpText);
+      const className = getRowColorClass(vrp);
+      $(row).addClass(className);
+    }
+  };
+  
+  // Mobile-specific options
+  if (isMobile) {
+    options.dom = "<'row'<'col-sm-12'f>>" +
+                 "<'row'<'col-sm-12'tr>>" +
+                 "<'row'<'col-sm-12'<'d-flex justify-content-between'<'mt-2'l><'mt-2'i>>>>" +
+                 "<'row'<'col-sm-12'p>>";
+    
+    // On mobile, we can adjust column visibility for better display
+    options.columnDefs = [
+      { responsivePriority: 1, targets: [2, 3] }, // Volcano & VRP are most important
+      { responsivePriority: 2, targets: [0, 5] }, // Time & Sensor medium importance
+      { responsivePriority: 3, targets: [1, 4] }  // ID & Distance least important
+    ];
+  }
+  
+  // Initialize DataTable
+  return $('#volcanoTable').DataTable(options);
+}
+
+$(document).ready(function() {
+  // Initialize table with responsive settings
+  const table = configureDataTable();
+  
+  // Initial delay update
+  updateSensorDelays();
+  
+  // Update delay times every minute
+  setInterval(updateSensorDelays, 60000);
+  
+  // Add event listeners for touch-friendly experience on mobile
+  $('.volcano-link').on('touchstart', function() {
+    $(this).addClass('touching');
+  }).on('touchend', function() {
+    $(this).removeClass('touching');
+    // Small delay to allow the visual feedback before navigation
+    setTimeout(() => {
+      window.location = $(this).attr('href');
+    }, 50);
+  });
+  
+  // Add viewport meta tag for proper scaling
+  if (!$('meta[name="viewport"]').length) {
+    $('head').append('<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">');
+  }
+  
+  // Handle orientation change
+  window.addEventListener('orientationchange', function() {
+    // Give the browser a moment to adjust before redrawing the table
+    setTimeout(function() {
+      table.columns.adjust().draw();
+    }, 300);
+  });
+});</script>
+</body>
+</html>

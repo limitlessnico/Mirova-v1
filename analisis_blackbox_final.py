@@ -159,7 +159,11 @@ def comparar_blackbox_vs_capturados(eventos_blackbox, df_capturados):
     eventos_perdidos = []
     eventos_capturados_ok = []
     
+    # FILTRAR SOLO VOLCANES CHILENOS QUE MONITOREAMOS
     for event_key, info in eventos_blackbox.items():
+        # IMPORTANTE: Solo analizar volcanes que estamos monitoreando
+        if info['volcan'] not in VOLCANES_MONITOREADOS:
+            continue  # Saltar volcanes que no son de Chile
         ts_evento = event_key[0]
         volcan = event_key[1]
         sensor = event_key[2]

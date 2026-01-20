@@ -6,3 +6,5 @@ pytz
 numpy
 plotly
 matplotlib
+pytesseract
+opencv-python

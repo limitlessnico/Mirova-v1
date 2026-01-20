@@ -44,9 +44,10 @@ def merge():
     
     # Preparar consolidado (agregar columnas nuevas)
     if not df_consolidado.empty:
-        # CRÍTICO: Forzar valores incluso si columna ya existe
+        # CRÍTICO: NO usar 'N/A' porque pandas lo convierte a NaN
+        # Usar 'valido' en su lugar
         df_consolidado.loc[:, 'Origen_Dato'] = 'latest.php'
-        df_consolidado.loc[:, 'Confianza_Validacion'] = 'N/A'
+        df_consolidado.loc[:, 'Confianza_Validacion'] = 'valido'  # Era 'N/A'
         df_consolidado.loc[:, 'Requiere_Verificacion'] = False
         df_consolidado.loc[:, 'Nota_Validacion'] = 'Capturado por latest.php'
         

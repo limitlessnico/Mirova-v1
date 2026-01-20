@@ -177,6 +177,14 @@ def procesar():
         if not df.empty:
             df['Confianza_Validacion'] = 'valido'  # Era 'N/A'
     
+    # CRÍTICO: Filtrar falsos positivos y rutinas
+    if not df.empty and 'Tipo_Registro' in df.columns:
+        antes = len(df)
+        df = df[~df['Tipo_Registro'].isin(['FALSO_POSITIVO', 'RUTINA'])].copy()
+        despues = len(df)
+        if antes > despues:
+            print(f"🔍 Filtrados {antes - despues} eventos (falsos positivos/rutina)")
+    
     # Config diferente para lineal vs log
     config_lineal = {
         'displayModeBar': 'hover',

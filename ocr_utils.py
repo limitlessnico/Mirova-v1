@@ -1,5 +1,5 @@
 """
-OCR_UTILS.PY
+OCR_UTILS.PY - VERSIÓN CORREGIDA
 Utilidades para OCR y análisis RGB de gráficos MIROVA
 """
 
@@ -18,6 +18,8 @@ def extraer_eventos_latest10nti(ruta_imagen):
     """
     Extrae timestamps y VRP de Latest10NTI.png usando OCR
     
+    CORREGIDO: Ahora lee TODOS los eventos, no solo uno
+    
     Returns:
         list: [{timestamp, vrp_mw, posicion}, ...]
     """
@@ -26,72 +28,93 @@ def extraer_eventos_latest10nti(ruta_imagen):
     try:
         img = Image.open(ruta_imagen)
         
-        # Configuración OCR
-        custom_config = r'--oem 3 --psm 6'
+        # Configuración OCR - MEJORADA
+        # psm 11: Sparse text (mejor para texto disperso)
+        custom_config = r'--oem 3 --psm 11'
         texto = pytesseract.image_to_string(img, config=custom_config)
         
+        print(f"   [DEBUG] Texto OCR completo ({len(texto)} chars):")
+        print(f"   {texto[:500]}...")  # Primeros 500 caracteres para debug
+        
         # Patrón para timestamps: DD-Mon-YYYY HH:MM:SS
+        # CORREGIDO: findall en lugar de search para obtener TODOS
         patron_fecha = r'(\d{2})-([A-Za-z]{3})-(\d{4})\s+(\d{2}):(\d{2}):(\d{2})'
         
-        # Patrón para VRP: X.XX MW o NaN MW
-        patron_vrp = r'VRP\s*[:=]?\s*([\d.]+|NaN)\s*MW'
+        # Buscar TODAS las fechas en el texto completo
+        matches_fecha = re.findall(patron_fecha, texto)
         
-        lineas = texto.split('\n')
-        posicion = 0
+        print(f"   [DEBUG] Fechas encontradas: {len(matches_fecha)}")
         
-        for i, linea in enumerate(lineas):
-            # Buscar timestamp
-            match_fecha = re.search(patron_fecha, linea)
-            if match_fecha:
-                try:
-                    dia = int(match_fecha.group(1))
-                    mes = match_fecha.group(2)
-                    anio = int(match_fecha.group(3))
-                    hora = int(match_fecha.group(4))
-                    minuto = int(match_fecha.group(5))
-                    segundo = int(match_fecha.group(6))
-                    
-                    # Convertir mes abreviado
-                    meses = {
-                        'Jan': 1, 'Feb': 2, 'Mar': 3, 'Apr': 4,
-                        'May': 5, 'Jun': 6, 'Jul': 7, 'Aug': 8,
-                        'Sep': 9, 'Oct': 10, 'Nov': 11, 'Dec': 12
-                    }
-                    mes_num = meses.get(mes, 1)
-                    
-                    dt = datetime(anio, mes_num, dia, hora, minuto, segundo)
-                    timestamp = int(dt.timestamp())
-                    
-                    # Buscar VRP en líneas cercanas
-                    vrp_mw = None
-                    for j in range(max(0, i-2), min(len(lineas), i+3)):
-                        match_vrp = re.search(patron_vrp, lineas[j])
-                        if match_vrp:
-                            vrp_str = match_vrp.group(1)
-                            if vrp_str == 'NaN':
-                                vrp_mw = np.nan
-                            else:
-                                vrp_mw = float(vrp_str)
-                            break
-                    
-                    if vrp_mw is not None:
-                        eventos.append({
-                            'timestamp': timestamp,
-                            'datetime': dt,
-                            'vrp_mw': vrp_mw,
-                            'posicion': posicion
-                        })
-                        posicion += 1
+        if not matches_fecha:
+            print(f"   ⚠️ No se encontraron fechas en formato DD-Mon-YYYY HH:MM:SS")
+            return []
+        
+        # Patrón para VRP: buscar "VRP =X.XX MW" o "VRP =NaN MW"
+        # CORREGIDO: Más flexible con espacios
+        patron_vrp_completo = r'VRP\s*[=:]\s*([\d.]+|NaN)\s*MW'
+        
+        # Buscar TODOS los VRP en el texto
+        matches_vrp = re.findall(patron_vrp_completo, texto, re.IGNORECASE)
+        
+        print(f"   [DEBUG] VRP encontrados: {len(matches_vrp)}")
+        
+        # Mapeo de mes abreviado a número
+        meses = {
+            'Jan': 1, 'Feb': 2, 'Mar': 3, 'Apr': 4,
+            'May': 5, 'Jun': 6, 'Jul': 7, 'Aug': 8,
+            'Sep': 9, 'Oct': 10, 'Nov': 11, 'Dec': 12
+        }
+        
+        # Procesar cada fecha encontrada
+        for idx, match_fecha in enumerate(matches_fecha):
+            try:
+                dia = int(match_fecha[0])
+                mes = match_fecha[1]
+                anio = int(match_fecha[2])
+                hora = int(match_fecha[3])
+                minuto = int(match_fecha[4])
+                segundo = int(match_fecha[5])
                 
-                except Exception as e:
-                    print(f"⚠️ Error parseando evento: {e}")
-                    continue
+                mes_num = meses.get(mes, 1)
+                
+                dt = datetime(anio, mes_num, dia, hora, minuto, segundo)
+                timestamp = int(dt.timestamp())
+                
+                # Asignar VRP correspondiente (si existe)
+                vrp_mw = None
+                if idx < len(matches_vrp):
+                    vrp_str = matches_vrp[idx]
+                    if vrp_str.upper() == 'NAN':
+                        vrp_mw = np.nan
+                    else:
+                        try:
+                            vrp_mw = float(vrp_str)
+                        except:
+                            vrp_mw = np.nan
+                
+                # Solo agregar si encontramos VRP
+                if vrp_mw is not None:
+                    eventos.append({
+                        'timestamp': timestamp,
+                        'datetime': dt,
+                        'vrp_mw': vrp_mw,
+                        'posicion': idx
+                    })
+                    
+                    vrp_display = f"{vrp_mw:.2f}" if not np.isnan(vrp_mw) else "NaN"
+                    print(f"   [DEBUG] Evento {idx+1}: {dt.strftime('%d-%b-%Y %H:%M:%S')} VRP={vrp_display} MW")
+            
+            except Exception as e:
+                print(f"   ⚠️ Error parseando fecha {idx+1}: {e}")
+                continue
         
         print(f"✅ OCR extraído: {len(eventos)} eventos de Latest10NTI.png")
         return eventos
     
     except Exception as e:
         print(f"❌ Error en OCR: {e}")
+        import traceback
+        traceback.print_exc()
         return []
 
 
@@ -217,7 +240,7 @@ def clasificar_confianza(evento):
     Clasifica nivel de confianza de un evento OCR
     
     Returns:
-        dict: {confianza, requiere_verificacion, nota}
+        dict: {confianza, requiere_verificacion, nota, guardar}
     """
     # VRP inválido
     if np.isnan(evento['vrp_mw']) or evento['vrp_mw'] <= 0:

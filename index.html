@@ -45,6 +45,9 @@
     <header>
         <h1>Monitoreo Volcánico MIROVA</h1>
         <p>Análisis Térmico Satelital - MIROVA / OVDAS Chile</p>
+        <div style="font-size: 0.75em; color: #8b949e; margin-top: 4px;">
+            <strong>Confianza:</strong> <span style="color: #2ea043;">🟢 Alta/Validado</span> | <span style="color: #d29922;">🟡 Media</span> | <span style="color: #fb8500;">🟠 Baja</span>
+        </div>
     </header>
     <div class="grid" id="galeria"></div>
 
@@ -133,7 +136,9 @@
             const container = document.getElementById('galeria'); 
             const ts = new Date().getTime();
             
-            fetch('monitoreo_satelital/registro_vrp_positivos.csv?t=' + ts)
+            // Intentar cargar maestro, fallback a positivos
+            fetch('monitoreo_satelital/registro_vrp_maestro.csv?t=' + ts)
+                .catch(() => fetch('monitoreo_satelital/registro_vrp_positivos.csv?t=' + ts))
                 .then(r => r.text())
                 .then(t => baseDatosCSV = t);
             

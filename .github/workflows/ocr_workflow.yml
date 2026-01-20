@@ -1,0 +1,62 @@
+name: Scraper OCR
+
+on:
+  schedule:
+    # Cada 3 horas: 00:00, 03:00, 06:00, 09:00, 12:00, 15:00, 18:00, 21:00 UTC
+    - cron: '0 0,3,6,9,12,15,18,21 * * *'
+  
+  # Permitir ejecución manual
+  workflow_dispatch:
+
+concurrency:
+  group: scraper-ocr
+  cancel-in-progress: true
+
+jobs:
+  ocr_scraper:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Configurar Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Instalar dependencias del sistema
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tesseract-ocr tesseract-ocr-eng
+
+      - name: Instalar dependencias Python
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Ejecutar Scraper OCR
+        run: python scraper_ocr.py
+
+      - name: Ejecutar Merger Maestro
+        run: python merger_maestro.py
+
+      - name: Regenerar Gráficos
+        run: python visualizador.py
+
+      - name: Guardar cambios en GitHub
+        run: |
+          git config --global user.name "VolcanoOCR"
+          git config --global user.email "ocr@volcano.com"
+          git add -A
+          if ! git diff --quiet --staged; then
+            git commit -m "🔬 OCR: Captura de eventos satelitales"
+            git pull origin main --rebase -X ours
+            git push origin main
+          else
+            echo "No hay eventos nuevos para subir."
+          fi

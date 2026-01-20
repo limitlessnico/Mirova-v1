@@ -39,6 +39,9 @@ def crear_grafico(df_v, v, modo_log=False):
     if not df_v.empty:
         df_v['Fecha_Chile'] = pd.to_datetime(df_v['Fecha_Satelite_UTC']).dt.tz_localize('UTC').dt.tz_convert('America/Santiago')
         df_v_30 = df_v[df_v['Fecha_Chile'] >= hace_30_dias].copy()
+        
+        # FILTRAR VRP = 0 (eventos de rutina sin anomalía térmica)
+        df_v_30 = df_v_30[df_v_30['VRP_MW'] > 0].copy()
 
     if df_v_30.empty: return None
 

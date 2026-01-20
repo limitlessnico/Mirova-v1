@@ -31,10 +31,6 @@ DB_MASTER = os.path.join(CARPETA_PRINCIPAL, "registro_vrp_consolidado.csv")
 DB_POSITIVOS = os.path.join(CARPETA_PRINCIPAL, "registro_vrp_positivos.csv")
 ARCHIVO_BITACORA = os.path.join(CARPETA_PRINCIPAL, "bitacora_robot.txt")
 
-# === BLACK BOX ===
-CARPETA_BLACKBOX = os.path.join(CARPETA_PRINCIPAL, "blackbox_latest")
-ARCHIVO_INDEX_BLACKBOX = os.path.join(CARPETA_BLACKBOX, "index.csv")
-
 COLUMNAS_ESTANDAR = [
     "timestamp", "Fecha_Satelite_UTC", "Fecha_Captura_Chile", "Volcan",
     "Sensor", "VRP_MW", "Distancia_km", "Tipo_Registro",
@@ -65,30 +61,6 @@ def obtener_clasificacion_mirova(vrp_mw, es_alerta):
     if v < 1e8: return "Moderado"
     if v < 1e9: return "Alto"
     return "Muy Alto"
-
-# =========================
-# BLACK BOX LOGGER
-# =========================
-
-def blackbox_log_latest(html_text):
-    ahora_utc = datetime.utcnow()
-    fecha = ahora_utc.strftime("%Y-%m-%d")
-    ts = ahora_utc.strftime("%Y%m%d_%H%M%S")
-
-    carpeta_dia = os.path.join(CARPETA_BLACKBOX, fecha)
-    os.makedirs(carpeta_dia, exist_ok=True)
-
-    nombre = f"latest_{ts}.html"
-    ruta = os.path.join(carpeta_dia, nombre)
-
-    with open(ruta, "w", encoding="utf-8") as f:
-        f.write(html_text)
-
-    existe = os.path.exists(ARCHIVO_INDEX_BLACKBOX)
-    with open(ARCHIVO_INDEX_BLACKBOX, "a", encoding="utf-8") as f:
-        if not existe:
-            f.write("timestamp_utc,archivo\n")
-        f.write(f"{ahora_utc.isoformat()},{ruta}\n")
 
 # =========================
 # DESCARGA DE IMÁGENES
@@ -135,12 +107,11 @@ def descargar_v104(session, volcan_id, dt_utc, sensor_tabla, es_alerta_real):
 
 def procesar():
     os.makedirs(CARPETA_PRINCIPAL, exist_ok=True)
-    os.makedirs(CARPETA_BLACKBOX, exist_ok=True)
 
     session = requests.Session()
     ahora_cl = datetime.now(pytz.timezone('America/Santiago')).strftime("%Y-%m-%d %H:%M:%S")
 
-    log_debug("INICIO SCRAPER + BLACK BOX", "INFO")
+    log_debug("INICIO SCRAPER", "INFO")
 
     try:
         df_master = pd.read_csv(DB_MASTER) if os.path.exists(DB_MASTER) else pd.DataFrame(columns=COLUMNAS_ESTANDAR)
@@ -148,9 +119,6 @@ def procesar():
 
         headers = {'User-Agent': 'Mozilla/5.0'}
         res = session.get("https://www.mirovaweb.it/NRT/latest.php", headers=headers, timeout=30)
-
-        # 🔐 BLACK BOX SNAPSHOT
-        blackbox_log_latest(res.text)
 
         soup = BeautifulSoup(res.text, 'html.parser')
         filas = soup.find('tbody').find_all('tr')

@@ -1,7 +1,7 @@
-name: Verificación Black Box - Imágenes vs Snapshots
+name: Verificación Black Box v2 - CORREGIDO
 
 on:
-  workflow_dispatch:  # Ejecutar manualmente
+  workflow_dispatch:
 
 jobs:
   verificar-blackbox:
@@ -22,7 +22,7 @@ jobs:
         run: |
           pip install pandas beautifulsoup4 lxml --break-system-packages
       
-      - name: Crear script de verificación
+      - name: Crear script de verificación CORREGIDO
         run: |
           cat > verificar_blackbox.py << 'EOFPYTHON'
           #!/usr/bin/env python3
@@ -32,7 +32,9 @@ jobs:
           from bs4 import BeautifulSoup
           import pandas as pd
           from pathlib import Path
+          import glob
           
+          # ESTRUCTURA CORRECTA: blackbox_latest/YYYY-MM-DD/latest_YYYYMMDD_HHMMSS.html
           BLACKBOX_DIR = "monitoreo_satelital/blackbox_latest"
           
           VOLCANO_MAPPING = {
@@ -87,52 +89,84 @@ jobs:
           }
           
           def parse_blackbox_html(html_file):
+              """Parse HTML y extraer eventos - FORMATO: 16-Jan-2026 02:24:01"""
               with open(html_file, 'r', encoding='utf-8') as f:
                   soup = BeautifulSoup(f.read(), 'html.parser')
+              
               eventos = []
-              table = soup.find('table')
+              table = soup.find('table', {'id': 'volcanoTable'})
               if not table:
                   return eventos
-              rows = table.find_all('tr')[1:]
+              
+              tbody = table.find('tbody')
+              if not tbody:
+                  return eventos
+              
+              rows = tbody.find_all('tr')
               for row in rows:
                   cols = row.find_all('td')
-                  if len(cols) >= 4:
+                  if len(cols) >= 6:
                       try:
-                          volcan = cols[0].text.strip()
-                          fecha_str = cols[1].text.strip()
-                          sensor = cols[2].text.strip()
-                          vrp = cols[3].text.strip()
-                          dt = datetime.strptime(fecha_str, '%Y-%m-%d %H:%M:%S')
-                          eventos.append({'volcan': volcan, 'timestamp': dt, 'sensor': sensor, 'vrp': vrp})
-                      except:
+                          fecha_str = cols[0].text.strip()  # Formato: "16-Jan-2026 02:24:01"
+                          volcano_link = cols[2].find('a')
+                          volcan = volcano_link.text.strip() if volcano_link else cols[2].text.strip()
+                          sensor = cols[5].text.strip()
+                          
+                          # Parsear fecha - FORMATO: "16-Jan-2026 02:24:01"
+                          dt = datetime.strptime(fecha_str, '%d-%b-%Y %H:%M:%S')
+                          
+                          eventos.append({
+                              'volcan': volcan,
+                              'timestamp': dt,
+                              'sensor': sensor
+                          })
+                      except Exception as e:
                           continue
+              
               return eventos
           
           def buscar_evento(volcano, timestamp_str, sensor):
+              """Busca evento en TODOS los HTMLs de la carpeta correcta"""
               target_dt = datetime.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S')
               volcano_csv = VOLCANO_MAPPING.get(volcano, volcano)
-              blackbox_path = Path(BLACKBOX_DIR)
-              html_files = sorted(blackbox_path.glob('*.html'))
+              
+              # Buscar en TODAS las carpetas de fechas
+              base_path = Path(BLACKBOX_DIR)
+              
+              # Patrón: blackbox_latest/*/latest_*.html
+              html_pattern = str(base_path / "*" / "latest_*.html")
+              html_files = glob.glob(html_pattern)
+              
               for html_file in html_files:
                   eventos = parse_blackbox_html(html_file)
                   for evento in eventos:
-                      if (evento['volcan'] == volcano_csv and evento['timestamp'] == target_dt and evento['sensor'] == sensor):
-                          match = re.search(r'(\d{8})_(\d{6})', html_file.stem)
-                          if match:
-                              captura_dt = datetime.strptime(f"{match.group(1)}{match.group(2)}", '%Y%m%d%H%M%S')
-                              return True, html_file.name, captura_dt
-                          return True, html_file.name, None
+                      if (evento['volcan'] == volcano_csv and 
+                          evento['timestamp'] == target_dt and 
+                          evento['sensor'] == sensor):
+                          # Extraer info del archivo
+                          filename = Path(html_file).name
+                          folder = Path(html_file).parent.name
+                          return True, f"{folder}/{filename}", target_dt
+              
               return False, None, None
           
           print("="*80)
-          print("VERIFICACIÓN: IMÁGENES vs BLACK BOX")
+          print("VERIFICACIÓN CORREGIDA: IMÁGENES vs BLACK BOX")
           print("="*80)
           
-          blackbox_path = Path(BLACKBOX_DIR)
-          num_files = len(list(blackbox_path.glob('*.html')))
-          print(f"Snapshots encontrados: {num_files}")
+          # Contar archivos HTML
+          base_path = Path(BLACKBOX_DIR)
+          html_pattern = str(base_path / "*" / "latest_*.html")
+          html_files = glob.glob(html_pattern)
+          print(f"Snapshots encontrados: {len(html_files)}")
+          
+          # Mostrar carpetas
+          folders = set([Path(f).parent.name for f in html_files])
+          print(f"Carpetas de fechas: {sorted(folders)}")
           
           resultados = []
+          total_encontrados = 0
+          
           for sensor, volcanes in IMAGE_TIMESTAMPS.items():
               print(f"\n{sensor}:")
               for volcano, timestamps in volcanes.items():
@@ -141,40 +175,49 @@ jobs:
                       found, snapshot, captura_dt = buscar_evento(volcano, ts, sensor)
                       if found:
                           encontrados += 1
+                          total_encontrados += 1
                           status = "EN_BLACKBOX"
                           minuto = captura_dt.strftime('%Y-%m-%d %H:%M:%S') if captura_dt else "N/A"
                       else:
                           status = "NO_EN_BLACKBOX"
                           minuto = "N/A"
                           snapshot = "N/A"
-                      resultados.append({'Sensor': sensor, 'Volcan': volcano, 'Timestamp_Imagen': ts, 'Estado': status, 'Snapshot': snapshot if snapshot else "N/A", 'Minuto_Captura': minuto})
+                      resultados.append({
+                          'Sensor': sensor,
+                          'Volcan': volcano,
+                          'Timestamp_Imagen': ts,
+                          'Estado': status,
+                          'Snapshot': snapshot if snapshot else "N/A",
+                          'Minuto_Captura': minuto
+                      })
                   print(f"  {volcano}: {encontrados}/{len(timestamps)} encontrados")
           
           df = pd.DataFrame(resultados)
-          df.to_csv('monitoreo_satelital/analisis_imagenes_vs_blackbox.csv', index=False)
+          df.to_csv('monitoreo_satelital/analisis_imagenes_vs_blackbox_v2.csv', index=False)
           
           total = len(resultados)
-          encontrados_total = len([r for r in resultados if r['Estado'] == "EN_BLACKBOX"])
-          print(f"\nRESUMEN: {encontrados_total}/{total} encontrados ({encontrados_total/total*100:.1f}%)")
-          print("CSV guardado: monitoreo_satelital/analisis_imagenes_vs_blackbox.csv")
+          print(f"\n{'='*80}")
+          print(f"RESUMEN: {total_encontrados}/{total} encontrados ({total_encontrados/total*100:.1f}%)")
+          print(f"CSV guardado: monitoreo_satelital/analisis_imagenes_vs_blackbox_v2.csv")
           EOFPYTHON
       
-      - name: Ejecutar verificación
+      - name: Ejecutar verificación CORREGIDA
         run: python3 verificar_blackbox.py
       
       - name: Commit y Push resultados
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
-          git add monitoreo_satelital/analisis_imagenes_vs_blackbox.csv
-          git commit -m "📊 Verificación Black Box vs Imágenes: $(date +'%Y-%m-%d %H:%M')" || echo "No changes"
+          git pull --rebase origin main
+          git add monitoreo_satelital/analisis_imagenes_vs_blackbox_v2.csv
+          git commit -m "📊 Verificación Black Box v2 CORREGIDA: $(date +'%Y-%m-%d %H:%M')" || echo "No changes"
+          git pull --rebase origin main
           git push
       
-      - name: Resumen en logs
+      - name: Mostrar resultados
         run: |
           echo "✅ Verificación completada"
-          echo "📁 Archivo generado: monitoreo_satelital/analisis_imagenes_vs_blackbox.csv"
-          if [ -f monitoreo_satelital/analisis_imagenes_vs_blackbox.csv ]; then
-            echo "📊 Primeras líneas:"
-            head -20 monitoreo_satelital/analisis_imagenes_vs_blackbox.csv
+          if [ -f monitoreo_satelital/analisis_imagenes_vs_blackbox_v2.csv ]; then
+            echo "📊 Primeras 30 líneas:"
+            head -30 monitoreo_satelital/analisis_imagenes_vs_blackbox_v2.csv
           fi

@@ -1,4 +1,4 @@
-name: Verificación Black Box OPTIMIZADO (Chile Only)
+name: Verificación Black Box FINAL (Chile Only)
 
 on:
   workflow_dispatch:
@@ -22,9 +22,9 @@ jobs:
         run: |
           pip install pandas beautifulsoup4 lxml --break-system-packages
       
-      - name: Script OPTIMIZADO - Solo Volcanes Chilenos
+      - name: Script FINAL - Búsqueda sin mapeo
         run: |
-          cat > verificar_blackbox_optimizado.py << 'EOFPYTHON'
+          cat > verificar_blackbox_final.py << 'EOFPYTHON'
           #!/usr/bin/env python3
           import os
           from datetime import datetime
@@ -35,27 +35,13 @@ jobs:
           
           BLACKBOX_DIR = "monitoreo_satelital/blackbox_latest"
           
-          # SOLO VOLCANES CHILENOS - Nombres exactos como aparecen en MIROVA HTML
+          # VOLCANES CHILENOS - Nombres como aparecen en HTML de Black Box
           VOLCANES_CHILENOS = {
               'Lascar', 'Lastarria', 'Isluga', 'Villarrica', 'Llaima',
-              'ChillanNevadosde',  # ← SIN ESPACIOS (como está en HTML)
+              'ChillanNevadosde',  # Sin espacios (como está en HTML)
               'Copahue', 
-              'PuyehueCordonCaulle',  # ← SIN GUIONES (como está en HTML)
+              'PuyehueCordonCaulle',  # Sin guiones (como está en HTML)
               'Chaiten', 'PlanchonPeteroa'
-          }
-          
-          # Mapeo inverso para búsqueda rápida
-          VOLCANO_MAPPING = {
-              'Lascar': 'Lascar',
-              'ChillanNevadosde': 'Nevados de Chillan',
-              'Villarrica': 'Villarrica',
-              'Copahue': 'Copahue',
-              'Lastarria': 'Lastarria',
-              'PuyehueCordonCaulle': 'Puyehue-Cordon Caulle',
-              'PlanchonPeteroa': 'PlanchonPeteroa',
-              'Llaima': 'Llaima',
-              'Chaiten': 'Chaiten',
-              'Isluga': 'Isluga'
           }
           
           IMAGE_TIMESTAMPS = {
@@ -96,27 +82,27 @@ jobs:
               }
           }
           
-          # Crear índice de timestamps para búsqueda ultra-rápida
+          # Crear índice de timestamps - SIN MAPEO, nombres directos
           TIMESTAMPS_BUSCAR = {}
           for sensor, volcanes in IMAGE_TIMESTAMPS.items():
               for volcano, timestamps in volcanes.items():
-                  volcano_csv = VOLCANO_MAPPING.get(volcano, volcano)
+                  # CLAVE: Usar el nombre directo del volcán (sin mapeo)
                   for ts_str in timestamps:
                       dt = datetime.strptime(ts_str, '%Y-%m-%d %H:%M:%S')
-                      key = (volcano_csv, dt, sensor)
+                      key = (volcano, dt, sensor)  # ← volcano directo (ChillanNevadosde, PuyehueCordonCaulle)
                       TIMESTAMPS_BUSCAR[key] = ts_str
           
           print("="*80)
-          print("VERIFICACIÓN OPTIMIZADA - SOLO VOLCANES CHILENOS")
+          print("VERIFICACIÓN FINAL - Búsqueda directa sin mapeo")
           print("="*80)
-          print(f"Total timestamps a buscar: {len(TIMESTAMPS_BUSCAR)}")
+          print(f"Timestamps a buscar: {len(TIMESTAMPS_BUSCAR)}")
           
           def parse_blackbox_html_optimizado(html_file):
               """Parse HTML SOLO volcanes chilenos"""
               with open(html_file, 'r', encoding='utf-8') as f:
                   soup = BeautifulSoup(f.read(), 'html.parser')
               
-              eventos_chile = {}  # Dict para búsqueda O(1)
+              eventos_chile = {}
               
               table = soup.find('table', {'id': 'volcanoTable'})
               if not table:
@@ -137,7 +123,7 @@ jobs:
                       volcano_link = cols[2].find('a')
                       volcan = volcano_link.text.strip() if volcano_link else cols[2].text.strip()
                       
-                      # FILTRO RÁPIDO: Si no es volcán chileno, skip
+                      # Filtro: Solo volcanes chilenos
                       if volcan not in VOLCANES_CHILENOS:
                           continue
                       
@@ -146,7 +132,7 @@ jobs:
                       
                       dt = datetime.strptime(fecha_str, '%d-%b-%Y %H:%M:%S')
                       
-                      # Crear key para búsqueda O(1)
+                      # Key con nombre directo (SIN mapeo)
                       key = (volcan, dt, sensor)
                       eventos_chile[key] = True
                       
@@ -155,24 +141,22 @@ jobs:
               
               return eventos_chile
           
-          # Buscar archivos HTML
+          # Buscar archivos
           base_path = Path(BLACKBOX_DIR)
           html_pattern = str(base_path / "*" / "latest_*.html")
           html_files = sorted(glob.glob(html_pattern))
           
           print(f"Snapshots encontrados: {len(html_files)}")
           
-          # Parsear TODOS los HTMLs y crear índice global
-          print("\nParseando snapshots (solo volcanes chilenos)...")
+          # Parsear todos los HTMLs
+          print("\nParseando snapshots...")
           eventos_encontrados_global = {}
           
           for idx, html_file in enumerate(html_files, 1):
               if idx % 100 == 0:
-                  print(f"  Procesados: {idx}/{len(html_files)}...")
+                  print(f"  {idx}/{len(html_files)}...")
               
               eventos = parse_blackbox_html_optimizado(html_file)
-              
-              # Agregar al índice global con info del archivo
               filename = Path(html_file).name
               folder = Path(html_file).parent.name
               
@@ -180,22 +164,15 @@ jobs:
                   if key not in eventos_encontrados_global:
                       eventos_encontrados_global[key] = f"{folder}/{filename}"
           
-          print(f"\n✅ Eventos chilenos únicos en Black Box: {len(eventos_encontrados_global)}")
+          print(f"\n✅ Eventos chilenos únicos: {len(eventos_encontrados_global)}")
           
-          # Verificar cada timestamp de las imágenes
-          print("\nVerificando timestamps de imágenes...")
+          # Verificar timestamps
+          print("\nVerificando timestamps...")
           resultados = []
           total_encontrados = 0
           
           for key, ts_original in TIMESTAMPS_BUSCAR.items():
-              volcano_csv, dt, sensor = key
-              
-              # Buscar nombre de volcán original
-              volcano_img = None
-              for v, mapped in VOLCANO_MAPPING.items():
-                  if mapped == volcano_csv:
-                      volcano_img = v
-                      break
+              volcano, dt, sensor = key
               
               if key in eventos_encontrados_global:
                   total_encontrados += 1
@@ -209,19 +186,19 @@ jobs:
               
               resultados.append({
                   'Sensor': sensor,
-                  'Volcan': volcano_img or volcano_csv,
+                  'Volcan': volcano,  # ← Nombre directo (ChillanNevadosde, PuyehueCordonCaulle)
                   'Timestamp_Imagen': ts_original,
                   'Estado': status,
                   'Snapshot': snapshot,
                   'Minuto_Captura': minuto
               })
           
-          # Guardar CSV CON NOMBRE ÚNICO
+          # Guardar CSV
           df = pd.DataFrame(resultados)
-          output_file = 'monitoreo_satelital/verificacion_blackbox_chile_optimizado.csv'
+          output_file = 'monitoreo_satelital/verificacion_blackbox_FINAL.csv'
           df.to_csv(output_file, index=False)
           
-          # Resumen por sensor
+          # Resumen
           print("\n" + "="*80)
           print("RESUMEN POR SENSOR")
           print("="*80)
@@ -230,31 +207,41 @@ jobs:
               df_sensor = df[df['Sensor'] == sensor]
               encontrados = len(df_sensor[df_sensor['Estado'] == 'EN_BLACKBOX'])
               total = len(df_sensor)
-              print(f"{sensor}: {encontrados}/{total} encontrados ({encontrados/total*100:.1f}%)")
+              if total > 0:
+                  print(f"{sensor:10}: {encontrados}/{total} ({encontrados/total*100:.1f}%)")
+          
+          print("\n" + "="*80)
+          print("RESUMEN POR VOLCÁN")
+          print("="*80)
+          
+          for volcan in sorted(df['Volcan'].unique()):
+              df_v = df[df['Volcan'] == volcan]
+              encontrados = len(df_v[df_v['Estado'] == 'EN_BLACKBOX'])
+              total = len(df_v)
+              print(f"{volcan:25}: {encontrados}/{total} ({encontrados/total*100:.1f}%)")
           
           total = len(resultados)
           print(f"\n{'='*80}")
-          print(f"TOTAL: {total_encontrados}/{total} encontrados ({total_encontrados/total*100:.1f}%)")
-          print(f"\n✅ CSV guardado: monitoreo_satelital/verificacion_blackbox_chile_optimizado.csv")
+          print(f"TOTAL: {total_encontrados}/{total} ({total_encontrados/total*100:.1f}%)")
+          print(f"\n✅ CSV: {output_file}")
           EOFPYTHON
       
-      - name: Ejecutar verificación OPTIMIZADA
-        run: python3 verificar_blackbox_optimizado.py
+      - name: Ejecutar verificación FINAL
+        run: python3 verificar_blackbox_final.py
       
-      - name: Commit y Push resultados
+      - name: Commit y Push
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
           git pull --rebase origin main
-          git add monitoreo_satelital/verificacion_blackbox_chile_optimizado.csv
-          git commit -m "📊 Verificación OPTIMIZADA Chile Only: $(date +'%Y-%m-%d %H:%M')" || echo "No changes"
+          git add monitoreo_satelital/verificacion_blackbox_FINAL.csv
+          git commit -m "📊 Verificación Black Box FINAL sin mapeo: $(date +'%Y-%m-%d %H:%M')" || echo "No changes"
           git pull --rebase origin main
           git push
       
       - name: Mostrar resultados
         run: |
-          echo "✅ Verificación optimizada completada"
-          if [ -f monitoreo_satelital/verificacion_blackbox_chile_optimizado.csv ]; then
-            echo "📊 Primeras 30 líneas:"
-            head -30 monitoreo_satelital/verificacion_blackbox_chile_optimizado.csv
+          echo "✅ Completado"
+          if [ -f monitoreo_satelital/verificacion_blackbox_FINAL.csv ]; then
+            head -30 monitoreo_satelital/verificacion_blackbox_FINAL.csv
           fi

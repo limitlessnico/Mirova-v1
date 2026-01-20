@@ -1,4 +1,3 @@
-
 """
 MERGER_MAESTRO.PY
 Combina registro_vrp_consolidado.csv + registro_vrp_ocr.csv
@@ -50,13 +49,18 @@ def merge():
         df_consolidado['Requiere_Verificacion'] = False
         df_consolidado['Nota_Validacion'] = 'Capturado por latest.php'
     
-    # Preparar OCR (agregar columnas faltantes)
+    # Preparar OCR (agregar columnas faltantes SOLO si no existen)
     if not df_ocr.empty:
         df_ocr['Origen_Dato'] = 'OCR'
-        df_ocr['Distancia_km'] = None
-        df_ocr['Clasificacion Mirova'] = 'N/A'
-        df_ocr['Ultima_Actualizacion'] = df_ocr['Fecha_Proceso_GitHub']
-        df_ocr['Editado'] = 'NO'
+        # Solo agregar si no existen
+        if 'Distancia_km' not in df_ocr.columns:
+            df_ocr['Distancia_km'] = 0.0
+        if 'Clasificacion Mirova' not in df_ocr.columns:
+            df_ocr['Clasificacion Mirova'] = 'N/A'
+        if 'Ultima_Actualizacion' not in df_ocr.columns:
+            df_ocr['Ultima_Actualizacion'] = df_ocr['Fecha_Proceso_GitHub']
+        if 'Editado' not in df_ocr.columns:
+            df_ocr['Editado'] = 'NO'
     
     # Combinar
     df_maestro = pd.concat([df_consolidado, df_ocr], ignore_index=True)

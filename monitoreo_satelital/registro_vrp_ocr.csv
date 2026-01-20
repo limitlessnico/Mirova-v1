@@ -1,0 +1,2 @@
+timestamp,Fecha_Satelite_UTC,Fecha_Captura_Chile,Volcan,Sensor,VRP_MW,Tipo_Registro,Color_Punto_Dist,Confianza_Validacion,Requiere_Verificacion,Metodo_Validacion,Nota_Validacion,Ruta_Foto,Fecha_Proceso_GitHub,Version_OCR
+1768800600,2026-01-19 05:30:00,2026-01-19 02:30:00,Lastarria,VIIRS375,0.12,ALERTA_TERMICA_OCR,ambiguo,baja,True,mezcla_colores,Match ambiguo - mezcla de puntos rojos y negros,imagenes_satelitales/Lastarria/2026-01-19/05-30-00_Lastarria_VIIRS375_VRP_VERIFICAR.png,2026-01-20 12:05:29,1.0

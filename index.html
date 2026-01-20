@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>📡 MIROVA-OVDAS VRP MONITOR</title>
+    <title>🛡️ MIROVA-OVDAS VRP MONITOR</title>
     <style>
         body { background-color: #0b0e14; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; margin: 0; overflow-x: hidden; }
         #audit-bar { background: #161b22; padding: 6px 15px; border-bottom: 1px solid #30363d; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; font-size: 0.8em; }
@@ -57,14 +57,25 @@
     </footer>
 
     <script>
-        const volcanes = [{n: "Isluga", r: "Tarapacá"}, {n: "Lascar", r: "Antofagasta"}, {n: "Lastarria", r: "Antofagasta"}, {n: "Peteroa", r: "Maule"}, {n: "Nevados de Chillan", r: "Ñuble"}, {n: "Copahue", r: "Biobío"}, {n: "Llaima", r: "Araucanía"}, {n: "Villarrica", r: "Araucanía"}, {n: "Puyehue-Cordon Caulle", r: "Los Ríos"}, {n: "Chaiten", r: "Los Lagos"}];
+        const volcanes = [
+            {n: "Isluga", r: "Tarapacá"}, 
+            {n: "Lascar", r: "Antofagasta"}, 
+            {n: "Lastarria", r: "Antofagasta"}, 
+            {n: "Peteroa", r: "Maule"}, 
+            {n: "Nevados de Chillan", r: "Ñuble"}, 
+            {n: "Copahue", r: "Biobío"}, 
+            {n: "Llaima", r: "Araucanía"}, 
+            {n: "Villarrica", r: "Araucanía"}, 
+            {n: "Puyehue-Cordon Caulle", r: "Los Ríos"}, 
+            {n: "Chaiten", r: "Los Lagos"}
+        ];
+        
         let baseDatosCSV = "";
-        let currentScale = "linear"; // linear o log
+        let currentScale = "linear";
 
         function toggleScale() {
             const btn = document.getElementById('btn-scale');
             const iframes = document.querySelectorAll('iframe:not(#modal-iframe)');
-            const ts = new Date().getTime();
             
             if (currentScale === "linear") {
                 currentScale = "log";
@@ -83,21 +94,79 @@
             }
         }
 
-        function toggleFullScreen() { if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); }
-        function openModal(url) { document.getElementById('modal-iframe').src = url; document.getElementById('modal-overlay').style.display = 'flex'; }
-        function closeModal() { document.getElementById('modal-overlay').style.display = 'none'; document.getElementById('modal-iframe').src = ''; }
-        function descargarCSV(nombre) { if (!baseDatosCSV) return alert("Cargando..."); const lineas = baseDatosCSV.split('\n'); const cabecera = lineas[0]; const filtrados = lineas.filter(l => l.includes(nombre)); const blob = new Blob([cabecera + "\n" + filtrados.join("\n")], { type: 'text/csv' }); const url = window.URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `Historial_${nombre.replace(/ /g,'_')}.csv`; a.click(); }
+        function toggleFullScreen() { 
+            if (!document.fullscreenElement) 
+                document.documentElement.requestFullscreen(); 
+            else 
+                document.exitFullscreen(); 
+        }
+        
+        function openModal(url) { 
+            // ÚNICO FIX NECESARIO: URL correcta según escala
+            if (currentScale === "log") {
+                url = url.replace('/v_html/', '/v_html_log/');
+            }
+            
+            document.getElementById('modal-iframe').src = url; 
+            document.getElementById('modal-overlay').style.display = 'flex'; 
+        }
+        
+        function closeModal() { 
+            document.getElementById('modal-overlay').style.display = 'none'; 
+            document.getElementById('modal-iframe').src = ''; 
+        }
+        
+        function descargarCSV(nombre) { 
+            if (!baseDatosCSV) return alert("Cargando..."); 
+            const lineas = baseDatosCSV.split('\n'); 
+            const cabecera = lineas[0]; 
+            const filtrados = lineas.filter(l => l.includes(nombre)); 
+            const blob = new Blob([cabecera + "\n" + filtrados.join("\n")], { type: 'text/csv' }); 
+            const url = window.URL.createObjectURL(blob); 
+            const a = document.createElement('a'); 
+            a.href = url; 
+            a.download = `Historial_${nombre.replace(/ /g,'_')}.csv`; 
+            a.click(); 
+        }
         
         async function init() {
-            const container = document.getElementById('galeria'); const ts = new Date().getTime();
-            fetch('monitoreo_satelital/registro_vrp_positivos.csv?t=' + ts).then(r => r.text()).then(t => baseDatosCSV = t);
+            const container = document.getElementById('galeria'); 
+            const ts = new Date().getTime();
+            
+            fetch('monitoreo_satelital/registro_vrp_positivos.csv?t=' + ts)
+                .then(r => r.text())
+                .then(t => baseDatosCSV = t);
+            
             volcanes.forEach(v => {
-                const card = document.createElement('div'); card.className = 'card'; const nF = v.n.replace(/ /g, '_'); const url = `monitoreo_satelital/v_html/${nF}.html?t=${ts}`;
-                card.innerHTML = `<div class="card-controls"><button class="mini-btn" onclick="descargarCSV('${v.n}')">📥 CSV</button><button class="mini-btn" onclick="openModal('${url}')">⛶</button></div><div class="card-header-box"><h2>${v.n}</h2> <span class="region-tag">(${v.r})</span></div><iframe src="${url}" scrolling="no"></iframe>`;
+                const card = document.createElement('div'); 
+                card.className = 'card'; 
+                const nF = v.n.replace(/ /g, '_'); 
+                const url = `monitoreo_satelital/v_html/${nF}.html?t=${ts}`;
+                
+                card.innerHTML = `
+                    <div class="card-controls">
+                        <button class="mini-btn" onclick="descargarCSV('${v.n}')">📥 CSV</button>
+                        <button class="mini-btn" onclick="openModal('${url}')">⛶</button>
+                    </div>
+                    <div class="card-header-box">
+                        <h2>${v.n}</h2> 
+                        <span class="region-tag">(${v.r})</span>
+                    </div>
+                    <iframe src="${url}" scrolling="no"></iframe>
+                `;
                 container.appendChild(card);
             });
-            fetch('monitoreo_satelital/estado_sistema.json?t=' + ts).then(r => r.json()).then(data => { document.getElementById('last-sync').innerText = data.ultima_actualizacion; const st = document.getElementById('sys-status'); st.innerText = data.estado; st.style.color = data.color; });
+            
+            fetch('monitoreo_satelital/estado_sistema.json?t=' + ts)
+                .then(r => r.json())
+                .then(data => { 
+                    document.getElementById('last-sync').innerText = data.ultima_actualizacion; 
+                    const st = document.getElementById('sys-status'); 
+                    st.innerText = data.estado; 
+                    st.style.color = data.color; 
+                });
         }
+        
         window.onload = init;
     </script>
 </body>

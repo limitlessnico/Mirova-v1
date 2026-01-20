@@ -6,13 +6,20 @@ import pytz
 from datetime import datetime, timedelta
 
 # --- CONFIGURACIÓN ---
+ARCHIVO_MAESTRO = "monitoreo_satelital/registro_vrp_maestro.csv"
 ARCHIVO_POSITIVOS = "monitoreo_satelital/registro_vrp_positivos.csv"
 CARPETA_LINEAL = "monitoreo_satelital/v_html"
 CARPETA_LOG = "monitoreo_satelital/v_html_log"
 VOLCANES = ["Isluga", "Lascar", "Lastarria", "Peteroa", "Nevados de Chillan", "Copahue", "Llaima", "Villarrica", "Puyehue-Cordon Caulle", "Chaiten"]
 
 MAPA_SIMBOLOS = {"MODIS": "triangle-up", "VIIRS375": "square", "VIIRS750": "circle", "VIIRS": "circle"}
-COLORES_SENSORES = {"MODIS": "#FFA500", "VIIRS375": "#FF4500", "VIIRS750": "#FF0000", "VIIRS": "#C0C0C0"}
+# Colores por confianza (verde para latest.php y OCR alta, amarillo/naranja para OCR media/baja)
+COLORES_CONFIANZA = {
+    "N/A": "#2ea043",      # Verde - latest.php
+    "alta": "#2ea043",     # Verde - OCR alta
+    "media": "#d29922",    # Amarillo - OCR media
+    "baja": "#fb8500"      # Naranja - OCR baja
+}
 MESES_ES = {1: "Ene", 2: "Feb", 3: "Mar", 4: "Abr", 5: "May", 6: "Jun", 7: "Jul", 8: "Ago", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dic"}
 
 MIROVA_BANDS = [
@@ -49,13 +56,48 @@ def crear_grafico(df_v, v, modo_log=False):
             fig.add_trace(go.Scatter(x=[None], y=[None], mode='markers', name=label, 
                 marker=dict(size=8, symbol='square', color=color.replace('0.2', '0.8').replace('0.15', '0.8')), showlegend=True))
 
-    for sensor, grupo in df_v_30.groupby('Sensor'):
-        fig.add_trace(go.Scatter(x=grupo['Fecha_Chile'], y=grupo['VRP_MW'] * mult, mode='markers', name=sensor,
-            marker=dict(symbol=MAPA_SIMBOLOS.get(sensor, "circle"), color=COLORES_SENSORES.get(sensor, "#C0C0C0"), size=9, line=dict(width=1, color='white')),
-            customdata=grupo['VRP_MW'],
-            hoverlabel=dict(bgcolor="rgba(20, 24, 33, 0.95)", font=dict(color="white", size=11)),
-            hovertemplate="<b>%{customdata:.2f} MW</b><br>%{x|%d %b, %H:%M}<extra></extra>",
-            showlegend=True))
+    # Traces separadas por confianza (colores) y sensor (símbolos)
+    # Agrupar por sensor y confianza
+    for sensor in df_v_30['Sensor'].unique():
+        df_sensor = df_v_30[df_v_30['Sensor'] == sensor]
+        
+        for confianza in ['N/A', 'alta', 'media', 'baja']:
+            # Filtrar por confianza (N/A para latest.php)
+            if 'Confianza_Validacion' in df_sensor.columns:
+                df_grupo = df_sensor[df_sensor['Confianza_Validacion'] == confianza]
+            else:
+                # Si no existe la columna, asumir N/A (latest.php)
+                df_grupo = df_sensor if confianza == 'N/A' else pd.DataFrame()
+            
+            if df_grupo.empty:
+                continue
+            
+            # Obtener color y símbolo
+            color = COLORES_CONFIANZA.get(confianza, "#2ea043")
+            simbolo = MAPA_SIMBOLOS.get(sensor, "circle")
+            
+            # Nombre de la trace
+            if confianza == 'N/A':
+                nombre_trace = sensor
+            else:
+                nombre_trace = f"{sensor} ({confianza})"
+            
+            fig.add_trace(go.Scatter(
+                x=df_grupo['Fecha_Chile'], 
+                y=df_grupo['VRP_MW'] * mult, 
+                mode='markers', 
+                name=nombre_trace,
+                marker=dict(
+                    symbol=simbolo,
+                    color=color,
+                    size=9, 
+                    line=dict(width=1, color='white')
+                ),
+                customdata=df_grupo['VRP_MW'],
+                hoverlabel=dict(bgcolor="rgba(20, 24, 33, 0.95)", font=dict(color="white", size=11)),
+                hovertemplate="<b>%{customdata:.2f} MW</b><br>%{x|%d %b, %H:%M}<extra></extra>",
+                showlegend=True
+            ))
 
     # Anotación Máximo
     if not df_v_30.empty:
@@ -121,7 +163,15 @@ def crear_grafico(df_v, v, modo_log=False):
 def procesar():
     os.makedirs(CARPETA_LINEAL, exist_ok=True)
     os.makedirs(CARPETA_LOG, exist_ok=True)
-    df = pd.read_csv(ARCHIVO_POSITIVOS) if os.path.exists(ARCHIVO_POSITIVOS) else pd.DataFrame()
+    
+    # Leer CSV maestro si existe, sino usar positivos
+    if os.path.exists(ARCHIVO_MAESTRO):
+        df = pd.read_csv(ARCHIVO_MAESTRO)
+    else:
+        df = pd.read_csv(ARCHIVO_POSITIVOS) if os.path.exists(ARCHIVO_POSITIVOS) else pd.DataFrame()
+        # Agregar columnas faltantes si se usa positivos.csv
+        if not df.empty:
+            df['Confianza_Validacion'] = 'N/A'
     
     # Config diferente para lineal vs log
     config_lineal = {

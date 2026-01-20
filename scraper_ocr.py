@@ -72,13 +72,15 @@ def descargar_imagenes_permanentes(session, volcan_id, sensor, evento, es_verifi
     """Descarga y guarda imágenes permanentes"""
     conf = VOLCANES_CONFIG[volcan_id]
     nombre_v = conf["nombre"]
+    # Normalizar nombre para rutas (sin espacios ni guiones)
+    nombre_v_normalizado = nombre_v.replace(' ', '_').replace('-', '_')
     id_mirova = conf["id_mirova"]
     
     dt_utc = evento['datetime']
     f_c = dt_utc.strftime("%Y-%m-%d")
     h_a = dt_utc.strftime("%H-%M-%S")
     
-    ruta_dia = os.path.join(CARPETA_IMAGENES, nombre_v, f_c)
+    ruta_dia = os.path.join(CARPETA_IMAGENES, nombre_v_normalizado, f_c)
     os.makedirs(ruta_dia, exist_ok=True)
     
     s_url = "VIIRS750" if sensor == "VIIRS" else sensor
@@ -91,13 +93,13 @@ def descargar_imagenes_permanentes(session, volcan_id, sensor, evento, es_verifi
         t_url = f"{t}10NTI" if t == "Latest10NTI" else t
         url = f"https://www.mirovaweb.it/OUTPUTweb/MIROVA/{s_url}/VOLCANOES/{id_mirova}/{id_mirova}_{s_url}_{t_url}.png"
         
-        filename = f"{h_a}_{nombre_v}_{s_url}_{t}{sufijo}.png"
+        filename = f"{h_a}_{nombre_v_normalizado}_{s_url}_{t}{sufijo}.png"
         path_f = os.path.join(ruta_dia, filename)
         
         # No descargar si ya existe
         if os.path.exists(path_f):
             if t == "VRP":
-                ruta_relativa = f"imagenes_satelitales/{nombre_v}/{f_c}/{filename}"
+                ruta_relativa = f"imagenes_satelitales/{nombre_v_normalizado}/{f_c}/{filename}"
             continue
         
         try:
@@ -106,7 +108,7 @@ def descargar_imagenes_permanentes(session, volcan_id, sensor, evento, es_verifi
                 with open(path_f, 'wb') as f:
                     f.write(r.content)
                 if t == "VRP":
-                    ruta_relativa = f"imagenes_satelitales/{nombre_v}/{f_c}/{filename}"
+                    ruta_relativa = f"imagenes_satelitales/{nombre_v_normalizado}/{f_c}/{filename}"
             time.sleep(0.3)
         except:
             continue

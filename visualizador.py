@@ -52,12 +52,12 @@ def crear_grafico(df_v, v, modo_log=False):
     for sensor, grupo in df_v_30.groupby('Sensor'):
         fig.add_trace(go.Scatter(x=grupo['Fecha_Chile'], y=grupo['VRP_MW'] * mult, mode='markers', name=sensor,
             marker=dict(symbol=MAPA_SIMBOLOS.get(sensor, "circle"), color=COLORES_SENSORES.get(sensor, "#C0C0C0"), size=9, line=dict(width=1, color='white')),
-            customdata=grupo['VRP_MW'], # Guardamos el valor original en MW
+            customdata=grupo['VRP_MW'],
             hoverlabel=dict(bgcolor="rgba(20, 24, 33, 0.95)", font=dict(color="white", size=11)),
             hovertemplate="<b>%{customdata:.2f} MW</b><br>%{x|%d %b, %H:%M}<extra></extra>",
             showlegend=True))
 
-    # Anotación Máximo con fijación de coordenadas
+    # Anotación Máximo
     if not df_v_30.empty:
         max_r = df_v_30.loc[df_v_30['VRP_MW'].idxmax()]
         fig.add_annotation(x=max_r['Fecha_Chile'], y=max_r['VRP_MW'] * mult,
@@ -73,25 +73,49 @@ def crear_grafico(df_v, v, modo_log=False):
                      minor=dict(dtick=86400000.0, showgrid=True, gridcolor='rgba(255,255,255,0.03)'),
                      tickangle=-45, fixedrange=True, tickfont=dict(size=9))
     
-    # Eje Y con Forzado de Escala Logarítmica
+    # Eje Y - CRÍTICO: Configuración correcta para log
     if modo_log:
         y_min_v, y_max_v = 0.05 * 1e6, max(1e8, v_max_val * 10)
-        fig.update_yaxes(type="log", range=[np.log10(y_min_v), np.log10(y_max_v)], 
-                         gridcolor='rgba(255,255,255,0.05)', tickfont=dict(size=9),
-                         dtick=1, exponentformat="power", showexponent="all", fixedrange=True)
+        fig.update_yaxes(
+            type="log",
+            range=[np.log10(y_min_v), np.log10(y_max_v)],
+            gridcolor='rgba(255,255,255,0.05)',
+            tickfont=dict(size=9),
+            dtick=1,
+            exponentformat="power",
+            showexponent="all",
+            fixedrange=True,
+            # NUEVO: Forzar que no cambie
+            autorange=False
+        )
     else:
-        fig.update_yaxes(type="linear", range=[0, max(1.1, v_max_val * 1.5)], 
-                         gridcolor='rgba(255,255,255,0.05)', tickfont=dict(size=9), fixedrange=True)
+        fig.update_yaxes(
+            type="linear",
+            range=[0, max(1.1, v_max_val * 1.5)],
+            gridcolor='rgba(255,255,255,0.05)',
+            tickfont=dict(size=9),
+            fixedrange=True
+        )
     
-    # Unidad Watt/MW (Posición superior para liberar espacio lateral)
+    # Unidad Watt/MW
     fig.add_annotation(xref="paper", yref="paper", x=-0.01, y=1.15, text=f"<b>{unidad}</b>", 
                        showarrow=False, font=dict(size=10, color="white"), xanchor="right")
     
-    fig.update_layout(template="plotly_dark", height=300, 
-                      margin=dict(l=40, r=2, t=35, b=40), # Aprovechamos laterales l=40 r=2
-                      paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', showlegend=True,
-                      legend=dict(orientation="h", yanchor="bottom", y=1.03, xanchor="center", x=0.5, font=dict(size=9)),
-                      uirevision=True) # Clave para que la expansión mantenga el modo log
+    # Layout - CRÍTICO: Sin responsive para gráficos log
+    fig.update_layout(
+        template="plotly_dark",
+        height=300,
+        margin=dict(l=40, r=2, t=35, b=40),
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        showlegend=True,
+        legend=dict(orientation="h", yanchor="bottom", y=1.03, xanchor="center", x=0.5, font=dict(size=9)),
+        # NUEVO: NO responsive para evitar problemas con resize
+        autosize=True,
+        # NUEVO: Anchura fija para evitar recalculos
+        width=None  # Se adapta al contenedor pero sin recalcular ejes
+    )
+    
     return fig
 
 def procesar():
@@ -99,9 +123,19 @@ def procesar():
     os.makedirs(CARPETA_LOG, exist_ok=True)
     df = pd.read_csv(ARCHIVO_POSITIVOS) if os.path.exists(ARCHIVO_POSITIVOS) else pd.DataFrame()
     
-    config_v = {
-        'displayModeBar': 'hover', 'displaylogo': False,
-        'responsive': True,
+    # Config diferente para lineal vs log
+    config_lineal = {
+        'displayModeBar': 'hover',
+        'displaylogo': False,
+        'responsive': True,  # OK para lineales
+        'modeBarButtonsToRemove': ['zoom2d', 'pan2d', 'select2d', 'lasso2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d'],
+        'toImageButtonOptions': {'format': 'png', 'height': 500, 'width': 1400, 'scale': 2}
+    }
+    
+    config_log = {
+        'displayModeBar': 'hover',
+        'displaylogo': False,
+        'responsive': False,  # CRÍTICO: Deshabilitar para log
         'modeBarButtonsToRemove': ['zoom2d', 'pan2d', 'select2d', 'lasso2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d'],
         'toImageButtonOptions': {'format': 'png', 'height': 500, 'width': 1400, 'scale': 2}
     }
@@ -109,15 +143,18 @@ def procesar():
     for v in VOLCANES:
         df_v = df[df['Volcan'] == v].copy()
         nombre_f = f"{v.replace(' ', '_')}.html"
+        
         for carpeta, es_log in [(CARPETA_LINEAL, False), (CARPETA_LOG, True)]:
             fig = crear_grafico(df_v, v, modo_log=es_log)
             path = os.path.join(carpeta, nombre_f)
+            
             if fig is None:
                 with open(path, "w", encoding='utf-8') as f:
                     f.write("<body style='background:#0d1117; color:#8b949e; display:flex; align-items:center; justify-content:center; height:300px; font-family:sans-serif;'>SIN ANOMALÍA TÉRMICA</body>")
             else:
-                # Escribimos el HTML. Plotly por defecto maneja bien el resize si 'responsive' es True.
-                fig.write_html(path, full_html=False, include_plotlyjs='cdn', config=config_v)
+                # CRÍTICO: Usar config apropiada según tipo
+                config_usar = config_log if es_log else config_lineal
+                fig.write_html(path, full_html=False, include_plotlyjs='cdn', config=config_usar)
 
 if __name__ == "__main__":
     procesar()

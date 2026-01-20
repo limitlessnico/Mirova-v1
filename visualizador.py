@@ -15,7 +15,8 @@ VOLCANES = ["Isluga", "Lascar", "Lastarria", "Peteroa", "Nevados de Chillan", "C
 MAPA_SIMBOLOS = {"MODIS": "triangle-up", "VIIRS375": "square", "VIIRS750": "circle", "VIIRS": "circle"}
 # Colores por confianza (verde para latest.php y OCR alta, amarillo/naranja para OCR media/baja)
 COLORES_CONFIANZA = {
-    "N/A": "#2ea043",      # Verde - latest.php
+    "N/A": "#2ea043",      # Verde - latest.php (legacy)
+    "valido": "#2ea043",   # Verde - latest.php (nuevo)
     "alta": "#2ea043",     # Verde - OCR alta
     "media": "#d29922",    # Amarillo - OCR media
     "baja": "#fb8500"      # Naranja - OCR baja
@@ -61,13 +62,13 @@ def crear_grafico(df_v, v, modo_log=False):
     for sensor in df_v_30['Sensor'].unique():
         df_sensor = df_v_30[df_v_30['Sensor'] == sensor]
         
-        for confianza in ['N/A', 'alta', 'media', 'baja']:
-            # Filtrar por confianza (N/A para latest.php)
+        for confianza in ['N/A', 'valido', 'alta', 'media', 'baja']:
+            # Filtrar por confianza (N/A o valido para latest.php)
             if 'Confianza_Validacion' in df_sensor.columns:
                 df_grupo = df_sensor[df_sensor['Confianza_Validacion'] == confianza]
             else:
-                # Si no existe la columna, asumir N/A (latest.php)
-                df_grupo = df_sensor if confianza == 'N/A' else pd.DataFrame()
+                # Si no existe la columna, asumir N/A (latest.php legacy)
+                df_grupo = df_sensor if confianza in ['N/A', 'valido'] else pd.DataFrame()
             
             if df_grupo.empty:
                 continue
@@ -77,7 +78,7 @@ def crear_grafico(df_v, v, modo_log=False):
             simbolo = MAPA_SIMBOLOS.get(sensor, "circle")
             
             # Nombre de la trace
-            if confianza == 'N/A':
+            if confianza in ['N/A', 'valido']:
                 nombre_trace = sensor
             else:
                 nombre_trace = f"{sensor} ({confianza})"
@@ -171,7 +172,7 @@ def procesar():
         df = pd.read_csv(ARCHIVO_POSITIVOS) if os.path.exists(ARCHIVO_POSITIVOS) else pd.DataFrame()
         # Agregar columnas faltantes si se usa positivos.csv
         if not df.empty:
-            df['Confianza_Validacion'] = 'N/A'
+            df['Confianza_Validacion'] = 'valido'  # Era 'N/A'
     
     # Config diferente para lineal vs log
     config_lineal = {

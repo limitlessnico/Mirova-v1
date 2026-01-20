@@ -1,6 +1,6 @@
 """
-OCR_UTILS.PY - VERSIÓN MEJORADA
-Maneja texto OCR con saltos de línea entre VRP y valores
+OCR_UTILS.PY - VERSIÓN FINAL
+Maneja formato real de Latest10NTI donde fechas y VRP están separados
 """
 
 import pytesseract
@@ -12,9 +12,13 @@ import re
 
 def extraer_eventos_latest10nti(ruta_imagen):
     """
-    Extrae timestamps y VRP de Latest10NTI.png usando OCR
+    Extrae timestamps y VRP de Latest10NTI.png
     
-    MEJORADO: Maneja saltos de línea entre VRP y valores
+    FORMATO REAL: Todas las fechas en una línea, todos los VRP en otra línea más abajo
+    Ejemplo:
+        20-Jan-2026 05:36:01 20-Jan-2026 05:12:00 19-Jan-2026 18:18:01...
+        (muchas líneas después)
+        VRP =0.12 MW VRP =NaN MW VRP =NaN MW...
     
     Returns:
         list: [{timestamp, datetime, vrp_mw, posicion}, ...]
@@ -31,86 +35,74 @@ def extraer_eventos_latest10nti(ruta_imagen):
         print(f"   [DEBUG] Texto OCR completo ({len(texto)} chars):")
         print(f"   {texto[:500]}...")
         
-        # Patrón para timestamps
+        # Paso 1: Extraer TODAS las fechas
         patron_fecha = r'(\d{2})-([A-Za-z]{3})-(\d{4})\s+(\d{2}):(\d{2}):(\d{2})'
+        matches_fecha = re.findall(patron_fecha, texto)
         
-        # NUEVO: Buscar números que podrían ser VRP
-        # Acepta: "12 MW", ".12 MW", "0.12 MW", "NaN MW"
-        patron_numero_mw = r'(\d*\.?\d+|NaN)\s*MW'
+        print(f"   [DEBUG] Fechas encontradas: {len(matches_fecha)}")
         
-        lineas = texto.split('\n')
+        if not matches_fecha:
+            print(f"   ⚠️ No se encontraron fechas")
+            return []
         
-        # Paso 1: Encontrar todas las fechas
-        fechas_encontradas = []
-        for i, linea in enumerate(lineas):
-            match_fecha = re.search(patron_fecha, linea)
-            if match_fecha:
-                fechas_encontradas.append((i, match_fecha))
+        # Paso 2: Extraer TODOS los VRP
+        # Buscar "VRP =X.XX MW" o "VRP =NaN MW" en TODO el texto
+        # Acepta con/sin espacio antes del =, números que empiezan con punto
+        patron_vrp = r'VRP\s*[=:]?\s*(\d*\.?\d+|NaN)\s*MW'
+        matches_vrp = re.findall(patron_vrp, texto, re.IGNORECASE)
         
-        print(f"   [DEBUG] Fechas encontradas: {len(fechas_encontradas)}")
+        print(f"   [DEBUG] VRP encontrados: {len(matches_vrp)}")
         
-        # Paso 2: Para cada fecha, buscar VRP en líneas cercanas
+        # Paso 3: Mapear fechas → VRP por orden
         meses = {
             'Jan': 1, 'Feb': 2, 'Mar': 3, 'Apr': 4,
             'May': 5, 'Jun': 6, 'Jul': 7, 'Aug': 8,
             'Sep': 9, 'Oct': 10, 'Nov': 11, 'Dec': 12
         }
         
-        vrp_count = 0
-        for idx_linea, match_fecha in fechas_encontradas:
+        # Procesar cada fecha y asignar VRP por índice
+        for idx, match_fecha in enumerate(matches_fecha):
             try:
-                dia = int(match_fecha.group(1))
-                mes = match_fecha.group(2)
-                anio = int(match_fecha.group(3))
-                hora = int(match_fecha.group(4))
-                minuto = int(match_fecha.group(5))
-                segundo = int(match_fecha.group(6))
+                dia = int(match_fecha[0])
+                mes = match_fecha[1]
+                anio = int(match_fecha[2])
+                hora = int(match_fecha[3])
+                minuto = int(match_fecha[4])
+                segundo = int(match_fecha[5])
                 
                 mes_num = meses.get(mes, 1)
                 dt = datetime(anio, mes_num, dia, hora, minuto, segundo)
                 timestamp = int(dt.timestamp())
                 
-                # Buscar VRP en líneas cercanas (hasta 5 líneas después)
+                # Asignar VRP por índice (si existe)
                 vrp_mw = None
-                for j in range(idx_linea, min(len(lineas), idx_linea + 6)):
-                    linea_busqueda = lineas[j]
-                    
-                    # Buscar "VRP" en la línea
-                    if 'VRP' in linea_busqueda.upper():
-                        # Buscar número + MW en esta línea o las siguientes
-                        for k in range(j, min(len(lineas), j + 3)):
-                            match_num = re.search(patron_numero_mw, lineas[k])
-                            if match_num:
-                                vrp_str = match_num.group(1)
-                                if vrp_str.upper() == 'NAN':
-                                    vrp_mw = np.nan
-                                else:
-                                    try:
-                                        # Manejar números que empiezan con punto
-                                        if vrp_str.startswith('.'):
-                                            vrp_str = '0' + vrp_str
-                                        vrp_mw = float(vrp_str)
-                                    except:
-                                        vrp_mw = np.nan
-                                break
-                        if vrp_mw is not None:
-                            break
+                if idx < len(matches_vrp):
+                    vrp_str = matches_vrp[idx]
+                    if vrp_str.upper() == 'NAN':
+                        vrp_mw = np.nan
+                    else:
+                        try:
+                            # Manejar números que empiezan con punto (.12 → 0.12)
+                            if vrp_str.startswith('.'):
+                                vrp_str = '0' + vrp_str
+                            vrp_mw = float(vrp_str)
+                        except:
+                            vrp_mw = np.nan
                 
-                # Solo agregar si encontramos VRP
+                # Agregar evento (incluso si VRP es None o NaN, lo filtramos después)
                 if vrp_mw is not None:
                     eventos.append({
                         'timestamp': timestamp,
                         'datetime': dt,
                         'vrp_mw': vrp_mw,
-                        'posicion': len(eventos)
+                        'posicion': idx
                     })
-                    vrp_count += 1
                     
                     vrp_display = f"{vrp_mw:.2f}" if not np.isnan(vrp_mw) else "NaN"
-                    print(f"   [DEBUG] Evento {vrp_count}: {dt.strftime('%d-%b-%Y %H:%M:%S')} VRP={vrp_display} MW")
+                    print(f"   [DEBUG] Evento {idx+1}: {dt.strftime('%d-%b-%Y %H:%M:%S')} VRP={vrp_display} MW")
             
             except Exception as e:
-                print(f"   ⚠️ Error parseando fecha: {e}")
+                print(f"   ⚠️ Error parseando fecha {idx+1}: {e}")
                 continue
         
         print(f"✅ OCR extraído: {len(eventos)} eventos de Latest10NTI.png")

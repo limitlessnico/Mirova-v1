@@ -1,10 +1,9 @@
 name: Generador de Graficos
 
 on:
-  # Comentamos el disparador automático para pausar la generación
-  # workflow_run:
-  #   workflows: ["Monitor Volcanico VRP"]
-  #   types: [completed]
+  workflow_run:
+    workflows: ["Monitor Volcanico VRP"]
+    types: [completed]
   
   # Mantenemos esto para poder ejecutarlo manualmente desde la pestaña Actions si es necesario
   workflow_dispatch:
@@ -15,8 +14,6 @@ concurrency:
 
 jobs:
   pintar_y_publicar:
-    # Eliminamos o comentamos la condición del if para que el job sea procesable manualmente
-    # if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -57,7 +54,7 @@ jobs:
           git add monitoreo_satelital/estado_sistema.json
           
           if ! git diff --quiet --staged; then
-            git commit -m "📊 Pausado: Generación manual de gráficos"
+            git commit -m "📊 Generación automática de gráficos"
             git pull origin main --rebase -X ours
             git push origin main
           else

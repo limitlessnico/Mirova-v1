@@ -44,23 +44,31 @@ def merge():
     
     # Preparar consolidado (agregar columnas nuevas)
     if not df_consolidado.empty:
-        df_consolidado['Origen_Dato'] = 'latest.php'
-        df_consolidado['Confianza_Validacion'] = 'N/A'
-        df_consolidado['Requiere_Verificacion'] = False
-        df_consolidado['Nota_Validacion'] = 'Capturado por latest.php'
+        # CRÍTICO: Forzar valores incluso si columna ya existe
+        df_consolidado.loc[:, 'Origen_Dato'] = 'latest.php'
+        df_consolidado.loc[:, 'Confianza_Validacion'] = 'N/A'
+        df_consolidado.loc[:, 'Requiere_Verificacion'] = False
+        df_consolidado.loc[:, 'Nota_Validacion'] = 'Capturado por latest.php'
+        
+        print(f"   📊 Consolidado preparado: {len(df_consolidado)} eventos")
+        print(f"      Confianza_Validacion: {df_consolidado['Confianza_Validacion'].unique()}")
     
     # Preparar OCR (agregar columnas faltantes SOLO si no existen)
     if not df_ocr.empty:
-        df_ocr['Origen_Dato'] = 'OCR'
+        df_ocr.loc[:, 'Origen_Dato'] = 'OCR'
         # Solo agregar si no existen
         if 'Distancia_km' not in df_ocr.columns:
-            df_ocr['Distancia_km'] = 0.0
+            df_ocr.loc[:, 'Distancia_km'] = 0.0
         if 'Clasificacion Mirova' not in df_ocr.columns:
-            df_ocr['Clasificacion Mirova'] = 'N/A'
+            df_ocr.loc[:, 'Clasificacion Mirova'] = 'N/A'
         if 'Ultima_Actualizacion' not in df_ocr.columns:
-            df_ocr['Ultima_Actualizacion'] = df_ocr['Fecha_Proceso_GitHub']
+            df_ocr.loc[:, 'Ultima_Actualizacion'] = df_ocr['Fecha_Proceso_GitHub']
         if 'Editado' not in df_ocr.columns:
-            df_ocr['Editado'] = 'NO'
+            df_ocr.loc[:, 'Editado'] = 'NO'
+        
+        print(f"   📊 OCR preparado: {len(df_ocr)} eventos")
+        if 'Confianza_Validacion' in df_ocr.columns:
+            print(f"      Confianza_Validacion: {df_ocr['Confianza_Validacion'].unique()}")
     
     # Combinar
     df_maestro = pd.concat([df_consolidado, df_ocr], ignore_index=True)
@@ -95,7 +103,12 @@ def merge():
     # Guardar
     df_maestro.to_csv(DB_MAESTRO, index=False)
     
-    print(f"✅ CSV Maestro generado:")
+    # Verificación final
+    print(f"\n🔍 Verificación final:")
+    print(f"   Confianza_Validacion en maestro:")
+    print(f"   {df_maestro['Confianza_Validacion'].value_counts(dropna=False)}")
+    
+    print(f"\n✅ CSV Maestro generado:")
     print(f"   Total eventos: {len(df_maestro)}")
     print(f"   De latest.php: {len(df_maestro[df_maestro['Origen_Dato'] == 'latest.php'])}")
     print(f"   De OCR: {len(df_maestro[df_maestro['Origen_Dato'] == 'OCR'])}")

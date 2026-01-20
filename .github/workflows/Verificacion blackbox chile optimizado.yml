@@ -35,10 +35,12 @@ jobs:
           
           BLACKBOX_DIR = "monitoreo_satelital/blackbox_latest"
           
-          # SOLO VOLCANES CHILENOS - Nombres exactos como aparecen en MIROVA
+          # SOLO VOLCANES CHILENOS - Nombres exactos como aparecen en MIROVA HTML
           VOLCANES_CHILENOS = {
               'Lascar', 'Lastarria', 'Isluga', 'Villarrica', 'Llaima',
-              'Nevados de Chillan', 'Copahue', 'Puyehue-Cordon Caulle',
+              'ChillanNevadosde',  # ← SIN ESPACIOS (como está en HTML)
+              'Copahue', 
+              'PuyehueCordonCaulle',  # ← SIN GUIONES (como está en HTML)
               'Chaiten', 'PlanchonPeteroa'
           }
           

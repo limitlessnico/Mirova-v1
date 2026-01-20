@@ -45,10 +45,11 @@ DB_CONSOLIDADO = os.path.join(CARPETA_PRINCIPAL, "registro_vrp_consolidado.csv")
 
 COLUMNAS_OCR = [
     "timestamp", "Fecha_Satelite_UTC", "Fecha_Captura_Chile",
-    "Volcan", "Sensor", "VRP_MW", "Tipo_Registro",
+    "Volcan", "Sensor", "VRP_MW", "Distancia_km", "Tipo_Registro",
+    "Clasificacion Mirova", "Ruta Foto", "Fecha_Proceso_GitHub",
+    "Ultima_Actualizacion", "Editado",
     "Color_Punto_Dist", "Confianza_Validacion", "Requiere_Verificacion",
-    "Metodo_Validacion", "Nota_Validacion",
-    "Ruta_Foto", "Fecha_Proceso_GitHub", "Version_OCR"
+    "Metodo_Validacion", "Nota_Validacion", "Version_OCR"
 ]
 
 # =========================
@@ -197,6 +198,16 @@ def procesar_volcan_sensor(session, volcan_id, sensor, df_ocr, df_consolidado):
         
         # Agregar evento
         dt_utc = evento['datetime']
+        # Clasificación MIROVA basada en VRP
+        if vrp_mw < 0.2:
+            clasificacion_mirova = "Muy Bajo"
+        elif vrp_mw < 1.0:
+            clasificacion_mirova = "Bajo"
+        elif vrp_mw < 5.0:
+            clasificacion_mirova = "Medio"
+        else:
+            clasificacion_mirova = "Alto"
+        
         eventos_nuevos.append({
             'timestamp': ts,
             'Fecha_Satelite_UTC': dt_utc.strftime("%Y-%m-%d %H:%M:%S"),
@@ -206,14 +217,18 @@ def procesar_volcan_sensor(session, volcan_id, sensor, df_ocr, df_consolidado):
             'Volcan': nombre_v,
             'Sensor': sensor,
             'VRP_MW': vrp_mw,
+            'Distancia_km': 0.0,  # OCR no calcula distancia
             'Tipo_Registro': 'ALERTA_TERMICA_OCR',
+            'Clasificacion Mirova': clasificacion_mirova,
+            'Ruta Foto': ruta_foto,
+            'Fecha_Proceso_GitHub': ahora_cl,
+            'Ultima_Actualizacion': ahora_cl,
+            'Editado': 'NO',
             'Color_Punto_Dist': evento.get('color_punto', 'sin_punto'),
             'Confianza_Validacion': clasificacion['confianza'],
             'Requiere_Verificacion': clasificacion['requiere_verificacion'],
             'Metodo_Validacion': evento.get('metodo', 'desconocido'),
             'Nota_Validacion': clasificacion['nota'],
-            'Ruta_Foto': ruta_foto,
-            'Fecha_Proceso_GitHub': ahora_cl,
             'Version_OCR': '1.0'
         })
         

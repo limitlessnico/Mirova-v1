@@ -46,18 +46,32 @@ def crear_grafico(df_v, v, modo_log=False):
 
     if df_v_30.empty: return None
 
-    mult = 1000000 if modo_log else 1
     unidad = "Watt" if modo_log else "MW"
     fig = go.Figure()
-
-    v_max_val = df_v_30['VRP_MW'].max() * mult
+    v_max_val = df_v_30['VRP_MW'].max()
+    
+    # Función transform() - CRÍTICA para modo log (de versión antigua que funciona)
+    def transform(val_mw):
+        if modo_log:
+            watts = val_mw * 1e6
+            return np.log10(max(watts, 10000))  # Transforma a log10
+        return val_mw
+    
+    # Para bandas y verificaciones
+    mult = 1000000 if modo_log else 1
+    v_max_val_check = v_max_val * mult
     
     # Bandas y Simbología Inteligente
     for y0, y1, label, color in MIROVA_BANDS:
-        l_y0 = y0 if modo_log else y0/1e6
-        l_y1 = y1 if modo_log else y1/1e6
+        # Transformar a log10 para bandas en modo log
+        if modo_log:
+            l_y0 = np.log10(max(y0, 1))
+            l_y1 = np.log10(y1)
+        else:
+            l_y0 = y0/1e6
+            l_y1 = y1/1e6
         fig.add_hrect(y0=l_y0, y1=l_y1, fillcolor=color, line_width=0, layer="below")
-        if (v_max_val >= y0):
+        if (v_max_val_check >= y0):
             fig.add_trace(go.Scatter(x=[None], y=[None], mode='markers', name=label, 
                 marker=dict(size=8, symbol='square', color=color.replace('0.2', '0.8').replace('0.15', '0.8')), showlegend=True))
 
@@ -87,9 +101,12 @@ def crear_grafico(df_v, v, modo_log=False):
             else:
                 nombre_trace = f"{sensor} ({confianza})"
             
+            # CRÍTICO: Usar transform() para valores Y
+            y_vals = [transform(v) for v in df_grupo['VRP_MW']]
+            
             fig.add_trace(go.Scatter(
                 x=df_grupo['Fecha_Chile'], 
-                y=df_grupo['VRP_MW'] * mult, 
+                y=y_vals,  # ← Usar transform()
                 mode='markers', 
                 name=nombre_trace,
                 marker=dict(
@@ -114,20 +131,18 @@ def crear_grafico(df_v, v, modo_log=False):
                      minor=dict(dtick=86400000.0, showgrid=True, gridcolor='rgba(255,255,255,0.03)'),
                      tickangle=-45, fixedrange=True, tickfont=dict(size=9))
     
-    # Eje Y - CRÍTICO: Configuración correcta para log
+    # Eje Y - CRÍTICO: En modo log usar type="linear" con valores transformados
     if modo_log:
-        y_min_v, y_max_v = 0.05 * 1e6, max(1e8, v_max_val * 10)
+        # Usar estrategia de versión antigua: type="linear" con ticktext personalizado
         fig.update_yaxes(
-            type="log",
-            range=[np.log10(y_min_v), np.log10(y_max_v)],
+            type="linear",  # ← No "log", sino "linear" con valores log10
+            range=[4.7, 9],  # log10(10^4.7) a log10(10^9)
+            tickvals=[5, 6, 7, 8],
+            ticktext=["10⁵", "10⁶", "10⁷", "10⁸"],
             gridcolor='rgba(255,255,255,0.05)',
             tickfont=dict(size=9),
-            dtick=1,
-            exponentformat="power",
-            showexponent="all",
-            fixedrange=True,
-            # NUEVO: Forzar que no cambie
-            autorange=False
+            autorange=False,
+            fixedrange=True
         )
     else:
         fig.update_yaxes(
@@ -142,19 +157,16 @@ def crear_grafico(df_v, v, modo_log=False):
     fig.add_annotation(xref="paper", yref="paper", x=-0.01, y=1.15, text=f"<b>{unidad}</b>", 
                        showarrow=False, font=dict(size=10, color="white"), xanchor="right")
     
-    # Anotación Máximo - DESPUÉS de configurar ejes para que funcione en modo log
+    # Anotación Máximo - CRÍTICO: Usar transform() en modo log
     if not df_v_30.empty:
         max_r = df_v_30.loc[df_v_30['VRP_MW'].idxmax()]
-        y_pos = max_r['VRP_MW'] * mult  # Ya está en la escala correcta (MW o Watt)
-        
-        # En modo log, usar ay más grande para que sea visible
-        ay_offset = -60 if modo_log else -40
+        y_pos = transform(max_r['VRP_MW'])  # ← Usar transform()
         
         fig.add_annotation(x=max_r['Fecha_Chile'], y=y_pos,
             xref="x", yref="y", text=f"MÁX: {max_r['VRP_MW']:.2f} MW", showarrow=True,
             arrowhead=2, arrowsize=1, arrowwidth=1.5, arrowcolor="white",
             bgcolor="rgba(0,0,0,0.8)", bordercolor="#58a6ff", borderwidth=1,
-            font=dict(color="white", size=9), ay=ay_offset, ax=0)
+            font=dict(color="white", size=9), ay=-40, ax=0)
     
     # Layout - CRÍTICO: Sin responsive para gráficos log
     fig.update_layout(

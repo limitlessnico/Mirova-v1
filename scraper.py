@@ -156,7 +156,11 @@ def procesar():
                 else:
                     tipo = "FALSO_POSITIVO"
             else:
-                tipo = "EVIDENCIA_DIARIA" if sensor == "VIIRS375" else "RUTINA"
+                # ===== CAMBIO APLICADO =====
+                # Antes: tipo = "EVIDENCIA_DIARIA" if sensor == "VIIRS375" else "RUTINA"
+                # Ahora: Todo VRP=0 es RUTINA (sin descargar imágenes)
+                tipo = "RUTINA"
+                # ===========================
 
             clasificacion = obtener_clasificacion_mirova(vrp, es_alerta_real)
 
@@ -177,6 +181,8 @@ def procesar():
                 ruta_foto = "No descargada"
                 editado = "NO"
 
+                # Solo descargar imágenes si es alerta real (VRP > 0 y dentro de rango)
+                # RUTINA (VRP=0) NO descarga imágenes
                 if (int(time.time()) - ts) < 86400:
                     if es_alerta_real:
                         ruta_foto = descargar_v104(session, id_v, dt_utc, sensor, True)

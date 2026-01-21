@@ -34,6 +34,8 @@ ROI_CONFIG = {
 def extraer_eventos_latest10nti(ruta_imagen):
     """
     Extrae fechas y VRP de Latest10NTI.png usando OCR
+    
+    VERSIÓN ROBUSTA: Múltiples estrategias para manejar OCR inconsistente
     """
     try:
         img = Image.open(ruta_imagen)
@@ -41,64 +43,88 @@ def extraer_eventos_latest10nti(ruta_imagen):
         
         print(f"   [DEBUG] Texto OCR completo ({len(texto)} chars)")
         
-        # ===== FIX MEJORADO v2: Usar finditer() para posiciones exactas =====
-        # Problema anterior: find() siempre da misma posición para duplicados
-        # Solución: finditer() da posición exacta de cada ocurrencia
-        
+        # ==== PASO 1: Extraer fechas (filtrar "Last Update") ====
         patron_fecha = r'(\d{2})-([A-Za-z]{3})-(\d{2}\d{2})\s+(\d{2}):(\d{2}):(\d{2})'
         
-        # Usar finditer en vez de findall+find
         matches_fecha = []
         for match in re.finditer(patron_fecha, texto):
-            fecha = match.groups()
-            pos = match.start()  # ← Posición EXACTA de ESTE match
+            pos = match.start()
+            contexto = texto[max(0, pos-20):pos].lower()
             
-            # Contexto antes (solo 20 chars - más preciso)
-            contexto_antes = texto[max(0, pos-20):pos].lower()
-            
-            # Filtrar si tiene "update:" inmediatamente antes
-            if "update:" in contexto_antes:
-                fecha_str = f"{fecha[0]}-{fecha[1]}-{fecha[2]} {fecha[3]}:{fecha[4]}:{fecha[5]}"
-                print(f"   [DEBUG] Filtrado: {fecha_str} pos={pos} (Last Update)")
+            if "update:" in contexto:
+                print(f"   [DEBUG] Filtrado: {match.group()} pos={pos} (Last Update)")
                 continue
             
-            matches_fecha.append(fecha)
+            matches_fecha.append(match.groups())
         
         print(f"   [DEBUG] Fechas válidas (sin título): {len(matches_fecha)}")
+        n_fechas = len(matches_fecha)
         
-        # Extraer VRP con fallback (del texto completo está ok)
+        # ==== PASO 2: MÚLTIPLES ESTRATEGIAS para extraer VRP ====
+        
+        # Estrategia 1: Patrón VRP completo
         patron_vrp = r'VRP\s*[=:]?\s*(\d*\.?\d+|NaN)\s*MW'
-        matches_vrp = re.findall(patron_vrp, texto, re.IGNORECASE)
+        matches_vrp_1 = re.findall(patron_vrp, texto, re.IGNORECASE)
+        print(f"   [DEBUG] Estrategia 1 (VRP\s*=\s*X MW): {len(matches_vrp_1)} valores")
         
-        print(f"   [DEBUG] VRP encontrados: {len(matches_vrp)}")
+        # Estrategia 2: TODOS los números antes de MW
+        patron_mw_todos = r'(\d+\.?\d*|NaN)\s*MW'
+        matches_vrp_2 = re.findall(patron_mw_todos, texto, re.IGNORECASE)
+        print(f"   [DEBUG] Estrategia 2 (X MW): {len(matches_vrp_2)} valores")
         
-        # Fallback: Buscar solo "X.XX MW"
-        if len(matches_vrp) < len(matches_fecha):
-            print(f"   [DEBUG] Buscando números MW adicionales...")
-            patron_mw = r'(\d+\.?\d*)\s*MW'
-            matches_mw = re.findall(patron_mw, texto, re.IGNORECASE)
+        # Estrategia 3: Solo números válidos antes de MW
+        patron_num = r'(\d+\.?\d*)\s*MW'
+        matches_num = re.findall(patron_num, texto, re.IGNORECASE)
+        matches_vrp_3 = []
+        for num in matches_num:
+            try:
+                val = float(num)
+                if 0.01 <= val <= 100:
+                    matches_vrp_3.append(num)
+            except:
+                pass
+        print(f"   [DEBUG] Estrategia 3 (números válidos): {len(matches_vrp_3)} valores")
+        
+        # ==== PASO 3: ELEGIR MEJOR ESTRATEGIA ====
+        
+        # Prioridad: La que da exactamente n_fechas valores
+        if len(matches_vrp_1) == n_fechas:
+            matches_vrp = matches_vrp_1
+            print(f"   ✅ Usando Estrategia 1")
+        
+        elif len(matches_vrp_2) == n_fechas:
+            matches_vrp = matches_vrp_2
+            print(f"   ✅ Usando Estrategia 2")
+        
+        elif len(matches_vrp_3) == n_fechas:
+            matches_vrp = matches_vrp_3
+            print(f"   ✅ Usando Estrategia 3")
+        
+        else:
+            # FALLBACK: Usar la más cercana y completar con NaN
+            estrategias = [
+                (len(matches_vrp_1), matches_vrp_1, "Estrategia 1"),
+                (len(matches_vrp_2), matches_vrp_2, "Estrategia 2"),
+                (len(matches_vrp_3), matches_vrp_3, "Estrategia 3")
+            ]
             
-            matches_mw_validos = []
-            for mw in matches_mw:
-                try:
-                    val = float(mw)
-                    if 0.01 <= val <= 100:
-                        matches_mw_validos.append(mw)
-                except:
-                    pass
+            # Ordenar por cercanía a n_fechas
+            estrategias.sort(key=lambda x: abs(x[0] - n_fechas))
             
-            print(f"   [DEBUG] MW válidos encontrados: {len(matches_mw_validos)}")
+            mejor_len, mejor_matches, mejor_nombre = estrategias[0]
             
-            if len(matches_mw_validos) == len(matches_fecha):
-                matches_vrp = matches_mw_validos
-                print(f"   [DEBUG] Usando matcheo por MW")
+            if mejor_len < n_fechas:
+                # Completar con NaN
+                matches_vrp = mejor_matches + ['NaN'] * (n_fechas - mejor_len)
+                print(f"   ⚠️ {mejor_nombre} dio {mejor_len}, completando con NaN")
+            else:
+                # Truncar
+                matches_vrp = mejor_matches[:n_fechas]
+                print(f"   ⚠️ {mejor_nombre} dio {mejor_len}, truncando a {n_fechas}")
         
-        # Validar que hay igual cantidad de fechas y VRP
-        if len(matches_fecha) != len(matches_vrp):
-            print(f"   ⚠️ ADVERTENCIA: {len(matches_fecha)} fechas ≠ {len(matches_vrp)} VRP")
-            print(f"      Usando mínimo: {min(len(matches_fecha), len(matches_vrp))}")
+        print(f"   [DEBUG] VRP finales: {len(matches_vrp)}")
         
-        # Mapear por índice
+        # ==== PASO 4: MAPEAR EVENTOS ====
         eventos = []
         for i in range(min(len(matches_fecha), len(matches_vrp))):
             try:
@@ -126,7 +152,7 @@ def extraer_eventos_latest10nti(ruta_imagen):
                 print(f"   [DEBUG] Evento {i+1}: {dt.strftime('%d-%b-%Y %H:%M:%S')} VRP={vrp_str} MW")
             
             except Exception as e:
-                print(f"   [WARN] Error parseando evento {i}: {e}")
+                print(f"   [WARN] Error parseando evento {i+1}: {e}")
                 continue
         
         print(f"   ✅ OCR extraído: {len(eventos)} eventos")

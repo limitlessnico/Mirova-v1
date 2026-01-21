@@ -285,7 +285,10 @@ def detectar_puntos_color(img_rgb, color):
                 if perimeter > 0:
                     circularidad = 4 * np.pi * area / (perimeter ** 2)
                     
-                    if circularidad > 0.4:
+                    # AJUSTADO: Umbral 0.2 (era 0.4)
+                    # Los símbolos de MIROVA son irregulares (círculo+línea)
+                    # Circularidad típica: 0.26-0.64
+                    if circularidad > 0.2:
                         puntos.append({
                             'x': cx,
                             'y': cy,

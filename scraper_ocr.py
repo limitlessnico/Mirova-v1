@@ -13,7 +13,8 @@ import time
 from ocr_utils import (
     extraer_eventos_latest10nti,
     analizar_puntos_distancia,
-    clasificar_confianza
+    clasificar_confianza,
+    verificar_evento_no_existe
 )
 
 # =========================
@@ -161,26 +162,8 @@ def procesar_volcan_sensor(session, volcan_id, sensor, df_ocr, df_consolidado):
         ts = evento['timestamp']
         vrp_mw = evento['vrp_mw']
         
-        # Verificar si ya existe en OCR
-        existe_ocr = df_ocr[
-            (df_ocr['timestamp'] == ts) &
-            (df_ocr['Volcan'] == nombre_v) &
-            (df_ocr['Sensor'] == sensor)
-        ]
-        
-        if not existe_ocr.empty:
-            print(f"  ⏭️ SKIP: {ts} ya en OCR")
-            continue
-        
-        # Verificar si ya existe en consolidado
-        existe_consolidado = df_consolidado[
-            (df_consolidado['timestamp'] == ts) &
-            (df_consolidado['Volcan'] == nombre_v) &
-            (df_consolidado['Sensor'] == sensor)
-        ]
-        
-        if not existe_consolidado.empty:
-            print(f"  ⏭️ SKIP: {ts} ya en latest.php")
+        # Verificar que NO exista en consolidado ni en OCR
+        if not verificar_evento_no_existe(evento, nombre_v, sensor, df_consolidado, df_ocr):
             continue
         
         # Clasificar confianza

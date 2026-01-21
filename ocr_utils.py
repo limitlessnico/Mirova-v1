@@ -216,27 +216,30 @@ def detectar_puntos_color(img_rgb, color):
     """
     Detecta círculos de un color en la imagen
     
-    MEJORADO v2: Detecta círculos con antialiasing (no solo píxeles puros)
-    - Umbral más permisivo para captar bordes con antialiasing
-    - Área mínima más baja (3 px) para ROI estrecho
-    - Filtro de circularidad para evitar ruido
+    CORREGIDO v3: Rojo debe ser R DOMINANTE sobre G y B
     """
     puntos = []
     
     if color == 'rojo':
-        # MEJORADO: Rojo con antialiasing
-        # R dominante (>120), G y B permitidos hasta 150
-        # Esto captura tanto rojo puro como rojo con antialiasing
-        mask = cv2.inRange(img_rgb, 
-                          np.array([120, 0, 0]),     # R mínimo 120
-                          np.array([255, 150, 150])) # G,B hasta 150
+        # CORREGIDO: Rojo = R dominante sobre G y B
+        # R > 150 Y (R - G) > 50 Y (R - B) > 50
+        # Esto asegura que R es significativamente mayor que G y B
+        
+        # Paso 1: Máscara básica de R alto
+        mask_r_alto = img_rgb[:, :, 0] > 150  # R > 150
+        
+        # Paso 2: R debe ser dominante
+        mask_r_dominante = (img_rgb[:, :, 0] - img_rgb[:, :, 1]) > 50  # R - G > 50
+        mask_r_dominante &= (img_rgb[:, :, 0] - img_rgb[:, :, 2]) > 50  # R - B > 50
+        
+        # Combinar máscaras
+        mask = (mask_r_alto & mask_r_dominante).astype(np.uint8) * 255
         
     elif color == 'negro':
-        # MEJORADO: Negro más permisivo (incluye gris oscuro)
-        # Todo < 100 cuenta como "negro" en gráfico
+        # Negro/gris oscuro: Todo < 100
         mask = cv2.inRange(img_rgb,
                           np.array([0, 0, 0]),
-                          np.array([100, 100, 100]))  # Hasta gris oscuro
+                          np.array([100, 100, 100]))
     else:
         return puntos
     
@@ -245,23 +248,17 @@ def detectar_puntos_color(img_rgb, color):
     for cnt in contornos:
         area = cv2.contourArea(cnt)
         
-        # MEJORADO: Área mínima 3 px (antes 5)
-        # ROI de 1 día es muy estrecho (17 px), círculos son pequeños
         if area >= 3:
             M = cv2.moments(cnt)
             if M['m00'] != 0:
                 cx = int(M['m10'] / M['m00'])
                 cy = int(M['m01'] / M['m00'])
                 
-                # NUEVO: Filtro de circularidad
-                # Rechazar líneas/ruido, solo aceptar formas circulares
+                # Filtro de circularidad
                 perimeter = cv2.arcLength(cnt, True)
                 if perimeter > 0:
-                    # Circularidad: 1.0 = círculo perfecto, 0.0 = línea
                     circularidad = 4 * np.pi * area / (perimeter ** 2)
                     
-                    # Si circularidad > 0.4, es aproximadamente circular
-                    # (círculos con antialiasing tienen ~0.5-0.8)
                     if circularidad > 0.4:
                         puntos.append({
                             'x': cx,
@@ -269,13 +266,6 @@ def detectar_puntos_color(img_rgb, color):
                             'area': area,
                             'circularidad': circularidad
                         })
-    
-    return puntos
-            M = cv2.moments(cnt)
-            if M['m00'] != 0:
-                cx = int(M['m10'] / M['m00'])
-                cy = int(M['m01'] / M['m00'])
-                puntos.append({'x': cx, 'y': cy, 'area': area})
     
     return puntos
 

@@ -1,275 +1,430 @@
 """
-SCRAPER_OCR.PY
-Scraper de imágenes MIROVA usando OCR
-Recupera eventos perdidos por latest.php
+OCR_UTILS.PY - VERSIÓN 3.0
+Nueva lógica de clasificación OCR
 """
 
-import requests
-import os
-import pandas as pd
+import cv2
+import numpy as np
+import pytesseract
+from PIL import Image
+import re
 from datetime import datetime
-import pytz
-import time
-from ocr_utils import (
-    extraer_eventos_latest10nti,
-    analizar_puntos_distancia,
-    clasificar_confianza,
-    verificar_evento_no_existe
-)
+import pandas as pd
 
-# =========================
-# CONFIGURACIÓN
-# =========================
 
-VOLCANES_CONFIG = {
-    "355100": {"nombre": "Lascar", "id_mirova": "Lascar"},
-    "355120": {"nombre": "Lastarria", "id_mirova": "Lastarria"},
-    "355030": {"nombre": "Isluga", "id_mirova": "Isluga"},
-    "357120": {"nombre": "Villarrica", "id_mirova": "Villarrica"},
-    "357110": {"nombre": "Llaima", "id_mirova": "Llaima"},
-    "357070": {"nombre": "Nevados de Chillan", "id_mirova": "ChillanNevadosde"},
-    "357090": {"nombre": "Copahue", "id_mirova": "Copahue"},
-    "357150": {"nombre": "Puyehue-Cordon Caulle", "id_mirova": "PuyehueCordonCaulle"},
-    "358041": {"nombre": "Chaiten", "id_mirova": "Chaiten"},
-    "357040": {"nombre": "PlanchonPeteroa", "id_mirova": "PlanchonPeteroa"}
+# ===== CONFIGURACIÓN ROI =====
+# ROI para análisis temporal: SOLO ÚLTIMO DÍA (máxima precisión)
+# Definido por usuario el 21-Ene-2026
+# Filosofía: Precisión > Cobertura
+
+ROI_CONFIG = {
+    'x_start_pct': 0.8424,  # 84.24% del ancho (último día únicamente)
+    'x_end_pct': 0.8635,    # 86.35%
+    'y_start_pct': 0.1817,  # 18.17% altura
+    'y_end_pct': 0.4933     # 49.33%
 }
 
-SENSORES = ["VIIRS375", "VIIRS", "MODIS"]
+# JUSTIFICACIÓN:
+# - Máxima precisión temporal (sin mezcla de días)
+# - Desde 21-Ene-2026 en adelante: alta confiabilidad
+# - Eventos antiguos quedarán "sin_punto" (esperado)
+# - Ideal para monitoreo en tiempo real
 
-CARPETA_PRINCIPAL = "monitoreo_satelital"
-CARPETA_TEMP = os.path.join(CARPETA_PRINCIPAL, "ocr_temp")
-CARPETA_IMAGENES = os.path.join(CARPETA_PRINCIPAL, "imagenes_satelitales")
-CARPETA_LOGS = os.path.join(CARPETA_PRINCIPAL, "ocr_logs")
 
-DB_OCR = os.path.join(CARPETA_PRINCIPAL, "registro_vrp_ocr.csv")
-DB_CONSOLIDADO = os.path.join(CARPETA_PRINCIPAL, "registro_vrp_consolidado.csv")
-
-COLUMNAS_OCR = [
-    "timestamp", "Fecha_Satelite_UTC", "Fecha_Captura_Chile",
-    "Volcan", "Sensor", "VRP_MW", "Distancia_km", "Tipo_Registro",
-    "Clasificacion Mirova", "Ruta Foto", "Fecha_Proceso_GitHub",
-    "Ultima_Actualizacion", "Editado",
-    "Color_Punto_Dist", "Confianza_Validacion", "Requiere_Verificacion",
-    "Metodo_Validacion", "Nota_Validacion", "Version_OCR"
-]
-
-# =========================
-# FUNCIONES
-# =========================
-
-def descargar_imagen_temp(session, url, ruta_destino):
-    """Descarga imagen temporal"""
+def extraer_eventos_latest10nti(ruta_imagen):
+    """
+    Extrae fechas y VRP de Latest10NTI.png usando OCR
+    
+    VERSIÓN ROBUSTA: Múltiples estrategias para manejar OCR inconsistente
+    """
     try:
-        r = session.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=25)
-        if r.status_code == 200 and len(r.content) > 5000:
-            with open(ruta_destino, 'wb') as f:
-                f.write(r.content)
-            return True
-    except:
-        pass
-    return False
-
-
-def descargar_imagenes_permanentes(session, volcan_id, sensor, evento, es_verificar):
-    """Descarga y guarda imágenes permanentes"""
-    conf = VOLCANES_CONFIG[volcan_id]
-    nombre_v = conf["nombre"]
-    # Normalizar nombre para rutas (sin espacios ni guiones)
-    nombre_v_normalizado = nombre_v.replace(' ', '_').replace('-', '_')
-    id_mirova = conf["id_mirova"]
-    
-    dt_utc = evento['datetime']
-    f_c = dt_utc.strftime("%Y-%m-%d")
-    h_a = dt_utc.strftime("%H-%M-%S")
-    
-    ruta_dia = os.path.join(CARPETA_IMAGENES, nombre_v_normalizado, f_c)
-    os.makedirs(ruta_dia, exist_ok=True)
-    
-    s_url = "VIIRS750" if sensor == "VIIRS" else sensor
-    sufijo = "_VERIFICAR" if es_verificar else ""
-    
-    tipos = ["VRP", "logVRP", "Latest10NTI", "Dist"]
-    ruta_relativa = "No descargada"
-    
-    for t in tipos:
-        t_url = f"{t}10NTI" if t == "Latest10NTI" else t
-        url = f"https://www.mirovaweb.it/OUTPUTweb/MIROVA/{s_url}/VOLCANOES/{id_mirova}/{id_mirova}_{s_url}_{t_url}.png"
+        img = Image.open(ruta_imagen)
+        texto = pytesseract.image_to_string(img, config='--oem 3 --psm 6')
         
-        filename = f"{h_a}_{nombre_v_normalizado}_{s_url}_{t}{sufijo}.png"
-        path_f = os.path.join(ruta_dia, filename)
+        print(f"   [DEBUG] Texto OCR completo ({len(texto)} chars)")
         
-        # No descargar si ya existe
-        if os.path.exists(path_f):
-            if t == "VRP":
-                ruta_relativa = f"imagenes_satelitales/{nombre_v_normalizado}/{f_c}/{filename}"
-            continue
+        # ==== PASO 1: Extraer fechas (filtrar "Last Update") ====
+        patron_fecha = r'(\d{2})-([A-Za-z]{3})-(\d{2}\d{2})\s+(\d{2}):(\d{2}):(\d{2})'
         
-        try:
-            r = session.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=25)
-            if r.status_code == 200 and len(r.content) > 5000:
-                with open(path_f, 'wb') as f:
-                    f.write(r.content)
-                if t == "VRP":
-                    ruta_relativa = f"imagenes_satelitales/{nombre_v_normalizado}/{f_c}/{filename}"
-            time.sleep(0.3)
-        except:
-            continue
-    
-    return ruta_relativa
-
-
-def procesar_volcan_sensor(session, volcan_id, sensor, df_ocr, df_consolidado):
-    """Procesa un volcán-sensor específico"""
-    conf = VOLCANES_CONFIG[volcan_id]
-    nombre_v = conf["nombre"]
-    id_mirova = conf["id_mirova"]
-    
-    print(f"\n🔍 Procesando: {nombre_v} - {sensor}")
-    
-    # URLs de imágenes
-    s_url = "VIIRS750" if sensor == "VIIRS" else sensor
-    url_latest = f"https://www.mirovaweb.it/OUTPUTweb/MIROVA/{s_url}/VOLCANOES/{id_mirova}/{id_mirova}_{s_url}_Latest10NTI.png"
-    url_dist = f"https://www.mirovaweb.it/OUTPUTweb/MIROVA/{s_url}/VOLCANOES/{id_mirova}/{id_mirova}_{s_url}_Dist.png"
-    
-    # Descargar temporales
-    temp_latest = os.path.join(CARPETA_TEMP, f"{nombre_v}_{sensor}_Latest10NTI.png")
-    temp_dist = os.path.join(CARPETA_TEMP, f"{nombre_v}_{sensor}_Dist.png")
-    
-    if not descargar_imagen_temp(session, url_latest, temp_latest):
-        print(f"  ⚠️ No se pudo descargar Latest10NTI")
-        return []
-    
-    if not descargar_imagen_temp(session, url_dist, temp_dist):
-        print(f"  ⚠️ No se pudo descargar Dist.png")
-        # Continuar sin validación de distancia
-    
-    # OCR de Latest10NTI
-    eventos = extraer_eventos_latest10nti(temp_latest)
-    
-    if not eventos:
-        print(f"  ℹ️ No se detectaron eventos")
-        return []
-    
-    # Análisis RGB de Dist.png
-    if os.path.exists(temp_dist):
-        eventos = analizar_puntos_distancia(temp_dist, eventos)
-    
-    # Procesar cada evento
-    eventos_nuevos = []
-    ahora_cl = datetime.now(pytz.timezone('America/Santiago')).strftime("%Y-%m-%d %H:%M:%S")
-    
-    for evento in eventos:
-        ts = evento['timestamp']
-        vrp_mw = evento['vrp_mw']
-        
-        # Verificar que NO exista en consolidado ni en OCR
-        if not verificar_evento_no_existe(evento, nombre_v, sensor, df_consolidado, df_ocr):
-            continue
-        
-        # Clasificar confianza
-        clasificacion = clasificar_confianza(evento)
-        
-        if not clasificacion['guardar']:
-            print(f"  ❌ SKIP: {ts} - {clasificacion['nota']}")
-            continue
-        
-        # Descargar imágenes si es válido
-        es_verificar = clasificacion['requiere_verificacion']
-        ruta_foto = descargar_imagenes_permanentes(
-            session, volcan_id, sensor, evento, es_verificar
-        )
-        
-        # Agregar evento
-        dt_utc = evento['datetime']
-        # Clasificación MIROVA basada en VRP
-        if vrp_mw < 0.2:
-            clasificacion_mirova = "Muy Bajo"
-        elif vrp_mw < 1.0:
-            clasificacion_mirova = "Bajo"
-        elif vrp_mw < 5.0:
-            clasificacion_mirova = "Medio"
-        else:
-            clasificacion_mirova = "Alto"
-        
-        eventos_nuevos.append({
-            'timestamp': ts,
-            'Fecha_Satelite_UTC': dt_utc.strftime("%Y-%m-%d %H:%M:%S"),
-            'Fecha_Captura_Chile': dt_utc.replace(tzinfo=pytz.utc).astimezone(
-                pytz.timezone('America/Santiago')
-            ).strftime("%Y-%m-%d %H:%M:%S"),
-            'Volcan': nombre_v,
-            'Sensor': sensor,
-            'VRP_MW': vrp_mw,
-            'Distancia_km': 0.0,  # OCR no calcula distancia
-            'Tipo_Registro': 'ALERTA_TERMICA_OCR',
-            'Clasificacion Mirova': clasificacion_mirova,
-            'Ruta Foto': ruta_foto,
-            'Fecha_Proceso_GitHub': ahora_cl,
-            'Ultima_Actualizacion': ahora_cl,
-            'Editado': 'NO',
-            'Color_Punto_Dist': evento.get('color_punto', 'sin_punto'),
-            'Confianza_Validacion': clasificacion['confianza'],
-            'Requiere_Verificacion': clasificacion['requiere_verificacion'],
-            'Metodo_Validacion': evento.get('metodo', 'desconocido'),
-            'Nota_Validacion': clasificacion['nota'],
-            'Version_OCR': '1.0'
-        })
-        
-        print(f"  ✅ NUEVO: {ts} - VRP={vrp_mw:.2f} MW - {clasificacion['confianza']}")
-    
-    return eventos_nuevos
-
-
-def procesar():
-    """Proceso principal"""
-    os.makedirs(CARPETA_PRINCIPAL, exist_ok=True)
-    os.makedirs(CARPETA_TEMP, exist_ok=True)
-    os.makedirs(CARPETA_LOGS, exist_ok=True)
-    
-    print("="*80)
-    print("🔬 SCRAPER OCR - INICIO")
-    print("="*80)
-    
-    session = requests.Session()
-    
-    # Cargar CSVs existentes
-    df_ocr = pd.read_csv(DB_OCR) if os.path.exists(DB_OCR) else pd.DataFrame(columns=COLUMNAS_OCR)
-    df_consolidado = pd.read_csv(DB_CONSOLIDADO) if os.path.exists(DB_CONSOLIDADO) else pd.DataFrame()
-    
-    todos_eventos_nuevos = []
-    
-    # Procesar cada volcán × sensor
-    for volcan_id in VOLCANES_CONFIG.keys():
-        for sensor in SENSORES:
-            try:
-                eventos_nuevos = procesar_volcan_sensor(
-                    session, volcan_id, sensor, df_ocr, df_consolidado
-                )
-                todos_eventos_nuevos.extend(eventos_nuevos)
-            except Exception as e:
-                print(f"❌ Error en {VOLCANES_CONFIG[volcan_id]['nombre']} {sensor}: {e}")
+        matches_fecha = []
+        for match in re.finditer(patron_fecha, texto):
+            pos = match.start()
+            contexto = texto[max(0, pos-20):pos].lower()
+            
+            if "update:" in contexto:
+                print(f"   [DEBUG] Filtrado: {match.group()} pos={pos} (Last Update)")
                 continue
-    
-    # Guardar eventos nuevos
-    if todos_eventos_nuevos:
-        df_nuevos = pd.DataFrame(todos_eventos_nuevos)
-        df_ocr_final = pd.concat([df_ocr, df_nuevos], ignore_index=True)
-        df_ocr_final = df_ocr_final[COLUMNAS_OCR].sort_values('timestamp', ascending=False)
-        df_ocr_final.to_csv(DB_OCR, index=False)
+            
+            matches_fecha.append(match.groups())
         
-        print(f"\n✅ Se agregaron {len(todos_eventos_nuevos)} eventos nuevos")
+        print(f"   [DEBUG] Fechas válidas (sin título): {len(matches_fecha)}")
+        n_fechas = len(matches_fecha)
+        
+        # ==== PASO 2: MÚLTIPLES ESTRATEGIAS para extraer VRP ====
+        
+        # Estrategia 1: Patrón VRP completo
+        patron_vrp = r'VRP\s*[=:]?\s*(\d*\.?\d+|NaN)\s*MW'
+        matches_vrp_1 = re.findall(patron_vrp, texto, re.IGNORECASE)
+        print(f"   [DEBUG] Estrategia 1 (VRP\s*=\s*X MW): {len(matches_vrp_1)} valores")
+        
+        # Estrategia 2: TODOS los números antes de MW
+        patron_mw_todos = r'(\d+\.?\d*|NaN)\s*MW'
+        matches_vrp_2 = re.findall(patron_mw_todos, texto, re.IGNORECASE)
+        print(f"   [DEBUG] Estrategia 2 (X MW): {len(matches_vrp_2)} valores")
+        
+        # Estrategia 3: Solo números válidos antes de MW
+        patron_num = r'(\d+\.?\d*)\s*MW'
+        matches_num = re.findall(patron_num, texto, re.IGNORECASE)
+        matches_vrp_3 = []
+        for num in matches_num:
+            try:
+                val = float(num)
+                if 0.01 <= val <= 100:
+                    matches_vrp_3.append(num)
+            except:
+                pass
+        print(f"   [DEBUG] Estrategia 3 (números válidos): {len(matches_vrp_3)} valores")
+        
+        # ==== PASO 3: ELEGIR MEJOR ESTRATEGIA ====
+        
+        # Prioridad: La que da exactamente n_fechas valores
+        if len(matches_vrp_1) == n_fechas:
+            matches_vrp = matches_vrp_1
+            print(f"   ✅ Usando Estrategia 1")
+        
+        elif len(matches_vrp_2) == n_fechas:
+            matches_vrp = matches_vrp_2
+            print(f"   ✅ Usando Estrategia 2")
+        
+        elif len(matches_vrp_3) == n_fechas:
+            matches_vrp = matches_vrp_3
+            print(f"   ✅ Usando Estrategia 3")
+        
+        else:
+            # FALLBACK: Usar la más cercana y completar con NaN
+            estrategias = [
+                (len(matches_vrp_1), matches_vrp_1, "Estrategia 1"),
+                (len(matches_vrp_2), matches_vrp_2, "Estrategia 2"),
+                (len(matches_vrp_3), matches_vrp_3, "Estrategia 3")
+            ]
+            
+            # Ordenar por cercanía a n_fechas
+            estrategias.sort(key=lambda x: abs(x[0] - n_fechas))
+            
+            mejor_len, mejor_matches, mejor_nombre = estrategias[0]
+            
+            if mejor_len < n_fechas:
+                # Completar con NaN
+                matches_vrp = mejor_matches + ['NaN'] * (n_fechas - mejor_len)
+                print(f"   ⚠️ {mejor_nombre} dio {mejor_len}, completando con NaN")
+            else:
+                # Truncar
+                matches_vrp = mejor_matches[:n_fechas]
+                print(f"   ⚠️ {mejor_nombre} dio {mejor_len}, truncando a {n_fechas}")
+        
+        print(f"   [DEBUG] VRP finales: {len(matches_vrp)}")
+        
+        # ==== PASO 4: MAPEAR EVENTOS ====
+        eventos = []
+        for i in range(min(len(matches_fecha), len(matches_vrp))):
+            try:
+                dia, mes, anio, hora, minuto, segundo = matches_fecha[i]
+                
+                meses = {
+                    'Jan': 1, 'Feb': 2, 'Mar': 3, 'Apr': 4, 'May': 5, 'Jun': 6,
+                    'Jul': 7, 'Aug': 8, 'Sep': 9, 'Oct': 10, 'Nov': 11, 'Dec': 12
+                }
+                
+                dt = datetime(
+                    int(anio), meses[mes], int(dia),
+                    int(hora), int(minuto), int(segundo)
+                )
+                
+                vrp_str = matches_vrp[i]
+                vrp_mw = 0.0 if vrp_str.lower() == 'nan' else float(vrp_str)
+                
+                eventos.append({
+                    'timestamp': int(dt.timestamp()),
+                    'datetime': dt,
+                    'vrp_mw': vrp_mw
+                })
+                
+                print(f"   [DEBUG] Evento {i+1}: {dt.strftime('%d-%b-%Y %H:%M:%S')} VRP={vrp_str} MW")
+            
+            except Exception as e:
+                print(f"   [WARN] Error parseando evento {i+1}: {e}")
+                continue
+        
+        print(f"   ✅ OCR extraído: {len(eventos)} eventos")
+        return eventos
+    
+    except Exception as e:
+        print(f"   ❌ Error en OCR: {e}")
+        return []
+
+
+def analizar_puntos_distancia_v3(ruta_imagen, eventos):
+    """
+    Analiza Dist.png con ROI y clasifica según NUEVA LÓGICA V3
+    
+    Clasificación:
+    - Solo rojos → ALERTA_TERMICA_OCR (alta)
+    - Solo negros → FALSO_POSITIVO_OCR (alta)
+    - Mezcla → ALERTA_TERMICA_OCR (media)
+    - Sin puntos → ALERTA_TERMICA_OCR (baja)
+    """
+    try:
+        img = cv2.imread(ruta_imagen)
+        if img is None:
+            print(f"   ❌ No se pudo cargar Dist.png")
+            # Sin imagen → Todos son "sin_punto"
+            for evento in eventos:
+                evento['color_punto'] = 'sin_punto'
+                evento['metodo'] = 'sin_imagen'
+            return eventos
+        
+        img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        height, width = img_rgb.shape[:2]
+        
+        # Extraer ROI según configuración
+        roi_x_start = int(width * ROI_CONFIG['x_start_pct'])
+        roi_x_end = int(width * ROI_CONFIG['x_end_pct'])
+        roi_y_start = int(height * ROI_CONFIG['y_start_pct'])
+        roi_y_end = int(height * ROI_CONFIG['y_end_pct'])
+        
+        roi = img_rgb[roi_y_start:roi_y_end, roi_x_start:roi_x_end]
+        
+        print(f"   🔍 ROI: {roi.shape} (últimos días)")
+        
+        # Detectar puntos en ROI
+        puntos_rojos = detectar_puntos_color(roi, 'rojo')
+        puntos_negros = detectar_puntos_color(roi, 'negro')
+        
+        print(f"   🔴 Rojos en ROI: {len(puntos_rojos)}")
+        print(f"   ⚫ Negros en ROI: {len(puntos_negros)}")
+        
+        # ===== NUEVA LÓGICA V3 =====
+        total_puntos = len(puntos_rojos) + len(puntos_negros)
+        
+        for evento in eventos:
+            if total_puntos == 0:
+                # Sin puntos en ROI
+                evento['color_punto'] = 'sin_punto'
+                evento['metodo'] = 'sin_puntos_roi'
+                
+            elif len(puntos_rojos) > 0 and len(puntos_negros) == 0:
+                # Solo rojos
+                evento['color_punto'] = 'rojo'
+                evento['metodo'] = 'solo_rojos_roi'
+                
+            elif len(puntos_negros) > 0 and len(puntos_rojos) == 0:
+                # Solo negros
+                evento['color_punto'] = 'negro'
+                evento['metodo'] = 'solo_negros_roi'
+                
+            else:
+                # Mezcla rojos + negros
+                evento['color_punto'] = 'mezcla'
+                evento['metodo'] = 'mezcla_roi'
+        
+        return eventos
+    
+    except Exception as e:
+        print(f"   ❌ Error analizando Dist.png: {e}")
+        # En caso de error, marcar como sin_punto
+        for evento in eventos:
+            evento['color_punto'] = 'sin_punto'
+            evento['metodo'] = 'error_analisis'
+        return eventos
+
+
+def detectar_puntos_color(img_rgb, color):
+    """
+    Detecta círculos de un color en la imagen
+    
+    CORREGIDO v3: Rojo debe ser R DOMINANTE sobre G y B
+    """
+    puntos = []
+    
+    if color == 'rojo':
+        # CORREGIDO: Rojo = R dominante sobre G y B
+        # R > 150 Y (R - G) > 50 Y (R - B) > 50
+        # Esto asegura que R es significativamente mayor que G y B
+        
+        # Paso 1: Máscara básica de R alto
+        mask_r_alto = img_rgb[:, :, 0] > 150  # R > 150
+        
+        # Paso 2: R debe ser dominante
+        mask_r_dominante = (img_rgb[:, :, 0] - img_rgb[:, :, 1]) > 50  # R - G > 50
+        mask_r_dominante &= (img_rgb[:, :, 0] - img_rgb[:, :, 2]) > 50  # R - B > 50
+        
+        # Combinar máscaras
+        mask = (mask_r_alto & mask_r_dominante).astype(np.uint8) * 255
+        
+    elif color == 'negro':
+        # Negro/gris oscuro: Todo < 100
+        mask = cv2.inRange(img_rgb,
+                          np.array([0, 0, 0]),
+                          np.array([100, 100, 100]))
     else:
-        print("\nℹ️ No hay eventos nuevos para agregar")
+        return puntos
     
-    # Limpiar temporales
-    import shutil
-    if os.path.exists(CARPETA_TEMP):
-        shutil.rmtree(CARPETA_TEMP)
-        os.makedirs(CARPETA_TEMP)
+    contornos, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     
-    print("\n✅ Proceso completado")
-    print("="*80)
+    for cnt in contornos:
+        area = cv2.contourArea(cnt)
+        
+        if area >= 3:
+            M = cv2.moments(cnt)
+            if M['m00'] != 0:
+                cx = int(M['m10'] / M['m00'])
+                cy = int(M['m01'] / M['m00'])
+                
+                # Filtro de circularidad
+                perimeter = cv2.arcLength(cnt, True)
+                if perimeter > 0:
+                    circularidad = 4 * np.pi * area / (perimeter ** 2)
+                    
+                    # AJUSTADO: Umbral 0.2 (era 0.4)
+                    # Los símbolos de MIROVA son irregulares (círculo+línea)
+                    # Circularidad típica: 0.26-0.64
+                    if circularidad > 0.2:
+                        puntos.append({
+                            'x': cx,
+                            'y': cy,
+                            'area': area,
+                            'circularidad': circularidad
+                        })
+    
+    return puntos
 
 
-if __name__ == "__main__":
-    procesar()
+def clasificar_confianza_v3(evento):
+    """
+    Clasifica confianza según NUEVA LÓGICA V3
+    
+    Reglas:
+    - VRP <= 0 → NO guardar
+    - Solo rojos → ALERTA alta (guardar, publicar)
+    - Solo negros → FALSO_POSITIVO alta (guardar, NO publicar)
+    - Mezcla → ALERTA media (guardar, publicar)
+    - Sin puntos + VRP > 0.5 → ALERTA baja (guardar, publicar)
+    - Sin puntos + VRP <= 0.5 → ALERTA baja (guardar, NO publicar)
+    """
+    
+    # REGLA 1: VRP inválido
+    if np.isnan(evento['vrp_mw']) or evento['vrp_mw'] <= 0:
+        return {
+            'tipo_registro': None,
+            'confianza': 'invalido',
+            'requiere_verificacion': False,
+            'nota': 'VRP inválido o cero',
+            'guardar': False,
+            'publicar': False
+        }
+    
+    color = evento.get('color_punto', 'sin_punto')
+    metodo = evento.get('metodo', 'desconocido')
+    vrp = evento['vrp_mw']
+    
+    # REGLA 2: Solo rojos en ROI → ALERTA ALTA
+    if color == 'rojo' and 'solo_rojos' in metodo:
+        return {
+            'tipo_registro': 'ALERTA_TERMICA_OCR',
+            'confianza': 'alta',
+            'requiere_verificacion': False,
+            'nota': 'Solo puntos rojos en ROI - Validado',
+            'guardar': True,
+            'publicar': True
+        }
+    
+    # REGLA 3: Solo negros en ROI → FALSO POSITIVO ALTA
+    if color == 'negro' and 'solo_negros' in metodo:
+        return {
+            'tipo_registro': 'FALSO_POSITIVO_OCR',
+            'confianza': 'alta',
+            'requiere_verificacion': False,
+            'nota': 'Solo puntos negros en ROI - Distancia > límite',
+            'guardar': True,
+            'publicar': False
+        }
+    
+    # REGLA 4: Mezcla de colores → ALERTA MEDIA
+    if color == 'mezcla':
+        return {
+            'tipo_registro': 'ALERTA_TERMICA_OCR',
+            'confianza': 'media',
+            'requiere_verificacion': True,
+            'nota': 'Mezcla rojos/negros en ROI - Evento en zona límite',
+            'guardar': True,
+            'publicar': True
+        }
+    
+    # REGLA 5: Sin puntos en ROI
+    # CAMBIO: Publicar TODO sin filtro VRP
+    if color == 'sin_punto':
+        return {
+            'tipo_registro': 'ALERTA_TERMICA_OCR',
+            'confianza': 'baja',
+            'requiere_verificacion': True,
+            'nota': f'Sin puntos en ROI, VRP={vrp:.2f} MW',
+            'guardar': True,
+            'publicar': True  # ← Publicar siempre
+        }
+    
+    # Por defecto: NO guardar
+    return {
+        'tipo_registro': None,
+        'confianza': 'invalido',
+        'requiere_verificacion': True,
+        'nota': 'Sin validación suficiente',
+        'guardar': False,
+        'publicar': False
+    }
+
+
+def verificar_evento_no_existe(evento, volcan, sensor, df_consolidado, df_ocr):
+    """
+    Verifica que el evento NO exista en consolidado ni en OCR
+    Criterio: timestamp + volcan + sensor
+    """
+    ts = evento['timestamp']
+    
+    # Verificar en consolidado
+    if not df_consolidado.empty:
+        existe_consolidado = df_consolidado[
+            (df_consolidado['timestamp'] == ts) &
+            (df_consolidado['Volcan'] == volcan) &
+            (df_consolidado['Sensor'] == sensor)
+        ]
+        
+        if not existe_consolidado.empty:
+            print(f"      SKIP: Ya existe en consolidado.csv")
+            return False
+    
+    # Verificar en OCR
+    if not df_ocr.empty:
+        existe_ocr = df_ocr[
+            (df_ocr['timestamp'] == ts) &
+            (df_ocr['Volcan'] == volcan) &
+            (df_ocr['Sensor'] == sensor)
+        ]
+        
+        if not existe_ocr.empty:
+            print(f"      SKIP: Ya existe en ocr.csv")
+            return False
+    
+    return True
+
+
+# ===== ALIAS PARA COMPATIBILIDAD =====
+# Mantener nombres anteriores para no romper scraper_ocr.py
+
+def analizar_puntos_distancia(ruta_imagen, eventos, ventana_dias=2):
+    """Alias para compatibilidad con scraper_ocr.py"""
+    return analizar_puntos_distancia_v3(ruta_imagen, eventos)
+
+
+def clasificar_confianza(evento):
+    """Alias para compatibilidad con scraper_ocr.py"""
+    return clasificar_confianza_v3(evento)

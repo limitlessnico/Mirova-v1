@@ -47,11 +47,33 @@ def extraer_eventos_latest10nti(ruta_imagen):
         
         # Paso 2: Extraer TODOS los VRP
         # Buscar "VRP =X.XX MW" o "VRP =NaN MW" en TODO el texto
-        # Acepta con/sin espacio antes del =, números que empiezan con punto
         patron_vrp = r'VRP\s*[=:]?\s*(\d*\.?\d+|NaN)\s*MW'
         matches_vrp = re.findall(patron_vrp, texto, re.IGNORECASE)
         
         print(f"   [DEBUG] VRP encontrados: {len(matches_vrp)}")
+        
+        # MEJORA: Si hay menos VRP que fechas, buscar también "X.XX MW" solo
+        if len(matches_vrp) < len(matches_fecha):
+            print(f"   [DEBUG] Buscando números MW adicionales...")
+            patron_mw = r'(\d+\.?\d*)\s*MW'
+            matches_mw = re.findall(patron_mw, texto, re.IGNORECASE)
+            
+            # Filtrar valores razonables (0.01 a 100 MW)
+            matches_mw_validos = []
+            for mw in matches_mw:
+                try:
+                    val = float(mw)
+                    if 0.01 <= val <= 100:
+                        matches_mw_validos.append(mw)
+                except:
+                    pass
+            
+            print(f"   [DEBUG] MW válidos encontrados: {len(matches_mw_validos)}")
+            
+            # Si ahora matchea mejor, usar estos
+            if len(matches_mw_validos) == len(matches_fecha):
+                matches_vrp = matches_mw_validos
+                print(f"   [DEBUG] Usando matcheo por MW: {len(matches_vrp)} valores")
         
         # Paso 3: Mapear fechas → VRP por orden
         meses = {
@@ -184,14 +206,17 @@ def clasificar_confianza(evento):
     color = evento.get('color_punto', 'sin_punto')
     metodo = evento.get('metodo', 'desconocido')
     
+    # REGLA ESTRICTA: Sin punto rojo en Dist.png → NO guardar
+    # (antes: guardaba como 'baja', ahora: descarta)
     if color == 'sin_punto':
         return {
             'confianza': 'baja',
             'requiere_verificacion': True,
-            'nota': 'Sin punto de validación en Dist.png',
-            'guardar': True
+            'nota': 'Sin punto de validación en Dist.png - Descartado',
+            'guardar': False  # ← CAMBIO: antes era True
         }
     
+    # Punto negro (fuera de rango)
     if color == 'negro' or metodo == 'todos_negros':
         return {
             'confianza': 'invalido',
@@ -200,6 +225,7 @@ def clasificar_confianza(evento):
             'guardar': False
         }
     
+    # Punto rojo único - ALTA CONFIANZA
     if color == 'rojo' and metodo == 'match_unico':
         return {
             'confianza': 'alta',
@@ -208,6 +234,7 @@ def clasificar_confianza(evento):
             'guardar': True
         }
     
+    # Validación grupal todos rojos - MEDIA CONFIANZA
     if metodo == 'validacion_grupal_todos_rojos':
         return {
             'confianza': 'media',
@@ -216,17 +243,20 @@ def clasificar_confianza(evento):
             'guardar': True
         }
     
+    # REGLA ESTRICTA: Mezcla de colores (ambiguo) → NO guardar
+    # (antes: guardaba como 'baja', ahora: descarta)
     if color == 'ambiguo' or metodo == 'mezcla_colores':
         return {
             'confianza': 'baja',
             'requiere_verificacion': True,
-            'nota': 'Match ambiguo - mezcla de puntos rojos y negros',
-            'guardar': True
+            'nota': 'Match ambiguo - Sin punto rojo claro - Descartado',
+            'guardar': False  # ← CAMBIO: antes era True
         }
     
+    # Por defecto: NO guardar si no cumple criterios claros
     return {
-        'confianza': 'media',
+        'confianza': 'baja',
         'requiere_verificacion': True,
-        'nota': 'Validación estándar',
-        'guardar': True
+        'nota': 'Sin validación suficiente - Descartado',
+        'guardar': False  # ← CAMBIO: antes era True
     }

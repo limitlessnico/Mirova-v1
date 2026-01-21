@@ -5,7 +5,7 @@ import os
 import pytz
 from datetime import datetime, timedelta
 
-# --- CONFIGURACIÃ“N ---
+# --- CONFIGURACIÓN ---
 ARCHIVO_POSITIVOS = "monitoreo_satelital/registro_vrp_positivos.csv"
 CARPETA_LINEAL = "monitoreo_satelital/v_html"
 CARPETA_LOG = "monitoreo_satelital/v_html_log"
@@ -40,7 +40,7 @@ def crear_grafico(df_v, v, modo_log=False):
 
     v_max_val = df_v_30['VRP_MW'].max() * mult
     
-    # Bandas y SimbologÃ­a Inteligente
+    # Bandas y Simbología Inteligente
     for y0, y1, label, color in MIROVA_BANDS:
         l_y0 = y0 if modo_log else y0/1e6
         l_y1 = y1 if modo_log else y1/1e6
@@ -57,23 +57,23 @@ def crear_grafico(df_v, v, modo_log=False):
             hovertemplate="<b>%{customdata:.2f} MW</b><br>%{x|%d %b, %H:%M}<extra></extra>",
             showlegend=True))
 
-    # AnotaciÃ³n MÃ¡ximo
+    # Anotación Máximo
     if not df_v_30.empty:
         max_r = df_v_30.loc[df_v_30['VRP_MW'].idxmax()]
         fig.add_annotation(x=max_r['Fecha_Chile'], y=max_r['VRP_MW'] * mult,
-            xref="x", yref="y", text=f"MÃX: {max_r['VRP_MW']:.2f} MW", showarrow=True,
+            xref="x", yref="y", text=f"MÁX: {max_r['VRP_MW']:.2f} MW", showarrow=True,
             arrowhead=2, arrowsize=1, arrowwidth=1.5, arrowcolor="white",
             bgcolor="rgba(0,0,0,0.8)", bordercolor="#58a6ff", borderwidth=1,
             font=dict(color="white", size=9), ay=-40, ax=0)
 
-    # Eje X con grilla cada 5 dÃ­as
+    # Eje X con grilla cada 5 días
     fig.update_xaxes(type="date", range=[hace_30_dias, ahora],
                      dtick=5 * 24 * 60 * 60 * 1000, tickformat="%d %b",
                      showgrid=True, gridcolor='rgba(255,255,255,0.12)',
                      minor=dict(dtick=86400000.0, showgrid=True, gridcolor='rgba(255,255,255,0.03)'),
                      tickangle=-45, fixedrange=True, tickfont=dict(size=9))
     
-    # Eje Y - CRÃTICO: ConfiguraciÃ³n correcta para log
+    # Eje Y - CRÍTICO: Configuración correcta para log
     if modo_log:
         y_min_v, y_max_v = 0.05 * 1e6, max(1e8, v_max_val * 10)
         fig.update_yaxes(
@@ -101,7 +101,7 @@ def crear_grafico(df_v, v, modo_log=False):
     fig.add_annotation(xref="paper", yref="paper", x=-0.01, y=1.15, text=f"<b>{unidad}</b>", 
                        showarrow=False, font=dict(size=10, color="white"), xanchor="right")
     
-    # Layout - CRÃTICO: Sin responsive para grÃ¡ficos log
+    # Layout - CRÍTICO: Sin responsive para gráficos log
     fig.update_layout(
         template="plotly_dark",
         height=300,
@@ -135,7 +135,7 @@ def procesar():
     config_log = {
         'displayModeBar': 'hover',
         'displaylogo': False,
-        'responsive': False,  # CRÃTICO: Deshabilitar para log
+        'responsive': False,  # CRÍTICO: Deshabilitar para log
         'modeBarButtonsToRemove': ['zoom2d', 'pan2d', 'select2d', 'lasso2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d'],
         'toImageButtonOptions': {'format': 'png', 'height': 500, 'width': 1400, 'scale': 2}
     }
@@ -150,9 +150,9 @@ def procesar():
             
             if fig is None:
                 with open(path, "w", encoding='utf-8') as f:
-                    f.write("<body style='background:#0d1117; color:#8b949e; display:flex; align-items:center; justify-content:center; height:300px; font-family:sans-serif;'>SIN ANOMALÃA TÃ‰RMICA</body>")
+                    f.write("<body style='background:#0d1117; color:#8b949e; display:flex; align-items:center; justify-content:center; height:300px; font-family:sans-serif;'>SIN ANOMALÍA TÉRMICA</body>")
             else:
-                # CRÃTICO: Usar config apropiada segÃºn tipo
+                # CRÍTICO: Usar config apropiada según tipo
                 config_usar = config_log if es_log else config_lineal
                 fig.write_html(path, full_html=False, include_plotlyjs='cdn', config=config_usar)
 

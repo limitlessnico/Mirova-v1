@@ -41,19 +41,38 @@ def extraer_eventos_latest10nti(ruta_imagen):
         
         print(f"   [DEBUG] Texto OCR completo ({len(texto)} chars)")
         
-        # ===== FIX: Filtrar fecha del título "Last Update:" =====
-        # El título contiene una fecha que NO es un evento
-        # Ejemplo: "Last Update:21-Jan-2026 06:36:00"
-        # Solución: Eliminar primeras 200 caracteres (contiene título)
+        # ===== FIX MEJORADO: Filtrar fecha del título "Last Update:" =====
+        # Problema: "Last Update:21-Jan-2026 06:36:00" se captura como evento
+        # Solución: Buscar contexto alrededor de cada fecha
         
-        texto_header = texto[:200]  # Guardar header para debug
-        texto_sin_header = texto[200:]  # Procesar solo body
+        # Extraer TODAS las fechas primero
+        patron_fecha = r'(\d{2})-([A-Za-z]{3})-(\d{2}\d{2})\s+(\d{2}):(\d{2}):(\d{2})'
+        matches_fecha_raw = re.findall(patron_fecha, texto)
         
-        # Extraer fechas SOLO del body (sin título)
-        patron_fecha = r'(\d{2})-([A-Za-z]{3})-(\d{4})\s+(\d{2}):(\d{2}):(\d{2})'
-        matches_fecha = re.findall(patron_fecha, texto_sin_header)
+        print(f"   [DEBUG] Fechas encontradas (raw): {len(matches_fecha_raw)}")
         
-        print(f"   [DEBUG] Fechas encontradas en body: {len(matches_fecha)}")
+        # Filtrar fechas que están en contexto de "Update"
+        matches_fecha = []
+        for i, fecha in enumerate(matches_fecha_raw):
+            # Reconstruir string de fecha
+            fecha_str = f"{fecha[0]}-{fecha[1]}-{fecha[2]} {fecha[3]}:{fecha[4]}:{fecha[5]}"
+            
+            # Buscar posición en texto
+            pos = texto.find(fecha_str)
+            if pos == -1:
+                continue
+            
+            # Contexto antes (50 chars) y después (50 chars)
+            antes = texto[max(0, pos-50):pos].lower()
+            
+            # Si tiene "update" cerca, es el título
+            if "update" in antes or "last" in antes:
+                print(f"   [DEBUG] Filtrado evento {i+1}: {fecha_str} (título 'Last Update')")
+                continue
+            
+            matches_fecha.append(fecha)
+        
+        print(f"   [DEBUG] Fechas válidas (sin título): {len(matches_fecha)}")
         
         # Extraer VRP con fallback (del texto completo está ok)
         patron_vrp = r'VRP\s*[=:]?\s*(\d*\.?\d+|NaN)\s*MW'

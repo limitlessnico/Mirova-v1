@@ -41,33 +41,25 @@ def extraer_eventos_latest10nti(ruta_imagen):
         
         print(f"   [DEBUG] Texto OCR completo ({len(texto)} chars)")
         
-        # ===== FIX MEJORADO: Filtrar fecha del título "Last Update:" =====
-        # Problema: "Last Update:21-Jan-2026 06:36:00" se captura como evento
-        # Solución: Buscar contexto alrededor de cada fecha
+        # ===== FIX MEJORADO v2: Usar finditer() para posiciones exactas =====
+        # Problema anterior: find() siempre da misma posición para duplicados
+        # Solución: finditer() da posición exacta de cada ocurrencia
         
-        # Extraer TODAS las fechas primero
         patron_fecha = r'(\d{2})-([A-Za-z]{3})-(\d{2}\d{2})\s+(\d{2}):(\d{2}):(\d{2})'
-        matches_fecha_raw = re.findall(patron_fecha, texto)
         
-        print(f"   [DEBUG] Fechas encontradas (raw): {len(matches_fecha_raw)}")
-        
-        # Filtrar fechas que están en contexto de "Update"
+        # Usar finditer en vez de findall+find
         matches_fecha = []
-        for i, fecha in enumerate(matches_fecha_raw):
-            # Reconstruir string de fecha
-            fecha_str = f"{fecha[0]}-{fecha[1]}-{fecha[2]} {fecha[3]}:{fecha[4]}:{fecha[5]}"
+        for match in re.finditer(patron_fecha, texto):
+            fecha = match.groups()
+            pos = match.start()  # ← Posición EXACTA de ESTE match
             
-            # Buscar posición en texto
-            pos = texto.find(fecha_str)
-            if pos == -1:
-                continue
+            # Contexto antes (solo 20 chars - más preciso)
+            contexto_antes = texto[max(0, pos-20):pos].lower()
             
-            # Contexto antes (50 chars) y después (50 chars)
-            antes = texto[max(0, pos-50):pos].lower()
-            
-            # Si tiene "update" cerca, es el título
-            if "update" in antes or "last" in antes:
-                print(f"   [DEBUG] Filtrado evento {i+1}: {fecha_str} (título 'Last Update')")
+            # Filtrar si tiene "update:" inmediatamente antes
+            if "update:" in contexto_antes:
+                fecha_str = f"{fecha[0]}-{fecha[1]}-{fecha[2]} {fecha[3]}:{fecha[4]}:{fecha[5]}"
+                print(f"   [DEBUG] Filtrado: {fecha_str} pos={pos} (Last Update)")
                 continue
             
             matches_fecha.append(fecha)
@@ -221,13 +213,30 @@ def analizar_puntos_distancia_v3(ruta_imagen, eventos):
 
 
 def detectar_puntos_color(img_rgb, color):
-    """Detecta puntos de un color en la imagen"""
+    """
+    Detecta círculos de un color en la imagen
+    
+    MEJORADO v2: Detecta círculos con antialiasing (no solo píxeles puros)
+    - Umbral más permisivo para captar bordes con antialiasing
+    - Área mínima más baja (3 px) para ROI estrecho
+    - Filtro de circularidad para evitar ruido
+    """
     puntos = []
     
     if color == 'rojo':
-        mask = cv2.inRange(img_rgb, np.array([200, 0, 0]), np.array([255, 50, 50]))
+        # MEJORADO: Rojo con antialiasing
+        # R dominante (>120), G y B permitidos hasta 150
+        # Esto captura tanto rojo puro como rojo con antialiasing
+        mask = cv2.inRange(img_rgb, 
+                          np.array([120, 0, 0]),     # R mínimo 120
+                          np.array([255, 150, 150])) # G,B hasta 150
+        
     elif color == 'negro':
-        mask = cv2.inRange(img_rgb, np.array([0, 0, 0]), np.array([50, 50, 50]))
+        # MEJORADO: Negro más permisivo (incluye gris oscuro)
+        # Todo < 100 cuenta como "negro" en gráfico
+        mask = cv2.inRange(img_rgb,
+                          np.array([0, 0, 0]),
+                          np.array([100, 100, 100]))  # Hasta gris oscuro
     else:
         return puntos
     
@@ -235,7 +244,33 @@ def detectar_puntos_color(img_rgb, color):
     
     for cnt in contornos:
         area = cv2.contourArea(cnt)
-        if area > 5:
+        
+        # MEJORADO: Área mínima 3 px (antes 5)
+        # ROI de 1 día es muy estrecho (17 px), círculos son pequeños
+        if area >= 3:
+            M = cv2.moments(cnt)
+            if M['m00'] != 0:
+                cx = int(M['m10'] / M['m00'])
+                cy = int(M['m01'] / M['m00'])
+                
+                # NUEVO: Filtro de circularidad
+                # Rechazar líneas/ruido, solo aceptar formas circulares
+                perimeter = cv2.arcLength(cnt, True)
+                if perimeter > 0:
+                    # Circularidad: 1.0 = círculo perfecto, 0.0 = línea
+                    circularidad = 4 * np.pi * area / (perimeter ** 2)
+                    
+                    # Si circularidad > 0.4, es aproximadamente circular
+                    # (círculos con antialiasing tienen ~0.5-0.8)
+                    if circularidad > 0.4:
+                        puntos.append({
+                            'x': cx,
+                            'y': cy,
+                            'area': area,
+                            'circularidad': circularidad
+                        })
+    
+    return puntos
             M = cv2.moments(cnt)
             if M['m00'] != 0:
                 cx = int(M['m10'] / M['m00'])

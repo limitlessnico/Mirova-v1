@@ -165,19 +165,15 @@ def extraer_eventos_latest10nti(ruta_imagen):
 
 def analizar_puntos_distancia_v3(ruta_imagen, eventos):
     """
-    Analiza Dist.png con ROI y clasifica según NUEVA LÓGICA V3
+    Analiza Dist.png con ROI y clasifica según DENSIDAD DE PÍXELES
     
-    Clasificación:
-    - Solo rojos → ALERTA_TERMICA_OCR (alta)
-    - Solo negros → FALSO_POSITIVO_OCR (alta)
-    - Mezcla → ALERTA_TERMICA_OCR (media)
-    - Sin puntos → ALERTA_TERMICA_OCR (baja)
+    NUEVO V3.1: No usa circularidad, cuenta píxeles directamente
+    Más robusto para símbolos irregulares de MIROVA
     """
     try:
         img = cv2.imread(ruta_imagen)
         if img is None:
             print(f"   ❌ No se pudo cargar Dist.png")
-            # Sin imagen → Todos son "sin_punto"
             for evento in eventos:
                 evento['color_punto'] = 'sin_punto'
                 evento['metodo'] = 'sin_imagen'
@@ -196,42 +192,61 @@ def analizar_puntos_distancia_v3(ruta_imagen, eventos):
         
         print(f"   🔍 ROI: {roi.shape} (últimos días)")
         
-        # Detectar puntos en ROI
-        puntos_rojos = detectar_puntos_color(roi, 'rojo')
-        puntos_negros = detectar_puntos_color(roi, 'negro')
+        # ===== NUEVO: DETECCIÓN POR DENSIDAD DE PÍXELES =====
+        # No busca formas, solo cuenta píxeles del color
         
-        print(f"   🔴 Rojos en ROI: {len(puntos_rojos)}")
-        print(f"   ⚫ Negros en ROI: {len(puntos_negros)}")
+        # Rojo dominante: R>150 Y (R-G)>50 Y (R-B)>50
+        mask_rojo = (roi[:, :, 0] > 150) & \
+                    ((roi[:, :, 0] - roi[:, :, 1]) > 50) & \
+                    ((roi[:, :, 0] - roi[:, :, 2]) > 50)
         
-        # ===== NUEVA LÓGICA V3 =====
-        total_puntos = len(puntos_rojos) + len(puntos_negros)
+        num_rojos = np.sum(mask_rojo)
         
+        # Negro/gris oscuro: RGB < 100
+        mask_negro = (roi[:, :, 0] < 100) & \
+                     (roi[:, :, 1] < 100) & \
+                     (roi[:, :, 2] < 100)
+        
+        num_negros = np.sum(mask_negro)
+        
+        print(f"   🔴 Píxeles rojos: {num_rojos}")
+        print(f"   ⚫ Píxeles negros: {num_negros}")
+        
+        # Umbral: 10 píxeles = punto presente
+        # Para ROI de 17x186 = 3,162 px → 10 px = 0.3%
+        UMBRAL_PIXELES = 10
+        
+        tiene_rojos = num_rojos >= UMBRAL_PIXELES
+        tiene_negros = num_negros >= UMBRAL_PIXELES
+        
+        print(f"   🎯 Detección: rojos={tiene_rojos}, negros={tiene_negros}")
+        
+        # Clasificar todos los eventos con mismo resultado
         for evento in eventos:
-            if total_puntos == 0:
-                # Sin puntos en ROI
+            if not tiene_rojos and not tiene_negros:
+                # Sin píxeles suficientes
                 evento['color_punto'] = 'sin_punto'
-                evento['metodo'] = 'sin_puntos_roi'
+                evento['metodo'] = 'sin_pixeles_roi'
                 
-            elif len(puntos_rojos) > 0 and len(puntos_negros) == 0:
+            elif tiene_rojos and not tiene_negros:
                 # Solo rojos
                 evento['color_punto'] = 'rojo'
-                evento['metodo'] = 'solo_rojos_roi'
+                evento['metodo'] = 'solo_rojos_densidad'
                 
-            elif len(puntos_negros) > 0 and len(puntos_rojos) == 0:
+            elif tiene_negros and not tiene_rojos:
                 # Solo negros
                 evento['color_punto'] = 'negro'
-                evento['metodo'] = 'solo_negros_roi'
+                evento['metodo'] = 'solo_negros_densidad'
                 
             else:
                 # Mezcla rojos + negros
                 evento['color_punto'] = 'mezcla'
-                evento['metodo'] = 'mezcla_roi'
+                evento['metodo'] = 'mezcla_densidad'
         
         return eventos
     
     except Exception as e:
         print(f"   ❌ Error analizando Dist.png: {e}")
-        # En caso de error, marcar como sin_punto
         for evento in eventos:
             evento['color_punto'] = 'sin_punto'
             evento['metodo'] = 'error_analisis'
@@ -240,29 +255,22 @@ def analizar_puntos_distancia_v3(ruta_imagen, eventos):
 
 def detectar_puntos_color(img_rgb, color):
     """
-    Detecta círculos de un color en la imagen
+    OBSOLETO V3.1: Ya no se usa, reemplazado por densidad de píxeles
     
-    CORREGIDO v3: Rojo debe ser R DOMINANTE sobre G y B
+    Detección antigua por contornos y circularidad
+    Mantenida por compatibilidad pero no se llama
     """
     puntos = []
     
     if color == 'rojo':
-        # CORREGIDO: Rojo = R dominante sobre G y B
-        # R > 150 Y (R - G) > 50 Y (R - B) > 50
-        # Esto asegura que R es significativamente mayor que G y B
-        
-        # Paso 1: Máscara básica de R alto
-        mask_r_alto = img_rgb[:, :, 0] > 150  # R > 150
-        
-        # Paso 2: R debe ser dominante
-        mask_r_dominante = (img_rgb[:, :, 0] - img_rgb[:, :, 1]) > 50  # R - G > 50
-        mask_r_dominante &= (img_rgb[:, :, 0] - img_rgb[:, :, 2]) > 50  # R - B > 50
-        
-        # Combinar máscaras
+        # Rojo = R dominante sobre G y B
+        mask_r_alto = img_rgb[:, :, 0] > 150
+        mask_r_dominante = (img_rgb[:, :, 0] - img_rgb[:, :, 1]) > 50
+        mask_r_dominante &= (img_rgb[:, :, 0] - img_rgb[:, :, 2]) > 50
         mask = (mask_r_alto & mask_r_dominante).astype(np.uint8) * 255
         
     elif color == 'negro':
-        # Negro/gris oscuro: Todo < 100
+        # Negro/gris oscuro
         mask = cv2.inRange(img_rgb,
                           np.array([0, 0, 0]),
                           np.array([100, 100, 100]))
@@ -280,14 +288,10 @@ def detectar_puntos_color(img_rgb, color):
                 cx = int(M['m10'] / M['m00'])
                 cy = int(M['m01'] / M['m00'])
                 
-                # Filtro de circularidad
                 perimeter = cv2.arcLength(cnt, True)
                 if perimeter > 0:
                     circularidad = 4 * np.pi * area / (perimeter ** 2)
                     
-                    # AJUSTADO: Umbral 0.2 (era 0.4)
-                    # Los símbolos de MIROVA son irregulares (círculo+línea)
-                    # Circularidad típica: 0.26-0.64
                     if circularidad > 0.2:
                         puntos.append({
                             'x': cx,

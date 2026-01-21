@@ -6,7 +6,8 @@ import pytz
 from datetime import datetime, timedelta
 
 # --- CONFIGURACIÓN ---
-ARCHIVO_MAESTRO = "monitoreo_satelital/registro_vrp_maestro.csv"
+ARCHIVO_MAESTRO = "monitoreo_satelital/registro_vrp_maestro_publicable.csv"
+ARCHIVO_MAESTRO_COMPLETO = "monitoreo_satelital/registro_vrp_maestro.csv"
 ARCHIVO_POSITIVOS = "monitoreo_satelital/registro_vrp_positivos.csv"
 CARPETA_LINEAL = "monitoreo_satelital/v_html"
 CARPETA_LOG = "monitoreo_satelital/v_html_log"
@@ -103,14 +104,8 @@ def crear_grafico(df_v, v, modo_log=False):
                 showlegend=True
             ))
 
-    # Anotación Máximo
-    if not df_v_30.empty:
-        max_r = df_v_30.loc[df_v_30['VRP_MW'].idxmax()]
-        fig.add_annotation(x=max_r['Fecha_Chile'], y=max_r['VRP_MW'] * mult,
-            xref="x", yref="y", text=f"MÁX: {max_r['VRP_MW']:.2f} MW", showarrow=True,
-            arrowhead=2, arrowsize=1, arrowwidth=1.5, arrowcolor="white",
-            bgcolor="rgba(0,0,0,0.8)", bordercolor="#58a6ff", borderwidth=1,
-            font=dict(color="white", size=9), ay=-40, ax=0)
+    # Anotación Máximo - Se agrega después de configurar ejes
+    # (Movido más abajo para modo log)
 
     # Eje X con grilla cada 5 días
     fig.update_xaxes(type="date", range=[hace_30_dias, ahora],
@@ -147,6 +142,20 @@ def crear_grafico(df_v, v, modo_log=False):
     fig.add_annotation(xref="paper", yref="paper", x=-0.01, y=1.15, text=f"<b>{unidad}</b>", 
                        showarrow=False, font=dict(size=10, color="white"), xanchor="right")
     
+    # Anotación Máximo - DESPUÉS de configurar ejes para que funcione en modo log
+    if not df_v_30.empty:
+        max_r = df_v_30.loc[df_v_30['VRP_MW'].idxmax()]
+        y_pos = max_r['VRP_MW'] * mult  # Ya está en la escala correcta (MW o Watt)
+        
+        # En modo log, usar ay más grande para que sea visible
+        ay_offset = -60 if modo_log else -40
+        
+        fig.add_annotation(x=max_r['Fecha_Chile'], y=y_pos,
+            xref="x", yref="y", text=f"MÁX: {max_r['VRP_MW']:.2f} MW", showarrow=True,
+            arrowhead=2, arrowsize=1, arrowwidth=1.5, arrowcolor="white",
+            bgcolor="rgba(0,0,0,0.8)", bordercolor="#58a6ff", borderwidth=1,
+            font=dict(color="white", size=9), ay=ay_offset, ax=0)
+    
     # Layout - CRÍTICO: Sin responsive para gráficos log
     fig.update_layout(
         template="plotly_dark",
@@ -168,22 +177,37 @@ def procesar():
     os.makedirs(CARPETA_LINEAL, exist_ok=True)
     os.makedirs(CARPETA_LOG, exist_ok=True)
     
-    # Leer CSV maestro si existe, sino usar positivos
+    # Leer CSV maestro PUBLICABLE (ya viene filtrado)
     if os.path.exists(ARCHIVO_MAESTRO):
         df = pd.read_csv(ARCHIVO_MAESTRO)
-    else:
-        df = pd.read_csv(ARCHIVO_POSITIVOS) if os.path.exists(ARCHIVO_POSITIVOS) else pd.DataFrame()
-        # Agregar columnas faltantes si se usa positivos.csv
+        print(f"📊 Leyendo {ARCHIVO_MAESTRO}: {len(df)} eventos")
+    elif os.path.exists(ARCHIVO_MAESTRO_COMPLETO):
+        # Fallback: Leer maestro completo y filtrar manualmente
+        df = pd.read_csv(ARCHIVO_MAESTRO_COMPLETO)
+        print(f"⚠️ Maestro publicable no existe, usando completo: {len(df)} eventos")
+        
+        # Aplicar filtros manualmente
         if not df.empty:
-            df['Confianza_Validacion'] = 'valido'  # Era 'N/A'
-    
-    # CRÍTICO: Filtrar falsos positivos y rutinas
-    if not df.empty and 'Tipo_Registro' in df.columns:
-        antes = len(df)
-        df = df[~df['Tipo_Registro'].isin(['FALSO_POSITIVO', 'RUTINA'])].copy()
-        despues = len(df)
-        if antes > despues:
-            print(f"🔍 Filtrados {antes - despues} eventos (falsos positivos/rutina)")
+            antes = len(df)
+            
+            # Filtrar por tipo
+            if 'Tipo_Registro' in df.columns:
+                tipos_ok = ['ALERTA_TERMICA', 'ALERTA_TERMICA_OCR', 'EVIDENCIA_DIARIA']
+                df = df[df['Tipo_Registro'].isin(tipos_ok)].copy()
+            
+            # Filtrar VRP > 0
+            df = df[df['VRP_MW'] > 0].copy()
+            
+            # Filtrar confianza baja
+            if 'Confianza_Validacion' in df.columns:
+                df = df[df['Confianza_Validacion'] != 'baja'].copy()
+            
+            print(f"   Filtrado: {antes} → {len(df)} eventos")
+    else:
+        # Fallback final: positivos.csv
+        df = pd.read_csv(ARCHIVO_POSITIVOS) if os.path.exists(ARCHIVO_POSITIVOS) else pd.DataFrame()
+        if not df.empty:
+            df['Confianza_Validacion'] = 'valido'
     
     # Config diferente para lineal vs log
     config_lineal = {

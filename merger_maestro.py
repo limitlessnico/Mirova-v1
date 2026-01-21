@@ -101,45 +101,68 @@ def merge():
     columnas_disponibles = [c for c in COLUMNAS_MAESTRO if c in df_maestro.columns]
     df_maestro = df_maestro[columnas_disponibles]
     
-    # ===== CAMBIO: SOLO GENERAR PUBLICABLE =====
-    # Antes: Guardaba maestro.csv completo + maestro_publicable.csv
-    # Ahora: Solo maestro_publicable.csv (filtrado)
-    # ============================================
+    # ===== GENERAR MAESTRO PUBLICABLE =====
+    # Nueva lógica V3: Solo ALERTA_TERMICA (todas confianzas)
+    # Excluir: FALSO_POSITIVO_OCR
     
-    # Generar maestro PUBLICABLE (FILTRADO) directamente
     print(f"\n🔍 Generando CSV Maestro PUBLICABLE...")
     
     df_publicable = df_maestro.copy()
     antes = len(df_publicable)
     
-    # Filtro 1: Solo tipos publicables
+    # Filtro 1: Solo tipos ALERTA
+    # Incluir: ALERTA_TERMICA, ALERTA_TERMICA_OCR
+    # Excluir: RUTINA, FALSO_POSITIVO, FALSO_POSITIVO_OCR
     tipos_publicables = ['ALERTA_TERMICA', 'ALERTA_TERMICA_OCR']
-    # NOTA: EVIDENCIA_DIARIA ya no existe (ahora es RUTINA)
     df_publicable = df_publicable[df_publicable['Tipo_Registro'].isin(tipos_publicables)].copy()
     print(f"   Filtro tipo: {antes} → {len(df_publicable)} eventos")
+    print(f"      (Excluidos: RUTINA, FALSO_POSITIVO, FALSO_POSITIVO_OCR)")
     
     # Filtro 2: Solo VRP > 0
     antes = len(df_publicable)
     df_publicable = df_publicable[df_publicable['VRP_MW'] > 0].copy()
     print(f"   Filtro VRP>0: {antes} → {len(df_publicable)} eventos")
     
-    # Filtro 3: Confianza no 'baja' para OCR
+    # Filtro 3: Confianza válida (todas las confianzas de ALERTA)
+    # Permitir: 'valido' (latest.php), 'alta', 'media', 'baja' (OCR)
+    # NO permitir: 'invalido'
     antes = len(df_publicable)
     if 'Confianza_Validacion' in df_publicable.columns:
-        # latest.php tiene 'valido', OCR tiene 'alta'/'media'/'baja'
-        # Permitir: 'valido', 'alta', 'media'
-        # NO permitir: 'baja'
-        df_publicable = df_publicable[df_publicable['Confianza_Validacion'] != 'baja'].copy()
+        df_publicable = df_publicable[df_publicable['Confianza_Validacion'] != 'invalido'].copy()
         print(f"   Filtro confianza: {antes} → {len(df_publicable)} eventos")
+        print(f"      (Incluye: valido, alta, media, baja)")
     
-    # Guardar SOLO publicable (NO guardar maestro completo)
+    # Guardar SOLO publicable
     DB_PUBLICABLE = DB_MAESTRO.replace('.csv', '_publicable.csv')
     df_publicable.to_csv(DB_PUBLICABLE, index=False)
     
     print(f"\n✅ CSV Maestro PUBLICABLE generado:")
     print(f"   Total eventos: {len(df_publicable)}")
     print(f"   Archivo: {DB_PUBLICABLE}")
-    print(f"\n📝 Nota: maestro.csv completo NO se genera (solo publicable)")
+    
+    # Estadísticas de publicación
+    if not df_publicable.empty:
+        print(f"\n📊 Composición:")
+        for tipo in df_publicable['Tipo_Registro'].unique():
+            count = len(df_publicable[df_publicable['Tipo_Registro'] == tipo])
+            print(f"   {tipo}: {count} eventos")
+        
+        if 'Confianza_Validacion' in df_publicable.columns:
+            print(f"\n📊 Por confianza:")
+            for conf in df_publicable['Confianza_Validacion'].unique():
+                count = len(df_publicable[df_publicable['Confianza_Validacion'] == conf])
+                print(f"   {conf}: {count} eventos")
+    
+    # Mostrar eventos excluidos
+    df_excluidos = df_maestro[~df_maestro['Tipo_Registro'].isin(tipos_publicables)]
+    if not df_excluidos.empty:
+        print(f"\n📋 Eventos EXCLUIDOS de publicación:")
+        for tipo in df_excluidos['Tipo_Registro'].unique():
+            count = len(df_excluidos[df_excluidos['Tipo_Registro'] == tipo])
+            print(f"   {tipo}: {count} eventos (solo en ocr.csv)")
+    
+    print(f"\n📝 Nota: maestro.csv completo NO se genera")
+    print(f"   FALSO_POSITIVO_OCR solo en registro_vrp_ocr.csv (auditoría)")
     print("="*80)
 
 

@@ -101,19 +101,48 @@ def merge():
     columnas_disponibles = [c for c in COLUMNAS_MAESTRO if c in df_maestro.columns]
     df_maestro = df_maestro[columnas_disponibles]
     
-    # Guardar
+    # Guardar maestro completo
     df_maestro.to_csv(DB_MAESTRO, index=False)
     
-    # Verificación final
-    print(f"\n🔍 Verificación final:")
-    print(f"   Confianza_Validacion en maestro:")
-    print(f"   {df_maestro['Confianza_Validacion'].value_counts(dropna=False)}")
-    
-    print(f"\n✅ CSV Maestro generado:")
+    print(f"\n✅ CSV Maestro COMPLETO generado:")
     print(f"   Total eventos: {len(df_maestro)}")
     print(f"   De latest.php: {len(df_maestro[df_maestro['Origen_Dato'] == 'latest.php'])}")
     print(f"   De OCR: {len(df_maestro[df_maestro['Origen_Dato'] == 'OCR'])}")
     print(f"   En ambos: {len(df_maestro[df_maestro['Origen_Dato'] == 'ambos'])}")
+    
+    # NUEVO: Generar maestro PUBLICABLE (solo datos válidos para dashboard)
+    print(f"\n🔍 Generando CSV Maestro PUBLICABLE...")
+    
+    df_publicable = df_maestro.copy()
+    antes = len(df_publicable)
+    
+    # Filtro 1: Solo tipos publicables
+    tipos_publicables = ['ALERTA_TERMICA', 'ALERTA_TERMICA_OCR', 'EVIDENCIA_DIARIA']
+    df_publicable = df_publicable[df_publicable['Tipo_Registro'].isin(tipos_publicables)].copy()
+    print(f"   Filtro tipo: {antes} → {len(df_publicable)} eventos")
+    
+    # Filtro 2: Solo VRP > 0
+    antes = len(df_publicable)
+    df_publicable = df_publicable[df_publicable['VRP_MW'] > 0].copy()
+    print(f"   Filtro VRP>0: {antes} → {len(df_publicable)} eventos")
+    
+    # Filtro 3: Confianza no 'baja' para OCR
+    antes = len(df_publicable)
+    if 'Confianza_Validacion' in df_publicable.columns:
+        # latest.php tiene 'valido', OCR tiene 'alta'/'media'/'baja'
+        # Permitir: 'valido', 'alta', 'media'
+        # NO permitir: 'baja'
+        df_publicable = df_publicable[df_publicable['Confianza_Validacion'] != 'baja'].copy()
+        print(f"   Filtro confianza: {antes} → {len(df_publicable)} eventos")
+    
+    # Guardar publicable
+    DB_PUBLICABLE = DB_MAESTRO.replace('.csv', '_publicable.csv')
+    df_publicable.to_csv(DB_PUBLICABLE, index=False)
+    
+    print(f"\n✅ CSV Maestro PUBLICABLE generado:")
+    print(f"   Total eventos: {len(df_publicable)}")
+    print(f"   Archivo: {DB_PUBLICABLE}")
+    
     print("="*80)
 
 

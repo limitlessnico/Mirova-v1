@@ -27,6 +27,35 @@ COLUMNAS_MAESTRO = [
     "Nota_Validacion"
 ]
 
+def actualizar_registros_por_volcan(df_publicable):
+    """
+    Genera/actualiza CSV individual por volcán desde maestro publicable
+    Se ejecuta después de cada merge para mantener sincronizados
+    """
+    print(f"\n📁 Actualizando registros individuales por volcán...")
+    
+    volcanes_procesados = 0
+    
+    for volcan in df_publicable['Volcan'].unique():
+        # Filtrar eventos de este volcán
+        df_volcan = df_publicable[df_publicable['Volcan'] == volcan].copy()
+        
+        # Ordenar por timestamp DESC (más recientes primero)
+        df_volcan = df_volcan.sort_values('timestamp', ascending=False)
+        
+        # Normalizar nombre para archivo (sin espacios ni guiones)
+        nombre_archivo = volcan.replace(' ', '_').replace('-', '_')
+        ruta_csv = os.path.join(CARPETA_PRINCIPAL, f"registro_{nombre_archivo}.csv")
+        
+        # Guardar CSV
+        df_volcan.to_csv(ruta_csv, index=False)
+        
+        volcanes_procesados += 1
+        print(f"   ✅ {nombre_archivo}: {len(df_volcan)} eventos")
+    
+    print(f"   📊 Total volcanes actualizados: {volcanes_procesados}")
+
+
 def merge():
     """Genera CSV maestro"""
     
@@ -139,6 +168,9 @@ def merge():
     print(f"\n✅ CSV Maestro PUBLICABLE generado:")
     print(f"   Total eventos: {len(df_publicable)}")
     print(f"   Archivo: {DB_PUBLICABLE}")
+    
+    # NUEVO: Actualizar registros individuales por volcán
+    actualizar_registros_por_volcan(df_publicable)
     
     # Estadísticas de publicación
     if not df_publicable.empty:

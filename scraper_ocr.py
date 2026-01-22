@@ -173,11 +173,19 @@ def procesar_volcan_sensor(session, volcan_id, sensor, df_ocr, df_consolidado):
             print(f"  ❌ SKIP: {ts} - {clasificacion['nota']}")
             continue
         
-        # Descargar imágenes si es válido
-        es_verificar = clasificacion['requiere_verificacion']
-        ruta_foto = descargar_imagenes_permanentes(
-            session, volcan_id, sensor, evento, es_verificar
-        )
+        # NUEVO V4: Solo descargar imágenes si vale la pena
+        guardar_imgs = clasificacion.get('guardar_imagenes', False)
+        
+        if guardar_imgs:
+            # Descargar imágenes (evento probable: rojo o mezcla)
+            es_verificar = clasificacion['requiere_verificacion']
+            ruta_foto = descargar_imagenes_permanentes(
+                session, volcan_id, sensor, evento, es_verificar
+            )
+        else:
+            # NO descargar imágenes (falso positivo o sin píxeles)
+            ruta_foto = "No descargada - Evento descartado"
+            print(f"  💾 Imágenes NO guardadas (evento descartado)")
         
         # Agregar evento
         dt_utc = evento['datetime']
@@ -200,8 +208,8 @@ def procesar_volcan_sensor(session, volcan_id, sensor, df_ocr, df_consolidado):
             'Volcan': nombre_v,
             'Sensor': sensor,
             'VRP_MW': vrp_mw,
-            'Distancia_km': 0.0,  # OCR no calcula distancia
-            'Tipo_Registro': 'ALERTA_TERMICA_OCR',
+            'Distancia_km': 0.0,
+            'Tipo_Registro': clasificacion['tipo_registro'],  # ← USAR clasificación
             'Clasificacion Mirova': clasificacion_mirova,
             'Ruta Foto': ruta_foto,
             'Fecha_Proceso_GitHub': ahora_cl,

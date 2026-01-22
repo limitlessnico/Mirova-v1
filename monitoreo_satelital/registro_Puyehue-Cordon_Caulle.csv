@@ -1,8 +1,0 @@
-timestamp,Fecha_Satelite_UTC,Fecha_Captura_Chile,Volcan,Sensor,VRP_MW,Distancia_km,Tipo_Registro,Clasificacion Mirova,Ruta Foto,Fecha_Proceso_GitHub,Ultima_Actualizacion,Editado
-1768540321,2026-01-16 05:12:01,2026-01-16 02:12:01,Puyehue-Cordon Caulle,VIIRS,0.58,8.55,ALERTA_TERMICA,Muy Bajo,imagenes_satelitales/Puyehue-Cordon Caulle/2026-01-16/05-12-01_Puyehue-Cordon Caulle_VIIRS750_Latest.png,2026-01-16 05:32:45,2026-01-16 07:30:37,NO
-1768540321,2026-01-16 05:12:01,2026-01-16 02:12:01,Puyehue-Cordon Caulle,VIIRS375,0.32,8.19,ALERTA_TERMICA,Muy Bajo,imagenes_satelitales/Puyehue-Cordon Caulle/2026-01-16/05-12-01_Puyehue-Cordon Caulle_VIIRS375_Latest.png,2026-01-16 14:04:34,2026-01-16 15:00:35,NO
-1768369681,2026-01-14 05:48:01,2026-01-14 02:48:01,Puyehue-Cordon Caulle,VIIRS375,0.62,8.1,ALERTA_TERMICA,Bajo,imagenes_satelitales/Puyehue-Cordon Caulle/2026-01-14/05-48-01_Puyehue-Cordon Caulle_VIIRS375_Latest.png,2026-01-14 18:00:31,2026-01-14 18:00:31,NO
-1768284721,2026-01-13 06:12:01,2026-01-13 03:12:01,Puyehue-Cordon Caulle,VIIRS,1.07,8.55,ALERTA_TERMICA,Bajo,No descargada,2026-01-13 08:45:27,2026-01-13 18:30:24,NO
-1768284721,2026-01-13 06:12:01,2026-01-13 03:12:01,Puyehue-Cordon Caulle,VIIRS375,1.06,8.19,ALERTA_TERMICA,Bajo,No descargada,2026-01-13 08:45:27,2026-01-13 18:30:24,NO
-1768199401,2026-01-12 06:30:01,2026-01-12 03:30:01,Puyehue-Cordon Caulle,VIIRS375,0.28,8.1,ALERTA_TERMICA,Bajo,No descargada,2026-01-12 14:46:12,2026-01-12 19:15:26,NO
-1768107961,2026-01-11 05:06:01,2026-01-11 02:06:01,Puyehue-Cordon Caulle,VIIRS375,0.25,8.19,ALERTA_TERMICA,Bajo,imagenes_satelitales/Puyehue-Cordon Caulle/2026-01-11/05-06-01_Puyehue-Cordon Caulle_VIIRS375_VRP.png,,,NO

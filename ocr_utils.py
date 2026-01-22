@@ -165,10 +165,12 @@ def extraer_eventos_latest10nti(ruta_imagen):
 
 def analizar_puntos_distancia_v3(ruta_imagen, eventos):
     """
-    Analiza Dist.png con ROI y clasifica según DENSIDAD DE PÍXELES
+    Analiza Dist.png con ROI - VERSIÓN 4 (densidad + estrella verde)
     
-    NUEVO V3.1: No usa circularidad, cuenta píxeles directamente
-    Más robusto para símbolos irregulares de MIROVA
+    NUEVO V4:
+    - Filtra píxeles VERDES (estrella = última detección)
+    - Usa ratio rojos/negros para distinguir real vs falso
+    - Clasificación más precisa con estrella presente
     """
     try:
         img = cv2.imread(ruta_imagen)
@@ -182,7 +184,7 @@ def analizar_puntos_distancia_v3(ruta_imagen, eventos):
         img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         height, width = img_rgb.shape[:2]
         
-        # Extraer ROI según configuración
+        # Extraer ROI
         roi_x_start = int(width * ROI_CONFIG['x_start_pct'])
         roi_x_end = int(width * ROI_CONFIG['x_end_pct'])
         roi_y_start = int(height * ROI_CONFIG['y_start_pct'])
@@ -192,56 +194,80 @@ def analizar_puntos_distancia_v3(ruta_imagen, eventos):
         
         print(f"   🔍 ROI: {roi.shape} (últimos días)")
         
-        # ===== NUEVO: DETECCIÓN POR DENSIDAD DE PÍXELES =====
-        # No busca formas, solo cuenta píxeles del color
+        # ===== PASO 1: Detectar estrella verde =====
+        # Estrella verde = última detección del día
+        # Tiene borde negro que puede confundir
+        mask_verde = (roi[:, :, 1] > 150) & \
+                     ((roi[:, :, 1] - roi[:, :, 0]) > 50) & \
+                     ((roi[:, :, 1] - roi[:, :, 2]) > 50)
+        num_verdes = np.sum(mask_verde)
+        tiene_estrella = num_verdes >= 50
         
-        # Rojo dominante: R>150 Y (R-G)>50 Y (R-B)>50
+        # ===== PASO 2: Detectar rojos (EXCLUIR verdes) =====
         mask_rojo = (roi[:, :, 0] > 150) & \
                     ((roi[:, :, 0] - roi[:, :, 1]) > 50) & \
-                    ((roi[:, :, 0] - roi[:, :, 2]) > 50)
-        
+                    ((roi[:, :, 0] - roi[:, :, 2]) > 50) & \
+                    ~mask_verde  # NO contar píxeles de la estrella
         num_rojos = np.sum(mask_rojo)
         
-        # Negro/gris oscuro: RGB < 100
+        # ===== PASO 3: Detectar negros (EXCLUIR verdes) =====
         mask_negro = (roi[:, :, 0] < 100) & \
                      (roi[:, :, 1] < 100) & \
-                     (roi[:, :, 2] < 100)
-        
+                     (roi[:, :, 2] < 100) & \
+                     ~mask_verde  # NO contar borde de estrella
         num_negros = np.sum(mask_negro)
         
+        print(f"   🟢 Estrella verde: {num_verdes} px ({'SÍ' if tiene_estrella else 'NO'})")
         print(f"   🔴 Píxeles rojos: {num_rojos}")
         print(f"   ⚫ Píxeles negros: {num_negros}")
         
-        # Umbral: 10 píxeles = punto presente
-        # Para ROI de 17x186 = 3,162 px → 10 px = 0.3%
+        # ===== PASO 4: Clasificar según densidad y ratio =====
         UMBRAL_PIXELES = 10
         
         tiene_rojos = num_rojos >= UMBRAL_PIXELES
         tiene_negros = num_negros >= UMBRAL_PIXELES
         
-        print(f"   🎯 Detección: rojos={tiene_rojos}, negros={tiene_negros}")
-        
-        # Clasificar todos los eventos con mismo resultado
-        for evento in eventos:
-            if not tiene_rojos and not tiene_negros:
-                # Sin píxeles suficientes
-                evento['color_punto'] = 'sin_punto'
-                evento['metodo'] = 'sin_pixeles_roi'
-                
-            elif tiene_rojos and not tiene_negros:
-                # Solo rojos
-                evento['color_punto'] = 'rojo'
-                evento['metodo'] = 'solo_rojos_densidad'
-                
-            elif tiene_negros and not tiene_rojos:
-                # Solo negros
-                evento['color_punto'] = 'negro'
-                evento['metodo'] = 'solo_negros_densidad'
-                
+        # Si hay estrella, usar RATIO para distinguir real/falso
+        if tiene_estrella and (num_rojos > 0 or num_negros > 0):
+            ratio = num_rojos / max(num_negros, 1)
+            print(f"   📊 Ratio R/N: {ratio:.2f}")
+            
+            if ratio > 2.0:
+                # Rojo DOMINANTE → Evento REAL
+                color_final = 'rojo'
+                metodo_final = 'rojo_dominante_con_estrella'
+                print(f"   ✅ Rojo dominante (ratio>2.0) → REAL")
+            elif ratio < 0.5:
+                # Negro DOMINANTE → FALSO POSITIVO
+                color_final = 'negro'
+                metodo_final = 'negro_dominante_con_estrella'
+                print(f"   ❌ Negro dominante (ratio<0.5) → FALSO")
             else:
-                # Mezcla rojos + negros
-                evento['color_punto'] = 'mezcla'
-                evento['metodo'] = 'mezcla_densidad'
+                # INTERMEDIO → Revisar
+                color_final = 'mezcla'
+                metodo_final = 'mezcla_con_estrella'
+                print(f"   ⚠️ Ratio intermedio → MEZCLA")
+        else:
+            # Sin estrella: lógica normal de densidad
+            if not tiene_rojos and not tiene_negros:
+                color_final = 'sin_punto'
+                metodo_final = 'sin_pixeles_roi'
+            elif tiene_rojos and not tiene_negros:
+                color_final = 'rojo'
+                metodo_final = 'solo_rojos_densidad'
+            elif tiene_negros and not tiene_rojos:
+                color_final = 'negro'
+                metodo_final = 'solo_negros_densidad'
+            else:
+                color_final = 'mezcla'
+                metodo_final = 'mezcla_densidad'
+        
+        print(f"   🎯 Clasificación: {color_final}")
+        
+        # Aplicar a todos los eventos
+        for evento in eventos:
+            evento['color_punto'] = color_final
+            evento['metodo'] = metodo_final
         
         return eventos
     
@@ -305,15 +331,12 @@ def detectar_puntos_color(img_rgb, color):
 
 def clasificar_confianza_v3(evento):
     """
-    Clasifica confianza según NUEVA LÓGICA V3
+    Clasifica confianza según DENSIDAD DE PÍXELES - VERSIÓN 4
     
-    Reglas:
-    - VRP <= 0 → NO guardar
-    - Solo rojos → ALERTA alta (guardar, publicar)
-    - Solo negros → FALSO_POSITIVO alta (guardar, NO publicar)
-    - Mezcla → ALERTA media (guardar, publicar)
-    - Sin puntos + VRP > 0.5 → ALERTA baja (guardar, publicar)
-    - Sin puntos + VRP <= 0.5 → ALERTA baja (guardar, NO publicar)
+    CAMBIOS V4:
+    - sin_punto → FALSO_POSITIVO (alta), NO publicar
+    - Agregar campo 'guardar_imagenes'
+    - Solo guardar imágenes si rojo o mezcla
     """
     
     # REGLA 1: VRP inválido
@@ -324,56 +347,60 @@ def clasificar_confianza_v3(evento):
             'requiere_verificacion': False,
             'nota': 'VRP inválido o cero',
             'guardar': False,
-            'publicar': False
+            'publicar': False,
+            'guardar_imagenes': False
         }
     
     color = evento.get('color_punto', 'sin_punto')
     metodo = evento.get('metodo', 'desconocido')
     vrp = evento['vrp_mw']
     
-    # REGLA 2: Solo rojos en ROI → ALERTA ALTA
-    if color == 'rojo' and 'solo_rojos' in metodo:
+    # REGLA 2: Solo rojos → ALERTA ALTA
+    if color == 'rojo':
         return {
             'tipo_registro': 'ALERTA_TERMICA_OCR',
             'confianza': 'alta',
             'requiere_verificacion': False,
-            'nota': 'Solo puntos rojos en ROI - Validado',
+            'nota': 'Píxeles rojos dominantes en ROI - Evento real',
             'guardar': True,
-            'publicar': True
+            'publicar': True,
+            'guardar_imagenes': True  # ← GUARDAR imágenes
         }
     
-    # REGLA 3: Solo negros en ROI → FALSO POSITIVO ALTA
-    if color == 'negro' and 'solo_negros' in metodo:
+    # REGLA 3: Solo negros → FALSO POSITIVO ALTA
+    if color == 'negro':
         return {
             'tipo_registro': 'FALSO_POSITIVO_OCR',
             'confianza': 'alta',
             'requiere_verificacion': False,
-            'nota': 'Solo puntos negros en ROI - Distancia > límite',
+            'nota': 'Píxeles negros dominantes - Fuera de límite distancia',
             'guardar': True,
-            'publicar': False
+            'publicar': False,
+            'guardar_imagenes': False  # ← NO guardar imágenes
         }
     
-    # REGLA 4: Mezcla de colores → ALERTA MEDIA
+    # REGLA 4: Mezcla → ALERTA MEDIA
     if color == 'mezcla':
         return {
             'tipo_registro': 'ALERTA_TERMICA_OCR',
             'confianza': 'media',
             'requiere_verificacion': True,
-            'nota': 'Mezcla rojos/negros en ROI - Evento en zona límite',
+            'nota': f'Mezcla rojos/negros - Evento en zona límite (VRP={vrp:.2f} MW)',
             'guardar': True,
-            'publicar': True
+            'publicar': True,
+            'guardar_imagenes': True  # ← GUARDAR imágenes
         }
     
-    # REGLA 5: Sin puntos en ROI
-    # CAMBIO: Publicar TODO sin filtro VRP
+    # REGLA 5: Sin píxeles → FALSO POSITIVO ALTA (CAMBIADO!)
     if color == 'sin_punto':
         return {
-            'tipo_registro': 'ALERTA_TERMICA_OCR',
-            'confianza': 'baja',
-            'requiere_verificacion': True,
-            'nota': f'Sin puntos en ROI, VRP={vrp:.2f} MW',
-            'guardar': True,
-            'publicar': True  # ← Publicar siempre
+            'tipo_registro': 'FALSO_POSITIVO_OCR',
+            'confianza': 'alta',
+            'requiere_verificacion': False,
+            'nota': 'Sin píxeles en ROI - Evento fuera de ventana temporal',
+            'guardar': True,  # ← Guardar en CSV (auditoría)
+            'publicar': False,  # ← NO publicar
+            'guardar_imagenes': False  # ← NO guardar imágenes
         }
     
     # Por defecto: NO guardar
@@ -381,9 +408,10 @@ def clasificar_confianza_v3(evento):
         'tipo_registro': None,
         'confianza': 'invalido',
         'requiere_verificacion': True,
-        'nota': 'Sin validación suficiente',
+        'nota': 'Sin clasificación clara',
         'guardar': False,
-        'publicar': False
+        'publicar': False,
+        'guardar_imagenes': False
     }
 
 

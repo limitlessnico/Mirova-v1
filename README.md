@@ -8,7 +8,7 @@
 
 ## 📡 Dashboard e Interfaz de Auditoría 
 
-El sistema cuenta con un **Dashboard ** que permite visualizar el estado de salud del monitor y las tendencias térmicas en tiempo real.
+El sistema cuenta con un **Dashboard** que permite visualizar el estado de salud del monitor y las tendencias térmicas en tiempo real.
 
 > [!IMPORTANT]
 > **[👉 ACCEDER AL MONITOR EN VIVO (Standard OVDAS)](https://mendozavolcanic.github.io/Mirova-v1/)**

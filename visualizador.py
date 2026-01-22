@@ -38,8 +38,12 @@ def crear_grafico(df_v, v, modo_log=False):
     
     df_v_30 = pd.DataFrame()
     if not df_v.empty:
-        df_v['Fecha_Chile'] = pd.to_datetime(df_v['Fecha_Satelite_UTC']).dt.tz_localize('UTC').dt.tz_convert('America/Santiago')
-        df_v_30 = df_v[df_v['Fecha_Chile'] >= hace_30_dias].copy()
+        # CAMBIO V4.1: Mantener UTC para tooltips (no convertir a Chile)
+        df_v['Fecha_UTC'] = pd.to_datetime(df_v['Fecha_Satelite_UTC']).dt.tz_localize('UTC')
+        
+        # Para filtro temporal seguir usando hora Chile
+        df_v['Fecha_Chile_temp'] = df_v['Fecha_UTC'].dt.tz_convert('America/Santiago')
+        df_v_30 = df_v[df_v['Fecha_Chile_temp'] >= hace_30_dias].copy()
         
         # FILTRAR VRP = 0 (eventos de rutina sin anomalía térmica)
         df_v_30 = df_v_30[df_v_30['VRP_MW'] > 0].copy()
@@ -105,8 +109,8 @@ def crear_grafico(df_v, v, modo_log=False):
             y_vals = [transform(v) for v in df_grupo['VRP_MW']]
             
             fig.add_trace(go.Scatter(
-                x=df_grupo['Fecha_Chile'], 
-                y=y_vals,  # ← Usar transform()
+                x=df_grupo['Fecha_UTC'],  # ← CAMBIO: Usar UTC
+                y=y_vals,
                 mode='markers', 
                 name=nombre_trace,
                 marker=dict(
@@ -115,9 +119,9 @@ def crear_grafico(df_v, v, modo_log=False):
                     size=9, 
                     line=dict(width=1, color='white')
                 ),
-                customdata=df_grupo['VRP_MW'],
+                customdata=np.column_stack((df_grupo['Fecha_UTC'], df_grupo['VRP_MW'])),  # ← CAMBIO: incluir fecha UTC
                 hoverlabel=dict(bgcolor="rgba(20, 24, 33, 0.95)", font=dict(color="white", size=11)),
-                hovertemplate="<b>%{customdata:.2f} MW</b><br>%{x|%d %b, %H:%M}<extra></extra>",
+                hovertemplate="<b>%{customdata[1]:.2f} MW</b><br>%{customdata[0]|%d %b, %H:%M} UTC<extra></extra>",  # ← CAMBIO: agregar "UTC"
                 showlegend=True
             ))
 
@@ -162,7 +166,7 @@ def crear_grafico(df_v, v, modo_log=False):
         max_r = df_v_30.loc[df_v_30['VRP_MW'].idxmax()]
         y_pos = transform(max_r['VRP_MW'])  # ← Usar transform()
         
-        fig.add_annotation(x=max_r['Fecha_Chile'], y=y_pos,
+        fig.add_annotation(x=max_r['Fecha_UTC'], y=y_pos,  # ← CAMBIO: Usar Fecha_UTC
             xref="x", yref="y", text=f"MÁX: {max_r['VRP_MW']:.2f} MW", showarrow=True,
             arrowhead=2, arrowsize=1, arrowwidth=1.5, arrowcolor="white",
             bgcolor="rgba(0,0,0,0.8)", bordercolor="#58a6ff", borderwidth=1,

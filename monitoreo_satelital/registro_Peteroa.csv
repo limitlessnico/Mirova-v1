@@ -1,2 +1,0 @@
-timestamp,Fecha_Satelite_UTC,Fecha_Captura_Chile,Volcan,Sensor,VRP_MW,Distancia_km,Tipo_Registro,Clasificacion Mirova,Ruta Foto,Fecha_Proceso_GitHub,Ultima_Actualizacion,Editado,Origen_Dato,Confianza_Validacion,Requiere_Verificacion,Nota_Validacion
-1768284361,2026-01-13 06:06:01,2026-01-13 03:06:01,Peteroa,VIIRS375,0.05,1.68,ALERTA_TERMICA,Bajo,No descargada,2026-01-13 08:45:27,2026-01-13 18:30:24,NO,latest.php,valido,False,Capturado por latest.php

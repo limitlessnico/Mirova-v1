@@ -8,7 +8,7 @@
 
 ## 📡 Dashboard e Interfaz de Auditoría 
 
-El sistema cuenta con un **Dashboard Profesional** que permite visualizar el estado de salud del monitor y las tendencias térmicas en tiempo real.
+El sistema cuenta con un **Dashboard ** que permite visualizar el estado de salud del monitor y las tendencias térmicas en tiempo real.
 
 > [!IMPORTANT]
 > **[👉 ACCEDER AL MONITOR EN VIVO (Standard OVDAS)](https://mendozavolcanic.github.io/Mirova-v1/)**
@@ -187,7 +187,7 @@ Toda la información térmica utilizada en este proyecto es procesada y obtenida
 ## 📊 Estadísticas del Sistema
 
 * **Cobertura:** 10 volcanes activos de Chile
-* **Frecuencia latest.php:** Cada 15-30 minutos
+* **Frecuencia latest.php:** Cada 5 minutos
 * **Frecuencia OCR:** Cada 1 hora
 * **Sensores monitoreados:** MODIS, VIIRS 375m, VIIRS 750m
 * **Tasa de recuperación OCR:** ~5-10% de eventos perdidos

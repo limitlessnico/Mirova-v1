@@ -17939,3 +17939,6 @@
 [2026-01-22 22:30:40] Proceso completado correctamente.
 [2026-01-22 22:35:42] INICIO SCRAPER
 [2026-01-22 22:36:13] ERROR: HTTPSConnectionPool(host='www.mirovaweb.it', port=443): Read timed out. (read timeout=30)
+[2026-01-22 22:40:39] INICIO SCRAPER
+[2026-01-22 22:40:50] Filas leídas desde latest.php: 0
+[2026-01-22 22:40:50] Proceso completado correctamente.

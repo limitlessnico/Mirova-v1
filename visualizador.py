@@ -24,17 +24,10 @@ COLORES_CONFIANZA = {
 MESES_ES = {1: "Ene", 2: "Feb", 3: "Mar", 4: "Abr", 5: "May", 6: "Jun", 7: "Jul", 8: "Ago", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dic"}
 
 # ========================================
-# FIX 7 CORREGIDO: Bandas según MIROVA
+# FIX 1: Bandas desde 0 (no desde 0.1)
 # ========================================
-# En Watts (para escala logarítmica):
-# 10^5-10^6 = Gris "Muy Bajo"
-# 10^6-10^7 = Verde "Bajo"
-# 10^7-10^8 = Amarillo "Moderado"
-# 10^8-10^9 = Naranja "Alto"
-# 10^9+     = Rojo "Muy Alto"
-
 MIROVA_BANDS = [
-    (1e5,   1e6,  "Muy Bajo", "rgba(128, 128, 128, 0.2)"),   # Gris: 0.1-1 MW
+    (0,     1e6,  "Muy Bajo", "rgba(128, 128, 128, 0.2)"),   # Gris: 0-1 MW
     (1e6,   1e7,  "Bajo",     "rgba(34, 139, 34, 0.15)"),    # Verde: 1-10 MW
     (1e7,   1e8,  "Moderado", "rgba(255, 215, 0, 0.15)"),    # Amarillo: 10-100 MW
     (1e8,   1e9,  "Alto",     "rgba(255, 140, 0, 0.15)"),    # Naranja: 100-1000 MW
@@ -59,48 +52,45 @@ def crear_grafico(df_v, v, modo_log=False):
     fig = go.Figure()
     v_max_val = df_v_30['VRP_MW'].max()
     
-    # Función transform para modo log
+    # FIX 1: transform desde 0, no desde 10^4
     def transform(val_mw):
         if modo_log:
             watts = val_mw * 1e6
-            return np.log10(max(watts, 1e5))  # Mínimo 10^5
+            return np.log10(max(watts, 1))  # Mínimo 1 watt (log10(1) = 0)
         return val_mw
     
-    # Para verificaciones
     v_max_val_watts = v_max_val * 1e6
     
-    # ========================================
     # Bandas de color
-    # ========================================
     for y0, y1, label, color in MIROVA_BANDS:
-        # Transformar límites según escala
         if modo_log:
-            # Escala log: usar valores en Watts transformados a log10
-            l_y0 = np.log10(max(y0, 1e5))
+            # FIX 1: No usar max(y0, 1), usar y0 directamente
+            l_y0 = np.log10(max(y0, 1))  # Desde 0 en log = log10(1) = 0
             l_y1 = np.log10(y1)
         else:
-            # Escala lineal: convertir Watts a MW
             l_y0 = y0 / 1e6
             l_y1 = y1 / 1e6
         
         fig.add_hrect(y0=l_y0, y1=l_y1, fillcolor=color, line_width=0, layer="below")
         
-        # Mostrar en leyenda solo si hay datos en ese rango
         if v_max_val_watts >= y0:
             fig.add_trace(go.Scatter(
-                x=[None], y=[None], 
-                mode='markers', 
+                x=[None], y=[None],
+                mode='markers',
                 name=label,
                 marker=dict(
-                    size=8, 
-                    symbol='square', 
+                    size=8,
+                    symbol='square',
                     color=color.replace('0.2', '0.8').replace('0.15', '0.8')
                 ),
                 showlegend=True
             ))
 
-    # Preparar datos para links a imágenes
+    # ========================================
+    # FIX 3: Normalizar nombres de volcanes para URLs
+    # ========================================
     def generar_url_imagenes(row):
+        """Genera URL a carpeta de imágenes en GitHub"""
         ruta_foto = row.get('Ruta Foto', 'No descargada')
         
         if pd.isna(ruta_foto) or ruta_foto == 'No descargada' or 'descartado' in str(ruta_foto).lower():
@@ -110,7 +100,12 @@ def crear_grafico(df_v, v, modo_log=False):
         if len(partes) >= 4:
             volcan_carpeta = partes[1]
             fecha_carpeta = partes[2]
-            url_github = f"https://github.com/MendozaVolcanic/Mirova-v1/tree/main/monitoreo_satelital/imagenes_satelitales/{volcan_carpeta}/{fecha_carpeta}"
+            
+            # FIX 3: Normalizar nombre de carpeta (guión bajo en vez de guión o espacio)
+            # Puyehue-Cordon Caulle → Puyehue_Cordon_Caulle
+            volcan_normalizado = volcan_carpeta.replace('-', '_').replace(' ', '_')
+            
+            url_github = f"https://github.com/MendozaVolcanic/Mirova-v1/tree/main/monitoreo_satelital/imagenes_satelitales/{volcan_normalizado}/{fecha_carpeta}"
             return url_github
         
         return None
@@ -172,11 +167,25 @@ def crear_grafico(df_v, v, modo_log=False):
                 showlegend=True
             ))
 
-    # Eje X
+    # ========================================
+    # FIX 2: Eje X muestra fecha actual
+    # ========================================
+    # Calcular ticks para que siempre muestre la fecha actual
+    dias_totales = 30
+    
+    # Generar ticks cada 5 días
+    tick_dates = []
+    for i in range(0, dias_totales, 5):
+        tick_dates.append(hace_30_dias + timedelta(days=i))
+    
+    # Agregar fecha actual al final (aunque esté cerca del último tick)
+    tick_dates.append(ahora)
+    
     fig.update_xaxes(
         type="date",
         range=[hace_30_dias, ahora],
-        dtick=5 * 24 * 60 * 60 * 1000,
+        tickmode='array',
+        tickvals=tick_dates,
         tickformat="%d %b",
         showgrid=True,
         gridcolor='rgba(255,255,255,0.12)',
@@ -188,19 +197,18 @@ def crear_grafico(df_v, v, modo_log=False):
     
     # Eje Y
     if modo_log:
-        # Escala logarítmica: 10^5 a 10^9
+        # FIX 1: Rango desde 0 (log10(1) = 0)
         fig.update_yaxes(
             type="linear",
-            range=[5, 9],  # log10(10^5) a log10(10^9)
-            tickvals=[5, 6, 7, 8, 9],
-            ticktext=["10⁵", "10⁶", "10⁷", "10⁸", "10⁹"],
+            range=[0, 9],  # log10(1) a log10(10^9)
+            tickvals=[0, 3, 6, 9],  # 10^0, 10^3, 10^6, 10^9
+            ticktext=["1", "10³", "10⁶", "10⁹"],
             gridcolor='rgba(255,255,255,0.05)',
             tickfont=dict(size=9),
             autorange=False,
             fixedrange=True
         )
     else:
-        # Escala lineal en MW
         fig.update_yaxes(
             type="linear",
             range=[0, max(1.1, v_max_val * 1.5)],
@@ -300,11 +308,14 @@ def procesar():
         if not df.empty:
             df['Confianza_Validacion'] = 'valido'
     
+    # ========================================
+    # FIX 4: Habilitar botones de zoom
+    # ========================================
     config_lineal = {
         'displayModeBar': 'hover',
         'displaylogo': False,
         'responsive': True,
-        'modeBarButtonsToRemove': ['zoom2d', 'pan2d', 'select2d', 'lasso2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d'],
+        'modeBarButtonsToRemove': ['select2d', 'lasso2d'],  # Solo quitar select y lasso, mantener zoom
         'toImageButtonOptions': {'format': 'png', 'height': 500, 'width': 1400, 'scale': 2}
     }
     
@@ -312,7 +323,7 @@ def procesar():
         'displayModeBar': 'hover',
         'displaylogo': False,
         'responsive': False,
-        'modeBarButtonsToRemove': ['zoom2d', 'pan2d', 'select2d', 'lasso2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d'],
+        'modeBarButtonsToRemove': ['select2d', 'lasso2d'],  # Solo quitar select y lasso, mantener zoom
         'toImageButtonOptions': {'format': 'png', 'height': 500, 'width': 1400, 'scale': 2}
     }
 
@@ -336,6 +347,7 @@ def procesar():
                     config=config_usar
                 )
                 
+                # FIX 3: JavaScript para clicks
                 click_handler_js = """
 <script>
 document.addEventListener('DOMContentLoaded', function() {

@@ -2,8 +2,8 @@ name: Scraper OCR
 
 on:
   schedule:
-    # Se ejecuta en el minuto 0 de todas las horas (*)
-    - cron: '0 * * * *'
+    # Cada 1 hora en el minuto :05
+    - cron: '5 * * * *'
   
   # Permitir ejecución manual
   workflow_dispatch:
@@ -53,10 +53,38 @@ jobs:
           git config --global user.name "VolcanoOCR"
           git config --global user.email "ocr@volcano.com"
           git add -A
+          
           if ! git diff --quiet --staged; then
             git commit -m "🔬 OCR: Captura de eventos satelitales"
-            git pull origin main --rebase -X ours
-            git push origin main
+            
+            # Push con reintentos
+            max_retries=5
+            retry_count=0
+            
+            while [ $retry_count -lt $max_retries ]; do
+              echo "Intento $((retry_count + 1)) de push..."
+              
+              if git pull origin main --rebase -X ours; then
+                echo "Pull exitoso, intentando push..."
+              else
+                echo "⚠️ Pull falló, continuando..."
+              fi
+              
+              if git push origin main; then
+                echo "✅ Push exitoso en intento $((retry_count + 1))"
+                exit 0
+              else
+                echo "⚠️ Push falló, esperando antes de reintentar..."
+                retry_count=$((retry_count + 1))
+                
+                if [ $retry_count -lt $max_retries ]; then
+                  sleep $((retry_count * 2))
+                fi
+              fi
+            done
+            
+            echo "❌ Push falló después de $max_retries intentos"
+            exit 1
           else
-            echo "No hay eventos nuevos para subir."
+            echo "ℹ️ No hay eventos nuevos para subir."
           fi

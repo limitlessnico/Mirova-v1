@@ -1,0 +1,95 @@
+name: Merge Carpetas Duplicadas (ONE TIME)
+
+   on:
+     workflow_dispatch:  # Solo manual
+
+   jobs:
+     merge:
+       runs-on: ubuntu-latest
+       permissions:
+         contents: write
+
+       steps:
+         - name: Checkout
+           uses: actions/checkout@v4
+
+         - name: Configurar Python
+           uses: actions/setup-python@v4
+           with:
+             python-version: '3.9'
+
+         - name: Crear script de merge
+           run: |
+             cat > merge_carpetas.py << 'ENDOFSCRIPT'
+             import os
+             import shutil
+             
+             BASE = "monitoreo_satelital/imagenes_satelitales"
+             
+             # Mapeo: carpeta vieja → carpeta nueva
+             MERGE_MAP = {
+                 "Puyehue-Cordon Caulle": "Puyehue_Cordon_Caulle"
+             }
+             
+             print("="*80)
+             print("🔄 MERGE DE CARPETAS DUPLICADAS")
+             print("="*80)
+             
+             for vieja, nueva in MERGE_MAP.items():
+                 ruta_vieja = os.path.join(BASE, vieja)
+                 ruta_nueva = os.path.join(BASE, nueva)
+                 
+                 if not os.path.exists(ruta_vieja):
+                     print(f"\n⏭️ SKIP: {vieja} no existe")
+                     continue
+                 
+                 print(f"\n📁 {vieja} → {nueva}")
+                 
+                 os.makedirs(ruta_nueva, exist_ok=True)
+                 
+                 # Mover todas las subcarpetas (fechas)
+                 for fecha_dir in os.listdir(ruta_vieja):
+                     origen = os.path.join(ruta_vieja, fecha_dir)
+                     
+                     if not os.path.isdir(origen):
+                         continue
+                     
+                     destino = os.path.join(ruta_nueva, fecha_dir)
+                     
+                     if os.path.exists(destino):
+                         print(f"   Mergeando: {fecha_dir}")
+                         
+                         for archivo in os.listdir(origen):
+                             archivo_origen = os.path.join(origen, archivo)
+                             archivo_destino = os.path.join(destino, archivo)
+                             
+                             if not os.path.exists(archivo_destino):
+                                 shutil.move(archivo_origen, archivo_destino)
+                                 print(f"      ✅ {archivo}")
+                     else:
+                         shutil.move(origen, destino)
+                         print(f"   ✅ Movida: {fecha_dir}")
+                 
+                 # Eliminar carpeta vieja
+                 try:
+                     if not os.listdir(ruta_vieja):
+                         shutil.rmtree(ruta_vieja)
+                         print(f"   🗑️ Eliminada: {vieja}")
+                 except:
+                     pass
+             
+             print("\n✅ MERGE COMPLETADO")
+             ENDOFSCRIPT
+
+         - name: Ejecutar merge
+           run: python merge_carpetas.py
+
+         - name: Guardar cambios
+           run: |
+             git config --global user.name "MergeBot"
+             git config --global user.email "merge@volcano.com"
+             git add -A
+             if ! git diff --quiet --staged; then
+               git commit -m "🔄 Merge: Carpetas duplicadas unificadas"
+               git push origin main
+             fi

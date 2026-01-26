@@ -79,6 +79,29 @@ def crear_grafico(df_v, v, modo_log=False):
             fig.add_trace(go.Scatter(x=[None], y=[None], mode='markers', name=label, 
                 marker=dict(size=8, symbol='square', color=color.replace('0.2', '0.8').replace('0.15', '0.8')), showlegend=True))
 
+    # ========================================
+    # FIX 3: Preparar datos para links a imágenes
+    # ========================================
+    def generar_url_imagenes(row):
+        """Genera URL a carpeta de imágenes en GitHub"""
+        ruta_foto = row.get('Ruta Foto', 'No descargada')
+        
+        if pd.isna(ruta_foto) or ruta_foto == 'No descargada' or 'descartado' in str(ruta_foto).lower():
+            return None
+        
+        # Extraer ruta de carpeta
+        # Ejemplo: imagenes_satelitales/Lascar/2026-01-26/
+        partes = ruta_foto.split('/')
+        if len(partes) >= 4:
+            volcan_carpeta = partes[1]
+            fecha_carpeta = partes[2]
+            
+            # URL a carpeta en GitHub
+            url_github = f"https://github.com/MendozaVolcanic/Mirova-v1/tree/main/monitoreo_satelital/imagenes_satelitales/{volcan_carpeta}/{fecha_carpeta}"
+            return url_github
+        
+        return None
+
     # Traces separadas por confianza (colores) y sensor (símbolos)
     # Agrupar por sensor y confianza
     for sensor in df_v_30['Sensor'].unique():
@@ -108,8 +131,29 @@ def crear_grafico(df_v, v, modo_log=False):
             # CRÍTICO: Usar transform() para valores Y
             y_vals = [transform(v) for v in df_grupo['VRP_MW']]
             
+            # ========================================
+            # FIX 3: Agregar URLs a customdata
+            # ========================================
+            urls_imagenes = [generar_url_imagenes(row) for _, row in df_grupo.iterrows()]
+            
+            # Preparar customdata con fecha, VRP y URL
+            customdata_list = []
+            for i, (idx, row) in enumerate(df_grupo.iterrows()):
+                customdata_list.append([
+                    row['Fecha_UTC'],
+                    row['VRP_MW'],
+                    urls_imagenes[i] if urls_imagenes[i] else ''
+                ])
+            
+            # Hovertemplate con link
+            hovertemplate_text = (
+                "<b>%{customdata[1]:.2f} MW</b><br>"
+                "%{customdata[0]|%d %b, %H:%M} UTC<br>"
+                "<extra></extra>"
+            )
+            
             fig.add_trace(go.Scatter(
-                x=df_grupo['Fecha_UTC'],  # ← CAMBIO: Usar UTC
+                x=df_grupo['Fecha_UTC'],
                 y=y_vals,
                 mode='markers', 
                 name=nombre_trace,
@@ -119,9 +163,9 @@ def crear_grafico(df_v, v, modo_log=False):
                     size=9, 
                     line=dict(width=1, color='white')
                 ),
-                customdata=np.column_stack((df_grupo['Fecha_UTC'], df_grupo['VRP_MW'])),  # ← CAMBIO: incluir fecha UTC
+                customdata=customdata_list,
                 hoverlabel=dict(bgcolor="rgba(20, 24, 33, 0.95)", font=dict(color="white", size=11)),
-                hovertemplate="<b>%{customdata[1]:.2f} MW</b><br>%{customdata[0]|%d %b, %H:%M} UTC<extra></extra>",  # ← CAMBIO: agregar "UTC"
+                hovertemplate=hovertemplate_text,
                 showlegend=True
             ))
 
@@ -256,7 +300,38 @@ def procesar():
             else:
                 # CRÍTICO: Usar config apropiada según tipo
                 config_usar = config_log if es_log else config_lineal
-                fig.write_html(path, full_html=False, include_plotlyjs='cdn', config=config_usar)
+                
+                # ========================================
+                # FIX 3: Agregar JavaScript para clicks
+                # ========================================
+                html_content = fig.to_html(
+                    full_html=False,
+                    include_plotlyjs='cdn',
+                    config=config_usar
+                )
+                
+                # Inyectar JavaScript para manejar clicks
+                click_handler_js = """
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const plotDiv = document.querySelector('.plotly-graph-div');
+    if (plotDiv) {
+        plotDiv.on('plotly_click', function(data) {
+            const point = data.points[0];
+            if (point && point.customdata && point.customdata[2]) {
+                const url = point.customdata[2];
+                if (url) {
+                    window.open(url, '_blank');
+                }
+            }
+        });
+    }
+});
+</script>
+"""
+                
+                with open(path, "w", encoding='utf-8') as f:
+                    f.write(html_content + click_handler_js)
 
 if __name__ == "__main__":
     procesar()

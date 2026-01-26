@@ -24,10 +24,12 @@ COLORES_CONFIANZA = {
 MESES_ES = {1: "Ene", 2: "Feb", 3: "Mar", 4: "Abr", 5: "May", 6: "Jun", 7: "Jul", 8: "Ago", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dic"}
 
 # ========================================
-# FIX 1: Bandas desde 0 (no desde 0.1)
+# CORRECCIÓN: Bandas correctas
+# - Escala lineal: desde 0 MW
+# - Escala log: desde 10^5 W (0.1 MW)
 # ========================================
 MIROVA_BANDS = [
-    (0,     1e6,  "Muy Bajo", "rgba(128, 128, 128, 0.2)"),   # Gris: 0-1 MW
+    (0,     1e6,  "Muy Bajo", "rgba(128, 128, 128, 0.2)"),   # Gris: 0-1 MW (lineal) | 10^5-10^6 W (log)
     (1e6,   1e7,  "Bajo",     "rgba(34, 139, 34, 0.15)"),    # Verde: 1-10 MW
     (1e7,   1e8,  "Moderado", "rgba(255, 215, 0, 0.15)"),    # Amarillo: 10-100 MW
     (1e8,   1e9,  "Alto",     "rgba(255, 140, 0, 0.15)"),    # Naranja: 100-1000 MW
@@ -52,45 +54,75 @@ def crear_grafico(df_v, v, modo_log=False):
     fig = go.Figure()
     v_max_val = df_v_30['VRP_MW'].max()
     
-    # FIX 1: transform desde 0, no desde 10^4
+    # ========================================
+    # CORRECCIÓN: Transform diferenciado
+    # ========================================
     def transform(val_mw):
         if modo_log:
             watts = val_mw * 1e6
-            return np.log10(max(watts, 1))  # Mínimo 1 watt (log10(1) = 0)
-        return val_mw
+            # Escala log: mínimo 10^4 (0.01 MW)
+            # Valores < 10^4 quedan fuera de rango visible
+            return np.log10(max(watts, 1e4))
+        else:
+            # Escala lineal: desde 0
+            return val_mw
     
     v_max_val_watts = v_max_val * 1e6
     
     # Bandas de color
     for y0, y1, label, color in MIROVA_BANDS:
         if modo_log:
-            # FIX 1: No usar max(y0, 1), usar y0 directamente
-            l_y0 = np.log10(max(y0, 1))  # Desde 0 en log = log10(1) = 0
+            # ========================================
+            # CORRECCIÓN: Escala log desde 10^5
+            # ========================================
+            # Primera banda (gris): 10^5 a 10^6
+            # Si y0 = 0, usar 10^5 (50,000 W = 0.05 MW)
+            if y0 == 0:
+                l_y0 = np.log10(1e5)  # 10^5 = 5
+            else:
+                l_y0 = np.log10(max(y0, 1e5))
+            
             l_y1 = np.log10(y1)
         else:
+            # Escala lineal: desde 0
             l_y0 = y0 / 1e6
             l_y1 = y1 / 1e6
         
         fig.add_hrect(y0=l_y0, y1=l_y1, fillcolor=color, line_width=0, layer="below")
         
-        if v_max_val_watts >= y0:
-            fig.add_trace(go.Scatter(
-                x=[None], y=[None],
-                mode='markers',
-                name=label,
-                marker=dict(
-                    size=8,
-                    symbol='square',
-                    color=color.replace('0.2', '0.8').replace('0.15', '0.8')
-                ),
-                showlegend=True
-            ))
+        # Mostrar en leyenda si hay datos en ese rango
+        if modo_log:
+            # Para log, verificar desde 10^5
+            rango_inicio = 1e5 if y0 == 0 else y0
+            if v_max_val_watts >= rango_inicio:
+                fig.add_trace(go.Scatter(
+                    x=[None], y=[None],
+                    mode='markers',
+                    name=label,
+                    marker=dict(
+                        size=8,
+                        symbol='square',
+                        color=color.replace('0.2', '0.8').replace('0.15', '0.8')
+                    ),
+                    showlegend=True
+                ))
+        else:
+            # Para lineal, desde 0
+            if v_max_val_watts >= y0:
+                fig.add_trace(go.Scatter(
+                    x=[None], y=[None],
+                    mode='markers',
+                    name=label,
+                    marker=dict(
+                        size=8,
+                        symbol='square',
+                        color=color.replace('0.2', '0.8').replace('0.15', '0.8')
+                    ),
+                    showlegend=True
+                ))
 
-    # ========================================
-    # FIX 3: Normalizar nombres de volcanes para URLs
-    # ========================================
+    # Función para generar URLs a imágenes
     def generar_url_imagenes(row):
-        """Genera URL a carpeta de imágenes en GitHub"""
         ruta_foto = row.get('Ruta Foto', 'No descargada')
         
         if pd.isna(ruta_foto) or ruta_foto == 'No descargada' or 'descartado' in str(ruta_foto).lower():
@@ -101,8 +133,7 @@ def crear_grafico(df_v, v, modo_log=False):
             volcan_carpeta = partes[1]
             fecha_carpeta = partes[2]
             
-            # FIX 3: Normalizar nombre de carpeta (guión bajo en vez de guión o espacio)
-            # Puyehue-Cordon Caulle → Puyehue_Cordon_Caulle
+            # Normalizar nombre (Puyehue-Cordon Caulle → Puyehue_Cordon_Caulle)
             volcan_normalizado = volcan_carpeta.replace('-', '_').replace(' ', '_')
             
             url_github = f"https://github.com/MendozaVolcanic/Mirova-v1/tree/main/monitoreo_satelital/imagenes_satelitales/{volcan_normalizado}/{fecha_carpeta}"
@@ -167,19 +198,11 @@ def crear_grafico(df_v, v, modo_log=False):
                 showlegend=True
             ))
 
-    # ========================================
-    # FIX 2: Eje X muestra fecha actual
-    # ========================================
-    # Calcular ticks para que siempre muestre la fecha actual
-    dias_totales = 30
-    
-    # Generar ticks cada 5 días
+    # Eje X con fecha actual
     tick_dates = []
-    for i in range(0, dias_totales, 5):
+    for i in range(0, 30, 5):
         tick_dates.append(hace_30_dias + timedelta(days=i))
-    
-    # Agregar fecha actual al final (aunque esté cerca del último tick)
-    tick_dates.append(ahora)
+    tick_dates.append(ahora)  # Fecha actual siempre visible
     
     fig.update_xaxes(
         type="date",
@@ -197,18 +220,21 @@ def crear_grafico(df_v, v, modo_log=False):
     
     # Eje Y
     if modo_log:
-        # FIX 1: Rango desde 0 (log10(1) = 0)
+        # ========================================
+        # CORRECCIÓN: Rango log desde 4.7 (como antes)
+        # ========================================
         fig.update_yaxes(
             type="linear",
-            range=[0, 9],  # log10(1) a log10(10^9)
-            tickvals=[0, 3, 6, 9],  # 10^0, 10^3, 10^6, 10^9
-            ticktext=["1", "10³", "10⁶", "10⁹"],
+            range=[4.7, 9],  # log10(10^4.7) a log10(10^9)
+            tickvals=[5, 6, 7, 8],
+            ticktext=["10⁵", "10⁶", "10⁷", "10⁸"],
             gridcolor='rgba(255,255,255,0.05)',
             tickfont=dict(size=9),
             autorange=False,
             fixedrange=True
         )
     else:
+        # Escala lineal desde 0
         fig.update_yaxes(
             type="linear",
             range=[0, max(1.1, v_max_val * 1.5)],
@@ -309,22 +335,34 @@ def procesar():
             df['Confianza_Validacion'] = 'valido'
     
     # ========================================
-    # FIX 4: Habilitar botones de zoom
+    # CORRECCIÓN: Config para mostrar botones
     # ========================================
     config_lineal = {
-        'displayModeBar': 'hover',
+        'displayModeBar': True,  # Siempre visible (no solo hover)
         'displaylogo': False,
         'responsive': True,
-        'modeBarButtonsToRemove': ['select2d', 'lasso2d'],  # Solo quitar select y lasso, mantener zoom
-        'toImageButtonOptions': {'format': 'png', 'height': 500, 'width': 1400, 'scale': 2}
+        'modeBarButtonsToRemove': ['select2d', 'lasso2d'],
+        'toImageButtonOptions': {
+            'format': 'png',
+            'filename': 'grafico_volcan',
+            'height': 500,
+            'width': 1400,
+            'scale': 2
+        }
     }
     
     config_log = {
-        'displayModeBar': 'hover',
+        'displayModeBar': True,  # Siempre visible (no solo hover)
         'displaylogo': False,
         'responsive': False,
-        'modeBarButtonsToRemove': ['select2d', 'lasso2d'],  # Solo quitar select y lasso, mantener zoom
-        'toImageButtonOptions': {'format': 'png', 'height': 500, 'width': 1400, 'scale': 2}
+        'modeBarButtonsToRemove': ['select2d', 'lasso2d'],
+        'toImageButtonOptions': {
+            'format': 'png',
+            'filename': 'grafico_volcan_log',
+            'height': 500,
+            'width': 1400,
+            'scale': 2
+        }
     }
 
     for v in VOLCANES:
@@ -347,7 +385,7 @@ def procesar():
                     config=config_usar
                 )
                 
-                # FIX 3: JavaScript para clicks
+                # JavaScript para clicks
                 click_handler_js = """
 <script>
 document.addEventListener('DOMContentLoaded', function() {

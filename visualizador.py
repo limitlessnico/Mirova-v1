@@ -24,11 +24,15 @@ COLORES_CONFIANZA = {
 }
 MESES_ES = {1: "Ene", 2: "Feb", 3: "Mar", 4: "Abr", 5: "May", 6: "Jun", 7: "Jul", 8: "Ago", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dic"}
 
+# ========================================
+# FIX 7: Bandas correctas (5 bandas, no 4)
+# ========================================
 MIROVA_BANDS = [
-    (0, 1e6, "Muy Bajo", "rgba(85, 85, 85, 0.2)"),
-    (1e6, 1e7, "Bajo", "rgba(119, 119, 0, 0.15)"),
-    (1e7, 1e8, "Moderado", "rgba(170, 102, 0, 0.15)"),
-    (1e8, 1e9, "Alto", "rgba(170, 0, 0, 0.15)")
+    (1,     1e5,  "Muy Bajo", "rgba(85, 85, 85, 0.2)"),      # Gris
+    (1e5,   1e6,  "Bajo",     "rgba(0, 128, 0, 0.15)"),      # Verde
+    (1e6,   1e7,  "Moderado", "rgba(255, 215, 0, 0.15)"),    # Amarillo
+    (1e7,   1e8,  "Alto",     "rgba(255, 140, 0, 0.15)"),    # Naranja
+    (1e8,   1e9,  "Muy Alto", "rgba(255, 0, 0, 0.15)")       # Rojo
 ]
 
 def crear_grafico(df_v, v, modo_log=False):
@@ -38,7 +42,6 @@ def crear_grafico(df_v, v, modo_log=False):
     
     df_v_30 = pd.DataFrame()
     if not df_v.empty:
-        # CAMBIO V4.1: Mantener UTC para tooltips (no convertir a Chile)
         df_v['Fecha_UTC'] = pd.to_datetime(df_v['Fecha_Satelite_UTC']).dt.tz_localize('UTC')
         
         # Para filtro temporal seguir usando hora Chile
@@ -54,11 +57,11 @@ def crear_grafico(df_v, v, modo_log=False):
     fig = go.Figure()
     v_max_val = df_v_30['VRP_MW'].max()
     
-    # Función transform() - CRÍTICA para modo log (de versión antigua que funciona)
+    # Función transform() - CRÍTICA para modo log
     def transform(val_mw):
         if modo_log:
             watts = val_mw * 1e6
-            return np.log10(max(watts, 10000))  # Transforma a log10
+            return np.log10(max(watts, 10000))
         return val_mw
     
     # Para bandas y verificaciones
@@ -90,53 +93,42 @@ def crear_grafico(df_v, v, modo_log=False):
             return None
         
         # Extraer ruta de carpeta
-        # Ejemplo: imagenes_satelitales/Lascar/2026-01-26/
         partes = ruta_foto.split('/')
         if len(partes) >= 4:
             volcan_carpeta = partes[1]
             fecha_carpeta = partes[2]
             
-            # URL a carpeta en GitHub
             url_github = f"https://github.com/MendozaVolcanic/Mirova-v1/tree/main/monitoreo_satelital/imagenes_satelitales/{volcan_carpeta}/{fecha_carpeta}"
             return url_github
         
         return None
 
     # Traces separadas por confianza (colores) y sensor (símbolos)
-    # Agrupar por sensor y confianza
     for sensor in df_v_30['Sensor'].unique():
         df_sensor = df_v_30[df_v_30['Sensor'] == sensor]
         
         for confianza in ['N/A', 'valido', 'alta', 'media', 'baja']:
-            # Filtrar por confianza (N/A o valido para latest.php)
             if 'Confianza_Validacion' in df_sensor.columns:
                 df_grupo = df_sensor[df_sensor['Confianza_Validacion'] == confianza]
             else:
-                # Si no existe la columna, asumir N/A (latest.php legacy)
                 df_grupo = df_sensor if confianza in ['N/A', 'valido'] else pd.DataFrame()
             
             if df_grupo.empty:
                 continue
             
-            # Obtener color y símbolo
             color = COLORES_CONFIANZA.get(confianza, "#2ea043")
             simbolo = MAPA_SIMBOLOS.get(sensor, "circle")
             
-            # Nombre de la trace
             if confianza in ['N/A', 'valido']:
                 nombre_trace = sensor
             else:
                 nombre_trace = f"{sensor} ({confianza})"
             
-            # CRÍTICO: Usar transform() para valores Y
             y_vals = [transform(v) for v in df_grupo['VRP_MW']]
             
-            # ========================================
-            # FIX 3: Agregar URLs a customdata
-            # ========================================
+            # Agregar URLs a customdata
             urls_imagenes = [generar_url_imagenes(row) for _, row in df_grupo.iterrows()]
             
-            # Preparar customdata con fecha, VRP y URL
             customdata_list = []
             for i, (idx, row) in enumerate(df_grupo.iterrows()):
                 customdata_list.append([
@@ -145,7 +137,6 @@ def crear_grafico(df_v, v, modo_log=False):
                     urls_imagenes[i] if urls_imagenes[i] else ''
                 ])
             
-            # Hovertemplate con link
             hovertemplate_text = (
                 "<b>%{customdata[1]:.2f} MW</b><br>"
                 "%{customdata[0]|%d %b, %H:%M} UTC<br>"
@@ -169,9 +160,6 @@ def crear_grafico(df_v, v, modo_log=False):
                 showlegend=True
             ))
 
-    # Anotación Máximo - Se agrega después de configurar ejes
-    # (Movido más abajo para modo log)
-
     # Eje X con grilla cada 5 días
     fig.update_xaxes(type="date", range=[hace_30_dias, ahora],
                      dtick=5 * 24 * 60 * 60 * 1000, tickformat="%d %b",
@@ -181,10 +169,9 @@ def crear_grafico(df_v, v, modo_log=False):
     
     # Eje Y - CRÍTICO: En modo log usar type="linear" con valores transformados
     if modo_log:
-        # Usar estrategia de versión antigua: type="linear" con ticktext personalizado
         fig.update_yaxes(
-            type="linear",  # ← No "log", sino "linear" con valores log10
-            range=[4.7, 9],  # log10(10^4.7) a log10(10^9)
+            type="linear",
+            range=[4.7, 9],
             tickvals=[5, 6, 7, 8],
             ticktext=["10⁵", "10⁶", "10⁷", "10⁸"],
             gridcolor='rgba(255,255,255,0.05)',
@@ -205,18 +192,49 @@ def crear_grafico(df_v, v, modo_log=False):
     fig.add_annotation(xref="paper", yref="paper", x=-0.01, y=1.15, text=f"<b>{unidad}</b>", 
                        showarrow=False, font=dict(size=10, color="white"), xanchor="right")
     
-    # Anotación Máximo - CRÍTICO: Usar transform() en modo log
+    # ========================================
+    # FIX 6: Anotación MAX con ajuste de posición
+    # ========================================
     if not df_v_30.empty:
         max_r = df_v_30.loc[df_v_30['VRP_MW'].idxmax()]
-        y_pos = transform(max_r['VRP_MW'])  # ← Usar transform()
+        y_pos = transform(max_r['VRP_MW'])
         
-        fig.add_annotation(x=max_r['Fecha_UTC'], y=y_pos,  # ← CAMBIO: Usar Fecha_UTC
-            xref="x", yref="y", text=f"MÁX: {max_r['VRP_MW']:.2f} MW", showarrow=True,
-            arrowhead=2, arrowsize=1, arrowwidth=1.5, arrowcolor="white",
-            bgcolor="rgba(0,0,0,0.8)", bordercolor="#58a6ff", borderwidth=1,
-            font=dict(color="white", size=9), ay=-40, ax=0)
+        # Calcular proporción de posición en el eje X
+        fecha_max = max_r['Fecha_UTC']
+        dias_desde_inicio = (fecha_max - hace_30_dias).total_seconds() / 86400
+        proporcion_x = dias_desde_inicio / 30  # 0.0 = inicio, 1.0 = final
+        
+        # Ajustar ax (desplazamiento horizontal de la etiqueta)
+        if proporcion_x > 0.85:
+            # Muy cerca del borde derecho → mover etiqueta a la izquierda
+            ax = -60
+        elif proporcion_x < 0.15:
+            # Muy cerca del borde izquierdo → mover etiqueta a la derecha
+            ax = 60
+        else:
+            # En el centro → sin desplazamiento horizontal
+            ax = 0
+        
+        fig.add_annotation(
+            x=fecha_max, 
+            y=y_pos,
+            xref="x", 
+            yref="y", 
+            text=f"MÁX: {max_r['VRP_MW']:.2f} MW", 
+            showarrow=True,
+            arrowhead=2, 
+            arrowsize=1, 
+            arrowwidth=1.5, 
+            arrowcolor="white",
+            bgcolor="rgba(0,0,0,0.8)", 
+            bordercolor="#58a6ff", 
+            borderwidth=1,
+            font=dict(color="white", size=9), 
+            ay=-40,  # Vertical siempre hacia arriba
+            ax=ax    # Horizontal ajustado según posición
+        )
     
-    # Layout - CRÍTICO: Sin responsive para gráficos log
+    # Layout
     fig.update_layout(
         template="plotly_dark",
         height=300,
@@ -225,10 +243,8 @@ def crear_grafico(df_v, v, modo_log=False):
         plot_bgcolor='rgba(0,0,0,0)',
         showlegend=True,
         legend=dict(orientation="h", yanchor="bottom", y=1.03, xanchor="center", x=0.5, font=dict(size=9)),
-        # NUEVO: NO responsive para evitar problemas con resize
         autosize=True,
-        # NUEVO: Anchura fija para evitar recalculos
-        width=None  # Se adapta al contenedor pero sin recalcular ejes
+        width=None
     )
     
     return fig
@@ -237,34 +253,28 @@ def procesar():
     os.makedirs(CARPETA_LINEAL, exist_ok=True)
     os.makedirs(CARPETA_LOG, exist_ok=True)
     
-    # Leer CSV maestro PUBLICABLE (ya viene filtrado)
+    # Leer CSV maestro PUBLICABLE
     if os.path.exists(ARCHIVO_MAESTRO):
         df = pd.read_csv(ARCHIVO_MAESTRO)
         print(f"📊 Leyendo {ARCHIVO_MAESTRO}: {len(df)} eventos")
     elif os.path.exists(ARCHIVO_MAESTRO_COMPLETO):
-        # Fallback: Leer maestro completo y filtrar manualmente
         df = pd.read_csv(ARCHIVO_MAESTRO_COMPLETO)
         print(f"⚠️ Maestro publicable no existe, usando completo: {len(df)} eventos")
         
-        # Aplicar filtros manualmente
         if not df.empty:
             antes = len(df)
             
-            # Filtrar por tipo
             if 'Tipo_Registro' in df.columns:
                 tipos_ok = ['ALERTA_TERMICA', 'ALERTA_TERMICA_OCR', 'EVIDENCIA_DIARIA']
                 df = df[df['Tipo_Registro'].isin(tipos_ok)].copy()
             
-            # Filtrar VRP > 0
             df = df[df['VRP_MW'] > 0].copy()
             
-            # Filtrar confianza baja
             if 'Confianza_Validacion' in df.columns:
                 df = df[df['Confianza_Validacion'] != 'baja'].copy()
             
             print(f"   Filtrado: {antes} → {len(df)} eventos")
     else:
-        # Fallback final: positivos.csv
         df = pd.read_csv(ARCHIVO_POSITIVOS) if os.path.exists(ARCHIVO_POSITIVOS) else pd.DataFrame()
         if not df.empty:
             df['Confianza_Validacion'] = 'valido'
@@ -273,7 +283,7 @@ def procesar():
     config_lineal = {
         'displayModeBar': 'hover',
         'displaylogo': False,
-        'responsive': True,  # OK para lineales
+        'responsive': True,
         'modeBarButtonsToRemove': ['zoom2d', 'pan2d', 'select2d', 'lasso2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d'],
         'toImageButtonOptions': {'format': 'png', 'height': 500, 'width': 1400, 'scale': 2}
     }
@@ -281,7 +291,7 @@ def procesar():
     config_log = {
         'displayModeBar': 'hover',
         'displaylogo': False,
-        'responsive': False,  # CRÍTICO: Deshabilitar para log
+        'responsive': False,
         'modeBarButtonsToRemove': ['zoom2d', 'pan2d', 'select2d', 'lasso2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d'],
         'toImageButtonOptions': {'format': 'png', 'height': 500, 'width': 1400, 'scale': 2}
     }
@@ -298,19 +308,15 @@ def procesar():
                 with open(path, "w", encoding='utf-8') as f:
                     f.write("<body style='background:#0d1117; color:#8b949e; display:flex; align-items:center; justify-content:center; height:300px; font-family:sans-serif;'>SIN ANOMALÍA TÉRMICA</body>")
             else:
-                # CRÍTICO: Usar config apropiada según tipo
                 config_usar = config_log if es_log else config_lineal
                 
-                # ========================================
-                # FIX 3: Agregar JavaScript para clicks
-                # ========================================
+                # Agregar JavaScript para clicks
                 html_content = fig.to_html(
                     full_html=False,
                     include_plotlyjs='cdn',
                     config=config_usar
                 )
                 
-                # Inyectar JavaScript para manejar clicks
                 click_handler_js = """
 <script>
 document.addEventListener('DOMContentLoaded', function() {

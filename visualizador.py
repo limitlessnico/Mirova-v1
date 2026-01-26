@@ -14,25 +14,31 @@ CARPETA_LOG = "monitoreo_satelital/v_html_log"
 VOLCANES = ["Isluga", "Lascar", "Lastarria", "Peteroa", "Nevados de Chillan", "Copahue", "Llaima", "Villarrica", "Puyehue-Cordon Caulle", "Chaiten"]
 
 MAPA_SIMBOLOS = {"MODIS": "triangle-up", "VIIRS375": "square", "VIIRS750": "circle", "VIIRS": "circle"}
-# Colores por confianza (verde para latest.php y OCR alta, amarillo/naranja para OCR media/baja)
 COLORES_CONFIANZA = {
-    "N/A": "#2ea043",      # Verde - latest.php (legacy)
-    "valido": "#2ea043",   # Verde - latest.php (nuevo)
-    "alta": "#2ea043",     # Verde - OCR alta
-    "media": "#d29922",    # Amarillo - OCR media
-    "baja": "#fb8500"      # Naranja - OCR baja
+    "N/A": "#2ea043",
+    "valido": "#2ea043",
+    "alta": "#2ea043",
+    "media": "#d29922",
+    "baja": "#fb8500"
 }
 MESES_ES = {1: "Ene", 2: "Feb", 3: "Mar", 4: "Abr", 5: "May", 6: "Jun", 7: "Jul", 8: "Ago", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dic"}
 
 # ========================================
-# FIX 7: Bandas correctas (5 bandas, no 4)
+# FIX 7 CORREGIDO: Bandas según MIROVA
 # ========================================
+# En Watts (para escala logarítmica):
+# 10^5-10^6 = Gris "Muy Bajo"
+# 10^6-10^7 = Verde "Bajo"
+# 10^7-10^8 = Amarillo "Moderado"
+# 10^8-10^9 = Naranja "Alto"
+# 10^9+     = Rojo "Muy Alto"
+
 MIROVA_BANDS = [
-    (1,     1e5,  "Muy Bajo", "rgba(85, 85, 85, 0.2)"),      # Gris
-    (1e5,   1e6,  "Bajo",     "rgba(0, 128, 0, 0.15)"),      # Verde
-    (1e6,   1e7,  "Moderado", "rgba(255, 215, 0, 0.15)"),    # Amarillo
-    (1e7,   1e8,  "Alto",     "rgba(255, 140, 0, 0.15)"),    # Naranja
-    (1e8,   1e9,  "Muy Alto", "rgba(255, 0, 0, 0.15)")       # Rojo
+    (1e5,   1e6,  "Muy Bajo", "rgba(128, 128, 128, 0.2)"),   # Gris: 0.1-1 MW
+    (1e6,   1e7,  "Bajo",     "rgba(34, 139, 34, 0.15)"),    # Verde: 1-10 MW
+    (1e7,   1e8,  "Moderado", "rgba(255, 215, 0, 0.15)"),    # Amarillo: 10-100 MW
+    (1e8,   1e9,  "Alto",     "rgba(255, 140, 0, 0.15)"),    # Naranja: 100-1000 MW
+    (1e9,   1e10, "Muy Alto", "rgba(220, 20, 60, 0.15)")     # Rojo: 1000+ MW
 ]
 
 def crear_grafico(df_v, v, modo_log=False):
@@ -43,12 +49,8 @@ def crear_grafico(df_v, v, modo_log=False):
     df_v_30 = pd.DataFrame()
     if not df_v.empty:
         df_v['Fecha_UTC'] = pd.to_datetime(df_v['Fecha_Satelite_UTC']).dt.tz_localize('UTC')
-        
-        # Para filtro temporal seguir usando hora Chile
         df_v['Fecha_Chile_temp'] = df_v['Fecha_UTC'].dt.tz_convert('America/Santiago')
         df_v_30 = df_v[df_v['Fecha_Chile_temp'] >= hace_30_dias].copy()
-        
-        # FILTRAR VRP = 0 (eventos de rutina sin anomalía térmica)
         df_v_30 = df_v_30[df_v_30['VRP_MW'] > 0].copy()
 
     if df_v_30.empty: return None
@@ -57,53 +59,63 @@ def crear_grafico(df_v, v, modo_log=False):
     fig = go.Figure()
     v_max_val = df_v_30['VRP_MW'].max()
     
-    # Función transform() - CRÍTICA para modo log
+    # Función transform para modo log
     def transform(val_mw):
         if modo_log:
             watts = val_mw * 1e6
-            return np.log10(max(watts, 10000))
+            return np.log10(max(watts, 1e5))  # Mínimo 10^5
         return val_mw
     
-    # Para bandas y verificaciones
-    mult = 1000000 if modo_log else 1
-    v_max_val_check = v_max_val * mult
+    # Para verificaciones
+    v_max_val_watts = v_max_val * 1e6
     
-    # Bandas y Simbología Inteligente
+    # ========================================
+    # Bandas de color
+    # ========================================
     for y0, y1, label, color in MIROVA_BANDS:
-        # Transformar a log10 para bandas en modo log
+        # Transformar límites según escala
         if modo_log:
-            l_y0 = np.log10(max(y0, 1))
+            # Escala log: usar valores en Watts transformados a log10
+            l_y0 = np.log10(max(y0, 1e5))
             l_y1 = np.log10(y1)
         else:
-            l_y0 = y0/1e6
-            l_y1 = y1/1e6
+            # Escala lineal: convertir Watts a MW
+            l_y0 = y0 / 1e6
+            l_y1 = y1 / 1e6
+        
         fig.add_hrect(y0=l_y0, y1=l_y1, fillcolor=color, line_width=0, layer="below")
-        if (v_max_val_check >= y0):
-            fig.add_trace(go.Scatter(x=[None], y=[None], mode='markers', name=label, 
-                marker=dict(size=8, symbol='square', color=color.replace('0.2', '0.8').replace('0.15', '0.8')), showlegend=True))
+        
+        # Mostrar en leyenda solo si hay datos en ese rango
+        if v_max_val_watts >= y0:
+            fig.add_trace(go.Scatter(
+                x=[None], y=[None], 
+                mode='markers', 
+                name=label,
+                marker=dict(
+                    size=8, 
+                    symbol='square', 
+                    color=color.replace('0.2', '0.8').replace('0.15', '0.8')
+                ),
+                showlegend=True
+            ))
 
-    # ========================================
-    # FIX 3: Preparar datos para links a imágenes
-    # ========================================
+    # Preparar datos para links a imágenes
     def generar_url_imagenes(row):
-        """Genera URL a carpeta de imágenes en GitHub"""
         ruta_foto = row.get('Ruta Foto', 'No descargada')
         
         if pd.isna(ruta_foto) or ruta_foto == 'No descargada' or 'descartado' in str(ruta_foto).lower():
             return None
         
-        # Extraer ruta de carpeta
         partes = ruta_foto.split('/')
         if len(partes) >= 4:
             volcan_carpeta = partes[1]
             fecha_carpeta = partes[2]
-            
             url_github = f"https://github.com/MendozaVolcanic/Mirova-v1/tree/main/monitoreo_satelital/imagenes_satelitales/{volcan_carpeta}/{fecha_carpeta}"
             return url_github
         
         return None
 
-    # Traces separadas por confianza (colores) y sensor (símbolos)
+    # Traces por sensor y confianza
     for sensor in df_v_30['Sensor'].unique():
         df_sensor = df_v_30[df_v_30['Sensor'] == sensor]
         
@@ -146,12 +158,12 @@ def crear_grafico(df_v, v, modo_log=False):
             fig.add_trace(go.Scatter(
                 x=df_grupo['Fecha_UTC'],
                 y=y_vals,
-                mode='markers', 
+                mode='markers',
                 name=nombre_trace,
                 marker=dict(
                     symbol=simbolo,
                     color=color,
-                    size=9, 
+                    size=9,
                     line=dict(width=1, color='white')
                 ),
                 customdata=customdata_list,
@@ -160,26 +172,35 @@ def crear_grafico(df_v, v, modo_log=False):
                 showlegend=True
             ))
 
-    # Eje X con grilla cada 5 días
-    fig.update_xaxes(type="date", range=[hace_30_dias, ahora],
-                     dtick=5 * 24 * 60 * 60 * 1000, tickformat="%d %b",
-                     showgrid=True, gridcolor='rgba(255,255,255,0.12)',
-                     minor=dict(dtick=86400000.0, showgrid=True, gridcolor='rgba(255,255,255,0.03)'),
-                     tickangle=-45, fixedrange=True, tickfont=dict(size=9))
+    # Eje X
+    fig.update_xaxes(
+        type="date",
+        range=[hace_30_dias, ahora],
+        dtick=5 * 24 * 60 * 60 * 1000,
+        tickformat="%d %b",
+        showgrid=True,
+        gridcolor='rgba(255,255,255,0.12)',
+        minor=dict(dtick=86400000.0, showgrid=True, gridcolor='rgba(255,255,255,0.03)'),
+        tickangle=-45,
+        fixedrange=True,
+        tickfont=dict(size=9)
+    )
     
-    # Eje Y - CRÍTICO: En modo log usar type="linear" con valores transformados
+    # Eje Y
     if modo_log:
+        # Escala logarítmica: 10^5 a 10^9
         fig.update_yaxes(
             type="linear",
-            range=[4.7, 9],
-            tickvals=[5, 6, 7, 8],
-            ticktext=["10⁵", "10⁶", "10⁷", "10⁸"],
+            range=[5, 9],  # log10(10^5) a log10(10^9)
+            tickvals=[5, 6, 7, 8, 9],
+            ticktext=["10⁵", "10⁶", "10⁷", "10⁸", "10⁹"],
             gridcolor='rgba(255,255,255,0.05)',
             tickfont=dict(size=9),
             autorange=False,
             fixedrange=True
         )
     else:
+        # Escala lineal en MW
         fig.update_yaxes(
             type="linear",
             range=[0, max(1.1, v_max_val * 1.5)],
@@ -188,50 +209,51 @@ def crear_grafico(df_v, v, modo_log=False):
             fixedrange=True
         )
     
-    # Unidad Watt/MW
-    fig.add_annotation(xref="paper", yref="paper", x=-0.01, y=1.15, text=f"<b>{unidad}</b>", 
-                       showarrow=False, font=dict(size=10, color="white"), xanchor="right")
+    # Etiqueta de unidad
+    fig.add_annotation(
+        xref="paper",
+        yref="paper",
+        x=-0.01,
+        y=1.15,
+        text=f"<b>{unidad}</b>",
+        showarrow=False,
+        font=dict(size=10, color="white"),
+        xanchor="right"
+    )
     
-    # ========================================
-    # FIX 6: Anotación MAX con ajuste de posición
-    # ========================================
+    # Anotación MAX con ajuste de posición
     if not df_v_30.empty:
         max_r = df_v_30.loc[df_v_30['VRP_MW'].idxmax()]
         y_pos = transform(max_r['VRP_MW'])
         
-        # Calcular proporción de posición en el eje X
         fecha_max = max_r['Fecha_UTC']
         dias_desde_inicio = (fecha_max - hace_30_dias).total_seconds() / 86400
-        proporcion_x = dias_desde_inicio / 30  # 0.0 = inicio, 1.0 = final
+        proporcion_x = dias_desde_inicio / 30
         
-        # Ajustar ax (desplazamiento horizontal de la etiqueta)
         if proporcion_x > 0.85:
-            # Muy cerca del borde derecho → mover etiqueta a la izquierda
             ax = -60
         elif proporcion_x < 0.15:
-            # Muy cerca del borde izquierdo → mover etiqueta a la derecha
             ax = 60
         else:
-            # En el centro → sin desplazamiento horizontal
             ax = 0
         
         fig.add_annotation(
-            x=fecha_max, 
+            x=fecha_max,
             y=y_pos,
-            xref="x", 
-            yref="y", 
-            text=f"MÁX: {max_r['VRP_MW']:.2f} MW", 
+            xref="x",
+            yref="y",
+            text=f"MÁX: {max_r['VRP_MW']:.2f} MW",
             showarrow=True,
-            arrowhead=2, 
-            arrowsize=1, 
-            arrowwidth=1.5, 
+            arrowhead=2,
+            arrowsize=1,
+            arrowwidth=1.5,
             arrowcolor="white",
-            bgcolor="rgba(0,0,0,0.8)", 
-            bordercolor="#58a6ff", 
+            bgcolor="rgba(0,0,0,0.8)",
+            bordercolor="#58a6ff",
             borderwidth=1,
-            font=dict(color="white", size=9), 
-            ay=-40,  # Vertical siempre hacia arriba
-            ax=ax    # Horizontal ajustado según posición
+            font=dict(color="white", size=9),
+            ay=-40,
+            ax=ax
         )
     
     # Layout
@@ -253,7 +275,6 @@ def procesar():
     os.makedirs(CARPETA_LINEAL, exist_ok=True)
     os.makedirs(CARPETA_LOG, exist_ok=True)
     
-    # Leer CSV maestro PUBLICABLE
     if os.path.exists(ARCHIVO_MAESTRO):
         df = pd.read_csv(ARCHIVO_MAESTRO)
         print(f"📊 Leyendo {ARCHIVO_MAESTRO}: {len(df)} eventos")
@@ -279,7 +300,6 @@ def procesar():
         if not df.empty:
             df['Confianza_Validacion'] = 'valido'
     
-    # Config diferente para lineal vs log
     config_lineal = {
         'displayModeBar': 'hover',
         'displaylogo': False,
@@ -310,7 +330,6 @@ def procesar():
             else:
                 config_usar = config_log if es_log else config_lineal
                 
-                # Agregar JavaScript para clicks
                 html_content = fig.to_html(
                     full_html=False,
                     include_plotlyjs='cdn',

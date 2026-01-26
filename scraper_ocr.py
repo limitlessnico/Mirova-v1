@@ -1,7 +1,5 @@
 """
-SCRAPER_OCR.PY
-Scraper de imágenes MIROVA usando OCR
-Recupera eventos perdidos por latest.php
+SCRAPER_OCR.PY - FIX 4: Latest10NTI correcto
 """
 
 import requests
@@ -71,10 +69,13 @@ def descargar_imagen_temp(session, url, ruta_destino):
 
 
 def descargar_imagenes_permanentes(session, volcan_id, sensor, evento, es_verificar):
-    """Descarga y guarda imágenes permanentes"""
+    """
+    Descarga y guarda imágenes permanentes
+    FIX 4: Latest10NTI ahora se descarga correctamente
+    """
     conf = VOLCANES_CONFIG[volcan_id]
     nombre_v = conf["nombre"]
-    # Normalizar nombre para rutas (sin espacios ni guiones)
+    # FIX 5: Normalizar consistentemente (guión bajo en vez de guión)
     nombre_v_normalizado = nombre_v.replace(' ', '_').replace('-', '_')
     id_mirova = conf["id_mirova"]
     
@@ -88,14 +89,27 @@ def descargar_imagenes_permanentes(session, volcan_id, sensor, evento, es_verifi
     s_url = "VIIRS750" if sensor == "VIIRS" else sensor
     sufijo = "_VERIFICAR" if es_verificar else ""
     
+    # ========================================
+    # FIX 4: Tipos de imagen (incluye Latest10NTI)
+    # ========================================
     tipos = ["VRP", "logVRP", "Latest10NTI", "Dist"]
     ruta_relativa = "No descargada"
     
     for t in tipos:
-        t_url = f"{t}10NTI" if t == "Latest10NTI" else t
-        url = f"https://www.mirovaweb.it/OUTPUTweb/MIROVA/{s_url}/VOLCANOES/{id_mirova}/{id_mirova}_{s_url}_{t_url}.png"
+        # ========================================
+        # FIX 4: Construcción correcta de URL
+        # ========================================
+        if t == "Latest10NTI":
+            # Latest10NTI → Latest10NTI (sin cambios)
+            t_url = "Latest10NTI"
+            # Nombre de archivo local sin "10NTI"
+            filename = f"{h_a}_{nombre_v_normalizado}_{s_url}_Latest{sufijo}.png"
+        else:
+            # VRP, logVRP, Dist → sin cambios
+            t_url = t
+            filename = f"{h_a}_{nombre_v_normalizado}_{s_url}_{t}{sufijo}.png"
         
-        filename = f"{h_a}_{nombre_v_normalizado}_{s_url}_{t}{sufijo}.png"
+        url = f"https://www.mirovaweb.it/OUTPUTweb/MIROVA/{s_url}/VOLCANOES/{id_mirova}/{id_mirova}_{s_url}_{t_url}.png"
         path_f = os.path.join(ruta_dia, filename)
         
         # No descargar si ya existe
@@ -173,7 +187,7 @@ def procesar_volcan_sensor(session, volcan_id, sensor, df_ocr, df_consolidado):
             print(f"  ❌ SKIP: {ts} - {clasificacion['nota']}")
             continue
         
-        # NUEVO V4: Solo descargar imágenes si vale la pena
+        # Solo descargar imágenes si vale la pena
         guardar_imgs = clasificacion.get('guardar_imagenes', False)
         
         if guardar_imgs:
@@ -209,7 +223,7 @@ def procesar_volcan_sensor(session, volcan_id, sensor, df_ocr, df_consolidado):
             'Sensor': sensor,
             'VRP_MW': vrp_mw,
             'Distancia_km': 0.0,
-            'Tipo_Registro': clasificacion['tipo_registro'],  # ← USAR clasificación
+            'Tipo_Registro': clasificacion['tipo_registro'],
             'Clasificacion Mirova': clasificacion_mirova,
             'Ruta Foto': ruta_foto,
             'Fecha_Proceso_GitHub': ahora_cl,

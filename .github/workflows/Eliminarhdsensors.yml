@@ -1,0 +1,69 @@
+name: Eliminar HD_SENSORS (ONE TIME)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup_hd:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Buscar y eliminar carpetas HD_SENSORS
+        run: |
+          echo "Buscando carpetas HD_SENSORS obsoletas..."
+          
+          BASE="monitoreo_satelital/imagenes_satelitales"
+          FOUND=0
+          DELETED=0
+          
+          # Buscar en todas las carpetas de volcanes
+          for volcano_dir in "$BASE"/*; do
+            if [ -d "$volcano_dir" ]; then
+              HD_DIR="$volcano_dir/HD_SENSORS"
+              
+              if [ -d "$HD_DIR" ]; then
+                volcano_name=$(basename "$volcano_dir")
+                echo "Encontrada: $volcano_name/HD_SENSORS"
+                
+                # Contar archivos
+                file_count=$(find "$HD_DIR" -type f | wc -l)
+                echo "  Archivos: $file_count"
+                
+                # Eliminar carpeta
+                rm -rf "$HD_DIR"
+                echo "  Eliminada"
+                
+                FOUND=$((FOUND + 1))
+                DELETED=$((DELETED + file_count))
+              fi
+            fi
+          done
+          
+          echo ""
+          echo "========================================"
+          echo "RESUMEN:"
+          echo "  Carpetas HD_SENSORS encontradas: $FOUND"
+          echo "  Archivos eliminados: $DELETED"
+          echo "========================================"
+          
+          if [ $FOUND -eq 0 ]; then
+            echo "No se encontraron carpetas HD_SENSORS"
+          fi
+
+      - name: Guardar cambios
+        run: |
+          git config --global user.name "CleanupBot"
+          git config --global user.email "cleanup@volcano.com"
+          git add -A
+          if ! git diff --quiet --staged; then
+            git commit -m "Remove: Carpetas HD_SENSORS obsoletas (MSI/OLI)"
+            git push origin main
+          else
+            echo "No hay cambios para guardar"
+          fi

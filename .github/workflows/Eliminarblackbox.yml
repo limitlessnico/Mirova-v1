@@ -1,0 +1,39 @@
+name: Eliminar Blackbox (ONE TIME)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  delete_blackbox:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Eliminar carpeta blackbox_latest
+        run: |
+          CARPETA="monitoreo_satelital/blackbox_latest"
+          
+          if [ -d "$CARPETA" ]; then
+            echo "Eliminando carpeta: $CARPETA"
+            rm -rf "$CARPETA"
+            echo "Carpeta eliminada"
+          else
+            echo "Carpeta no existe, nada que eliminar"
+          fi
+
+      - name: Guardar cambios
+        run: |
+          git config --global user.name "CleanupBot"
+          git config --global user.email "cleanup@volcano.com"
+          git add -A
+          if ! git diff --quiet --staged; then
+            git commit -m "Remove: Carpeta blackbox_latest obsoleta"
+            git push origin main
+          else
+            echo "No hay cambios para guardar"
+          fi

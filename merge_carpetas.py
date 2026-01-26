@@ -1,0 +1,88 @@
+import os
+import shutil
+
+BASE = "monitoreo_satelital/imagenes_satelitales"
+
+# Mapeo: carpeta vieja -> carpeta nueva
+MERGE_MAP = {
+    "Puyehue-Cordon Caulle": "Puyehue_Cordon_Caulle"
+}
+
+print("=" * 80)
+print("MERGE DE CARPETAS DUPLICADAS")
+print("=" * 80)
+
+for vieja, nueva in MERGE_MAP.items():
+    ruta_vieja = os.path.join(BASE, vieja)
+    ruta_nueva = os.path.join(BASE, nueva)
+    
+    if not os.path.exists(ruta_vieja):
+        print(f"\nSKIP: {vieja} no existe")
+        continue
+    
+    print(f"\n{vieja} -> {nueva}")
+    
+    os.makedirs(ruta_nueva, exist_ok=True)
+    
+    total_movidos = 0
+    total_fusionados = 0
+    
+    # Procesar cada carpeta de fecha
+    for fecha_dir in os.listdir(ruta_vieja):
+        origen = os.path.join(ruta_vieja, fecha_dir)
+        
+        if not os.path.isdir(origen):
+            continue
+        
+        destino = os.path.join(ruta_nueva, fecha_dir)
+        
+        if os.path.exists(destino):
+            # FUSION: Carpeta ya existe, mover archivos individuales
+            print(f"   FUSION: {fecha_dir}")
+            
+            archivos_movidos = 0
+            archivos_existentes = 0
+            
+            for archivo in os.listdir(origen):
+                archivo_origen = os.path.join(origen, archivo)
+                archivo_destino = os.path.join(destino, archivo)
+                
+                if not os.path.exists(archivo_destino):
+                    shutil.move(archivo_origen, archivo_destino)
+                    archivos_movidos += 1
+                else:
+                    archivos_existentes += 1
+            
+            print(f"      + {archivos_movidos} archivos nuevos")
+            print(f"      = {archivos_existentes} archivos ya existian")
+            
+            total_fusionados += 1
+            
+            # Eliminar carpeta origen si quedo vacia
+            try:
+                if not os.listdir(origen):
+                    os.rmdir(origen)
+            except:
+                pass
+        else:
+            # MOVER: Carpeta no existe, mover completa
+            shutil.move(origen, destino)
+            total_movidos += 1
+            print(f"   MOVIDA: {fecha_dir}")
+    
+    # Eliminar carpeta vieja
+    try:
+        if os.path.exists(ruta_vieja) and not os.listdir(ruta_vieja):
+            shutil.rmtree(ruta_vieja)
+            print(f"\n   Eliminada carpeta vacia: {vieja}")
+    except Exception as e:
+        print(f"\n   Advertencia: No se pudo eliminar {vieja}: {e}")
+    
+    print(f"\n   RESUMEN:")
+    print(f"   - Carpetas movidas: {total_movidos}")
+    print(f"   - Carpetas fusionadas: {total_fusionados}")
+    print(f"   - Total procesado: {total_movidos + total_fusionados}")
+
+print("\n" + "=" * 80)
+print("MERGE COMPLETADO")
+print("=" * 80)

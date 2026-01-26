@@ -76,7 +76,6 @@
             {n: "Chaiten", r: "Los Lagos"}
         ];
         
-        let baseDatosCSV = "";
         let currentScale = "linear";
 
         function toggleScale() {
@@ -108,7 +107,6 @@
         }
         
         function openModal(url) { 
-            // ÚNICO FIX NECESARIO: URL correcta según escala
             if (currentScale === "log") {
                 url = url.replace('/v_html/', '/v_html_log/');
             }
@@ -122,28 +120,26 @@
             document.getElementById('modal-iframe').src = ''; 
         }
         
+        // ========================================
+        // FIX 1: Descarga correcta de CSV por volcán
+        // ========================================
         function descargarCSV(nombre) { 
-            if (!baseDatosCSV) return alert("Cargando..."); 
-            const lineas = baseDatosCSV.split('\n'); 
-            const cabecera = lineas[0]; 
-            const filtrados = lineas.filter(l => l.includes(nombre)); 
-            const blob = new Blob([cabecera + "\n" + filtrados.join("\n")], { type: 'text/csv' }); 
-            const url = window.URL.createObjectURL(blob); 
-            const a = document.createElement('a'); 
-            a.href = url; 
-            a.download = `Historial_${nombre.replace(/ /g,'_')}.csv`; 
-            a.click(); 
+            // Normalizar nombre para que coincida con archivos generados
+            const nombreArchivo = nombre.replace(/ /g, '_').replace(/-/g, '_');
+            
+            // URL directa al CSV generado por merger
+            const url = `monitoreo_satelital/registro_${nombreArchivo}.csv?t=${new Date().getTime()}`;
+            
+            // Descargar directamente
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Historial_${nombreArchivo}.csv`;
+            a.click();
         }
         
         async function init() {
             const container = document.getElementById('galeria'); 
             const ts = new Date().getTime();
-            
-            // Intentar cargar maestro, fallback a positivos
-            fetch('monitoreo_satelital/registro_vrp_maestro.csv?t=' + ts)
-                .catch(() => fetch('monitoreo_satelital/registro_vrp_positivos.csv?t=' + ts))
-                .then(r => r.text())
-                .then(t => baseDatosCSV = t);
             
             volcanes.forEach(v => {
                 const card = document.createElement('div'); 
